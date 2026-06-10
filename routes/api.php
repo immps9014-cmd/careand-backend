@@ -219,13 +219,28 @@ Route::prefix('v1')->group(function () {
     require __DIR__ . '/api/postpartum.php';
 });
 
-// Health check
-Route::get('health', function () {
+// Health check (모니터링/배포 검증용 — DB/Redis 포함, /api/health + /api/v1/health)
+$careandHealth = function () {
+    $checks = [];
+    try {
+        \Illuminate\Support\Facades\DB::select('SELECT 1');
+        $checks['db'] = 'ok';
+    } catch (\Throwable $e) {
+        $checks['db'] = 'fail';
+    }
+    try {
+        \Illuminate\Support\Facades\Redis::connection()->ping();
+        $checks['redis'] = 'ok';
+    } catch (\Throwable $e) {
+        $checks['redis'] = 'fail';
+    }
+    $ok = !in_array('fail', $checks, true);
     return response()->json([
-        'status' => 'ok',
+        'status' => $ok ? 'ok' : 'degraded',
         'service' => 'careand-backend',
-        'version' => 'v1.0.0',
-        'phase' => 'Phase 0 + 1 + 2',
+        'checks' => $checks,
         'timestamp' => now()->toIso8601String(),
-    ]);
-});
+    ], $ok ? 200 : 503);
+};
+Route::get('health', $careandHealth)->middleware('throttle:60,1');
+Route::get('v1/health', $careandHealth)->middleware('throttle:60,1');
