@@ -1,0 +1,193 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Notification;
+use App\Models\User;
+use App\Services\External\FcmService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * 알림 통합 서비스
+ *
+ * - DB 기록 (notifications 테이블) + FCM 푸시 동시 처리
+ * - 알림 타입별 템플릿 관리
+ *
+ * 사용 예:
+ *   $svc->notify($userId, NotificationService::TYPE_MATCH_CONFIRMED, [
+ *       'senior_name' => '홍어머님',
+ *       'caregiver_name' => '이정희',
+ *       'match_id' => 123,
+ *   ]);
+ */
+class NotificationService
+{
+    // 알림 타입 상수
+    public const TYPE_MATCH_REQUEST_ASSIGNED = 'MATCH_REQUEST_ASSIGNED';
+    public const TYPE_MATCH_CONFIRMED = 'MATCH_CONFIRMED';
+    public const TYPE_CARE_STARTED = 'CARE_STARTED';
+    public const TYPE_CARE_COMPLETED = 'CARE_COMPLETED';
+    public const TYPE_CARE_SUMMARY_READY = 'CARE_SUMMARY_READY';
+    public const TYPE_ANOMALY_HIGH = 'ANOMALY_HIGH';
+    public const TYPE_ANOMALY_CRITICAL = 'ANOMALY_CRITICAL';
+    public const TYPE_PAYMENT_PAID = 'PAYMENT_PAID';
+    public const TYPE_PAYMENT_FAILED = 'PAYMENT_FAILED';
+    public const TYPE_SETTLEMENT_CONFIRMED = 'SETTLEMENT_CONFIRMED';
+    public const TYPE_SETTLEMENT_PAID = 'SETTLEMENT_PAID';
+
+    public function __construct(private FcmService $fcm)
+    {
+    }
+
+    /**
+     * 알림 발송 (DB 기록 + FCM 푸시 동시)
+     */
+    public function notify(int $userId, string $type, array $payload = []): ?Notification
+    {
+        $user = User::find($userId);
+        if (!$user) {
+            Log::warning('알림 발송 실패: 사용자 없음', ['user_id' => $userId, 'type' => $type]);
+            return null;
+        }
+
+        $template = $this->getTemplate($type, $payload);
+        if (!$template) {
+            Log::warning('알림 발송 실패: 미정의 타입', ['type' => $type]);
+            return null;
+        }
+
+        // DB + FCM 동시 처리 (트랜잭션)
+        return DB::transaction(function () use ($user, $type, $template, $payload) {
+            $notification = Notification::create([
+                'user_id' => $user->id,
+                'type' => $type,
+                'title' => $template['title'],
+                'body' => $template['body'],
+                'data' => $payload,
+                'sent_at' => now(),
+            ]);
+
+            // FCM 푸시 (token이 있는 경우만)
+            if ($user->fcm_token) {
+                $result = $this->fcm->send(
+                    fcmToken: $user->fcm_token,
+                    title: $template['title'],
+                    body: $template['body'],
+                    data: array_merge(['notification_id' => (string) $notification->id, 'type' => $type], $payload),
+                );
+
+                if (!$result['success']) {
+                    Log::warning('FCM 푸시 실패', [
+                        'user_id' => $user->id,
+                        'type' => $type,
+                        'error' => $result['error'],
+                    ]);
+                }
+            }
+
+            return $notification;
+        });
+    }
+
+    /**
+     * 다중 사용자 일괄 발송
+     */
+    public function notifyBulk(array $userIds, string $type, array $payload = []): int
+    {
+        $sent = 0;
+        foreach ($userIds as $userId) {
+            if ($this->notify($userId, $type, $payload)) {
+                $sent++;
+            }
+        }
+        return $sent;
+    }
+
+    /**
+     * 알림 템플릿 (한국어)
+     */
+    private function getTemplate(string $type, array $payload): ?array
+    {
+        return match ($type) {
+            self::TYPE_MATCH_REQUEST_ASSIGNED => [
+                'title' => '새 매칭 요청',
+                'body' => sprintf(
+                    '%s 어르신 케어 요청이 도착했어요. (%s)',
+                    $payload['senior_name'] ?? '어르신',
+                    $payload['scheduled_at'] ?? ''
+                ),
+            ],
+            self::TYPE_MATCH_CONFIRMED => [
+                'title' => '매칭 확정',
+                'body' => sprintf(
+                    '%s 인력이 케어를 수락했어요.',
+                    $payload['caregiver_name'] ?? '인력'
+                ),
+            ],
+            self::TYPE_CARE_STARTED => [
+                'title' => '케어 시작',
+                'body' => sprintf(
+                    '%s 인력이 %s 어르신 케어를 시작했어요.',
+                    $payload['caregiver_name'] ?? '인력',
+                    $payload['senior_name'] ?? '어르신'
+                ),
+            ],
+            self::TYPE_CARE_COMPLETED => [
+                'title' => '케어 완료',
+                'body' => sprintf(
+                    '%s 어르신 케어가 완료되었어요. (%d분)',
+                    $payload['senior_name'] ?? '어르신',
+                    $payload['duration_min'] ?? 0
+                ),
+            ],
+            self::TYPE_CARE_SUMMARY_READY => [
+                'title' => '케어 일지 도착',
+                'body' => sprintf(
+                    '%s 어르신의 오늘 케어 일지가 정리되었어요.',
+                    $payload['senior_name'] ?? '어르신'
+                ),
+            ],
+            self::TYPE_ANOMALY_HIGH => [
+                'title' => 'AI 이상징후 감지',
+                'body' => sprintf(
+                    '⚠ %s 어르신 %s 위험 %d점 — 확인이 필요해요.',
+                    $payload['senior_name'] ?? '어르신',
+                    $payload['risk_type_ko'] ?? '건강',
+                    (int) ($payload['risk_score'] ?? 0)
+                ),
+            ],
+            self::TYPE_ANOMALY_CRITICAL => [
+                'title' => '🚨 긴급 건강 알림',
+                'body' => sprintf(
+                    '%s 어르신 응급 상황 가능성 — 즉시 의료진 상담을 권장합니다.',
+                    $payload['senior_name'] ?? '어르신'
+                ),
+            ],
+            self::TYPE_PAYMENT_PAID => [
+                'title' => '결제 완료',
+                'body' => sprintf('%s원 결제가 완료되었어요.', number_format($payload['amount'] ?? 0)),
+            ],
+            self::TYPE_PAYMENT_FAILED => [
+                'title' => '결제 실패',
+                'body' => sprintf('결제에 실패했어요: %s', $payload['reason'] ?? '카드를 확인해주세요'),
+            ],
+            self::TYPE_SETTLEMENT_CONFIRMED => [
+                'title' => '정산서 확정',
+                'body' => sprintf(
+                    '이번 주 정산 %s원이 확정되었어요. (D-%d)',
+                    number_format($payload['net_amount'] ?? 0),
+                    $payload['days_until_paid'] ?? 0
+                ),
+            ],
+            self::TYPE_SETTLEMENT_PAID => [
+                'title' => '정산 입금 완료',
+                'body' => sprintf(
+                    '%s원이 입금되었어요. 수고하셨습니다.',
+                    number_format($payload['net_amount'] ?? 0)
+                ),
+            ],
+            default => null,
+        };
+    }
+}
