@@ -32,7 +32,7 @@ class MohwService
     public function verifyLicense(string $licenseNo, string $name, string $birthDate): array
     {
         // 로컬/테스트 환경에서는 모의 응답
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return $this->mockResponse($licenseNo);
         }
 

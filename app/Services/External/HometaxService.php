@@ -29,7 +29,7 @@ class HometaxService
      */
     public function fileWithholdingTax(array $items, string $period): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return [
                 'success' => true,
                 'filing_no' => 'HT-' . str_replace('-', '', $period) . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT),
@@ -84,7 +84,7 @@ class HometaxService
      */
     public function getFilingStatus(string $filingNo): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return [
                 'filing_no' => $filingNo,
                 'status' => 'accepted',

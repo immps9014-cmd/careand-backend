@@ -7,6 +7,12 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    // 외부 연동(SMS/PG/FCM/NHIS/홈택스/복지부)을 실제 호출 대신 스텁 응답으로 처리.
+    // 실 자격증명·연동 준비 전까지 true. APP_ENV(production 전환)와 무관하게 제어하기 위함.
+    'external' => [
+        'stub' => env('EXTERNAL_STUB', true),
+    ],
+
     'mailgun' => [
         'domain' => env('MAILGUN_DOMAIN'),
         'secret' => env('MAILGUN_SECRET'),

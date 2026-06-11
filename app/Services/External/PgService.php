@@ -29,7 +29,7 @@ class PgService
      */
     public function approve(array $payload): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return $this->mockApprove($payload);
         }
 
@@ -72,7 +72,7 @@ class PgService
      */
     public function cancel(string $pgTid, int $amount, string $reason): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return ['success' => true, 'pg_tid' => $pgTid, 'message' => 'mock cancel', 'raw' => []];
         }
 

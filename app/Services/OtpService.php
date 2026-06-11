@@ -35,7 +35,7 @@ class OtpService
         Cache::put("otp:code:{$phone}", $code, self::OTP_TTL_SEC);
 
         // 실제 SMS 발송
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             // 로컬에서는 로그로 출력
             Log::info("[OTP-DEV] {$phone} → {$code}");
             return;

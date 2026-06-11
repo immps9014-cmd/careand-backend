@@ -8,6 +8,7 @@ use App\Http\Requests\CareSession\StoreActivityRequest;
 use App\Http\Requests\CareSession\UploadVoiceLogRequest;
 use App\Http\Resources\CareSessionResource;
 use App\Jobs\GenerateCareLogJob;
+use App\Jobs\ProcessVoiceLogJob;
 use App\Models\AttendanceLog;
 use App\Models\CareActivity;
 use App\Models\CarePhoto;
@@ -215,12 +216,8 @@ class CareSessionController extends Controller
             'status' => 'uploaded',
         ]);
 
-        // 비동기 STT + LLM 처리 큐 등록
-        if (app()->environment('local', 'testing')) {
-            $this->processVoiceLogSync($voiceLog, $session);
-        } else {
-            // ProcessVoiceLogJob::dispatch($voiceLog->id);
-        }
+        // 비동기 STT + LLM 처리 큐 등록 (워커가 처리; QUEUE=sync 환경에선 즉시 실행)
+        ProcessVoiceLogJob::dispatch($voiceLog->id);
 
         return response()->json([
             'success' => true,
@@ -316,57 +313,6 @@ class CareSessionController extends Controller
         $caregiver = $request->user()->caregiver;
         if (!$caregiver || $session->match->caregiver_id !== $caregiver->id) {
             abort(403, '본인의 케어 세션만 접근 가능합니다.');
-        }
-    }
-
-    /**
-     * 로컬/테스트 환경에서 STT + LLM 동기 처리
-     */
-    private function processVoiceLogSync(VoiceLog $voiceLog, CareSession $session): void
-    {
-        $voiceLog->update(['status' => 'transcribing']);
-
-        try {
-            // 1. STT
-            $sttResult = $this->aiService->transcribe($voiceLog->audio_url);
-            $voiceLog->update([
-                'stt_text' => $sttResult['stt_text'],
-                'stt_confidence' => $sttResult['confidence'],
-                'status' => 'transcribed',
-            ]);
-
-            // 2. LLM 요약
-            $session->load('match.request.senior');
-            $senior = $session->match->request->senior;
-
-            $summary = $this->aiService->summarizeCareLog(
-                sttText: $sttResult['stt_text'],
-                seniorContext: [
-                    'name' => $senior->name,
-                    'care_grade' => $senior->care_grade,
-                    'diseases' => $senior->diseases ?? [],
-                ]
-            );
-
-            \App\Models\AiLogSummary::create([
-                'session_id' => $session->id,
-                'voice_log_id' => $voiceLog->id,
-                'guardian_version' => $summary['guardian_version'],
-                'medical_version' => $summary['medical_version'],
-                'categorized' => $summary['categorized'],
-                'confidence' => $summary['confidence'],
-                'llm_model' => $summary['model'],
-                'generated_at' => now(),
-            ]);
-
-            $voiceLog->update(['status' => 'summarized']);
-
-            // TODO: 보호자에게 FCM 푸시 (CARE_SUMMARY_READY)
-        } catch (\Throwable $e) {
-            $voiceLog->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
         }
     }
 }

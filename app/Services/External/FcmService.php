@@ -27,7 +27,7 @@ class FcmService
      */
     public function send(string $fcmToken, string $title, string $body, array $data = []): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             Log::info("[FCM-DEV] {$title} → {$fcmToken}", [
                 'body' => $body,
                 'data' => $data,
@@ -84,7 +84,7 @@ class FcmService
             return ['success' => true, 'sent' => 0, 'failed' => 0];
         }
 
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             Log::info("[FCM-DEV-MULTICAST] {$title} → " . count($fcmTokens) . "명");
             return ['success' => true, 'sent' => count($fcmTokens), 'failed' => 0];
         }

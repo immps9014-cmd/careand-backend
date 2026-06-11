@@ -58,7 +58,7 @@ class NhisService
      */
     public function getUsageStatus(string $careGradeNo, string $periodMonth): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return [
                 'used_amount' => 542000,
                 'remaining_amount' => 913800,
@@ -119,7 +119,7 @@ class NhisService
 
     private function fetchGradeInfo(string $careGradeNo): array
     {
-        if (app()->environment('local', 'testing')) {
+        if (config('services.external.stub')) {
             return [
                 'grade' => 3,
                 'monthly_limit' => self::MONTHLY_LIMITS_2026[3],
