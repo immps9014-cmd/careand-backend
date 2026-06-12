@@ -76,4 +76,36 @@ class User extends Authenticatable implements JWTSubject
     public function isCaregiver(): bool { return $this->role === 'caregiver'; }
     public function isAdmin(): bool { return $this->role === 'admin'; }
 
+    /**
+     * Phase 2 산후 정책의 RBAC 14역할명 호환 shim.
+     * Spatie Permission 미도입 — 단일 role 컬럼(admin/guardian/caregiver)으로 매핑한다.
+     * (RBAC 정식 도입 시 이 shim과 정책의 역할명을 함께 마이그레이션할 것)
+     */
+    private const LEGACY_ROLE_MAP = [
+        'super_admin' => 'admin',
+        'hq_operator' => 'admin',
+        'branch_manager' => 'admin',
+        'franchisee' => 'admin',
+        'postpartum_client' => 'guardian',
+        'family_postpartum' => 'guardian',
+        'caregiver_postpartum' => 'caregiver',
+        'caregiver_multi' => 'caregiver',
+    ];
+
+    public function hasRole(string $role): bool
+    {
+        return $this->role === (self::LEGACY_ROLE_MAP[$role] ?? $role);
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        foreach ($roles as $role) {
+            if ($this->hasRole($role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
 }
