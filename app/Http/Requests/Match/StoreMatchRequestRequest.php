@@ -15,7 +15,7 @@ class StoreMatchRequestRequest extends FormRequest
     {
         return [
             'senior_id' => ['required', 'exists:seniors,id'],
-            'category_id' => ['required', 'exists:service_categories,id'],
+            'category_id' => ['required', 'exists:service_categories,id,is_active,1'],
             'mode' => ['required', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['required', 'date_format:Y-m-d\TH:i:sP', 'after:now'],
             'duration_min' => ['required', 'integer', 'between:60,720'],

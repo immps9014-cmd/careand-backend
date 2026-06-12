@@ -305,6 +305,7 @@ class MatchRequestController extends Controller
     {
         $rows = DB::table('service_categories')
             ->select('id', 'name')
+            ->where('is_active', 1)
             ->orderBy('id')
             ->get();
 
