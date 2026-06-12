@@ -114,7 +114,7 @@ class DemoSeeder extends Seeder
                 'phone' => '010' . str_pad((string) (10000000 + $i * 11), 8, '0', STR_PAD_LEFT),
                 'name' => $name,
                 'role' => 'guardian',
-                'password' => Hash::make('Demo1234!'),
+                'password' => 'Demo1234!',  // User 모델 hashed 캐스트가 해싱 (Hash::make 중첩 금지)
                 'phone_verified_at' => now()->subDays(rand(30, 200)),
                 'email_verified_at' => now()->subDays(rand(30, 200)),
                 'status' => 'active',
@@ -152,7 +152,7 @@ class DemoSeeder extends Seeder
                 'phone' => '010' . str_pad((string) (20000000 + $i * 11), 8, '0', STR_PAD_LEFT),
                 'name' => $name,
                 'role' => 'caregiver',
-                'password' => Hash::make('Demo1234!'),
+                'password' => 'Demo1234!',  // User 모델 hashed 캐스트가 해싱 (Hash::make 중첩 금지)
                 'phone_verified_at' => now()->subDays(rand(30, 200)),
                 'status' => 'active',
             ]);

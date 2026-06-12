@@ -42,6 +42,10 @@ class MatchRequestController extends Controller
         $data['guardian_id'] = $guardian->id;
         $data['status'] = 'open';
 
+        // +09:00 등 오프셋 입력을 앱 타임존(UTC)으로 정규화
+        // (Eloquent는 Carbon 인스턴스의 자체 tz 벽시계 값을 그대로 기록하므로 미변환 시 9시간 지연 저장)
+        $data['scheduled_start'] = \Illuminate\Support\Carbon::parse($data['scheduled_start'])->utc();
+
         // 도메인에 해당하지 않는 대상자 필드는 비운다 (혼합 전송 방어)
         $domain = $data['service_domain'];
         $data['senior_id'] = $domain === 'senior' ? ($data['senior_id'] ?? null) : null;
