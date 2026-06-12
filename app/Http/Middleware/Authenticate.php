@@ -12,6 +12,8 @@ class Authenticate extends Middleware
      */
     protected function redirectTo(Request $request): ?string
     {
-        return $request->expectsJson() ? null : route('login');
+        // API 전용 백엔드 — 웹 로그인 라우트가 없으므로 리다이렉트하지 않는다.
+        // (route('login') 평가 시 RouteNotFoundException 500이 나던 문제)
+        return null;
     }
 }
