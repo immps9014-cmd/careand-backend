@@ -61,10 +61,13 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             caregiverPool: $caregivers->map(fn ($c) => [
                 'id' => $c->id,
                 'specialties' => $c->specialties ?? [],
-                'rating_avg' => $c->rating_avg,
-                'lat' => $c->base_lat,
-                'lng' => $c->base_lng,
+                'rating_avg' => (float) $c->rating_avg,
+                'completed_sessions' => (int) $c->completed_sessions,
+                'lat' => $c->base_lat ? (float) $c->base_lat : null,
+                'lng' => $c->base_lng ? (float) $c->base_lng : null,
             ])->toArray(),
+            serviceDomain: $matchRequest->service_domain,
+            requiredSkills: $requiredSkill ? [$requiredSkill] : [],
         );
 
         if (empty($aiResult['candidates'])) {

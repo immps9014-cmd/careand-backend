@@ -30,7 +30,7 @@ class AiService
      *
      * @return array{candidates: array<int, array{caregiver_id: int, score: float, reasons: array}>}
      */
-    public function recommendMatch(int $requestId, array $seniorFeatures, array $caregiverPool): array
+    public function recommendMatch(int $requestId, array $seniorFeatures, array $caregiverPool, string $serviceDomain = 'senior', array $requiredSkills = []): array
     {
         return $this->call('/ai/match/recommend', [
             'request_id' => $requestId,
@@ -38,6 +38,8 @@ class AiService
             'caregivers' => $caregiverPool,
             'top_k' => 5,
             'min_score' => 0.4,
+            'service_domain' => $serviceDomain,
+            'required_skills' => $requiredSkills,
         ]);
     }
 

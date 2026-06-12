@@ -308,6 +308,8 @@ class MatchRequestController extends Controller
                 'lat' => $c->base_lat ? (float) $c->base_lat : null,
                 'lng' => $c->base_lng ? (float) $c->base_lng : null,
             ])->toArray(),
+            serviceDomain: $matchRequest->service_domain,
+            requiredSkills: $requiredSkill ? [$requiredSkill] : [],
         );
 
         DB::transaction(function () use ($matchRequest, $aiResult) {
