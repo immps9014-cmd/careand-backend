@@ -73,6 +73,9 @@ class OperationsController extends Controller
         $updated = DB::table('caregivers')->where('id', $id)->update([
             'status' => 'active',
             'rejection_reason' => null,
+            // 승인 = 자격 검수 완료. 매칭 풀은 license_verified_at NOT NULL을 요구하므로
+            // 무자격 도메인(가사 등)·MoHW 진위확인 보류 건도 승인 시점에 충족시킨다.
+            'license_verified_at' => DB::raw('COALESCE(license_verified_at, NOW())'),
             'updated_at' => now(),
         ]);
 
