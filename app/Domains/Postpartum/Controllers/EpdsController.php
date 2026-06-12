@@ -27,6 +27,18 @@ class EpdsController extends Controller
         $client = PostpartumClient::findOrFail($request->integer('postpartum_client_id'));
         $this->authorize('update', $client);
 
+        // 1산모 1일 1평가 (uk_epds_client_date) — DB 제약 위반 전에 422로 안내
+        $already = \App\Domains\Postpartum\Models\EpdsAssessment::where('postpartum_client_id', $client->id)
+            ->whereDate('assessment_date', now()->toDateString())
+            ->exists();
+        if ($already) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'EPDS_ALREADY_TODAY',
+                'message' => '오늘은 이미 EPDS 평가를 완료했습니다. 내일 다시 응시해주세요.',
+            ], 422);
+        }
+
         $scores = $request->only([
             'q1_score', 'q2_score', 'q3_score', 'q4_score', 'q5_score',
             'q6_score', 'q7_score', 'q8_score', 'q9_score', 'q10_score',
