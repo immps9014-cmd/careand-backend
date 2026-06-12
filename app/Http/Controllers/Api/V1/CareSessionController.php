@@ -21,8 +21,6 @@ use Illuminate\Support\Facades\DB;
 
 class CareSessionController extends Controller
 {
-    private const CHECKIN_RADIUS_METERS = 200; // 자택 200m 이내
-
     public function __construct(private AiService $aiService)
     {
     }
@@ -69,15 +67,25 @@ class CareSessionController extends Controller
         }
 
         $data = $request->validated();
-        $senior = $session->match->request->senior;
+        $matchRequest = $session->match->request;
 
-        // 자택과의 거리 계산 (Haversine)
+        $location = $matchRequest->recipientLocation();
+        if (!$location) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'NO_RECIPIENT_LOCATION',
+                'message' => '서비스 장소의 좌표가 등록되어 있지 않습니다. 관리자에게 문의해주세요.',
+            ], 422);
+        }
+        $radius = $matchRequest->checkinRadiusMeters();
+
+        // 서비스 장소와의 거리 계산 (Haversine)
         $distance = $this->calculateDistance(
             $data['lat'], $data['lng'],
-            $senior->home_lat, $senior->home_lng
+            $location[0], $location[1]
         );
 
-        $isValid = $distance <= self::CHECKIN_RADIUS_METERS;
+        $isValid = $distance <= $radius;
 
         DB::transaction(function () use ($session, $data, $distance, $isValid) {
             AttendanceLog::create([
@@ -104,8 +112,8 @@ class CareSessionController extends Controller
                 'success' => false,
                 'error_code' => 'GPS_TOO_FAR',
                 'message' => sprintf(
-                    '자택에서 너무 멀리 떨어져 있습니다. (거리: %dm, 허용: %dm 이내)',
-                    round($distance), self::CHECKIN_RADIUS_METERS
+                    '서비스 장소에서 너무 멀리 떨어져 있습니다. (거리: %dm, 허용: %dm 이내)',
+                    round($distance), $radius
                 ),
                 'distance_m' => round($distance, 2),
             ], 422);

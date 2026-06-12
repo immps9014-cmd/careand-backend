@@ -33,9 +33,16 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             return;
         }
 
-        // 인력 풀 조회
+        $features = $matchRequest->recipientFeatures();
+        if (!$features) {
+            Log::error("매칭 요청 {$this->matchRequestId}: 대상자 정보 없음 (domain={$matchRequest->service_domain})");
+            return;
+        }
+
+        // 인력 풀 조회 — 요청 도메인을 서비스할 수 있는 인력만
         $caregivers = Caregiver::active()
             ->whereNotNull('license_verified_at')
+            ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
             ->limit(50)
             ->get();
 
@@ -48,13 +55,7 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         // AI 추천 호출
         $aiResult = $aiService->recommendMatch(
             requestId: $matchRequest->id,
-            seniorFeatures: [
-                'id' => $matchRequest->senior->id,
-                'care_grade' => $matchRequest->senior->care_grade,
-                'diseases' => $matchRequest->senior->diseases ?? [],
-                'lat' => $matchRequest->senior->home_lat,
-                'lng' => $matchRequest->senior->home_lng,
-            ],
+            seniorFeatures: $features,
             caregiverPool: $caregivers->map(fn ($c) => [
                 'id' => $c->id,
                 'specialties' => $c->specialties ?? [],

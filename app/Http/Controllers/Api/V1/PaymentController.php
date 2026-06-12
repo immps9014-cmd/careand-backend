@@ -73,8 +73,25 @@ class PaymentController extends Controller
         $match = CareMatch::with('request.senior')->findOrFail($validated['match_id']);
         $this->authorize('view', $match);
 
-        $senior = $match->request->senior;
         $totalAmount = (int) $match->estimated_amount;
+
+        // 비급여 도메인(간병·가사 등): 바우처 없이 100% 본인부담
+        if ($match->request->service_domain !== 'senior') {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'match_id' => $match->id,
+                    'total_amount' => $totalAmount,
+                    'self_pay' => $totalAmount,
+                    'ltc_pay' => 0,
+                    'copay_rate' => null,
+                    'voucher_remaining' => null,
+                    'voucher_after_payment' => null,
+                ],
+            ]);
+        }
+
+        $senior = $match->request->senior;
 
         // 1. 이번 달 바우처 조회
         $voucher = LtcVoucher::where('senior_id', $senior->id)
@@ -142,27 +159,42 @@ class PaymentController extends Controller
         $this->authorize('view', $match);
 
         // 다시 분리 계산 (서버 신뢰)
-        $senior = $match->request->senior;
         $totalAmount = (int) $match->estimated_amount;
+        $isLtcDomain = $match->request->service_domain === 'senior';
 
-        $voucher = LtcVoucher::where('senior_id', $senior->id)
-            ->where('period_month', now()->startOfMonth()->toDateString())
-            ->lockForUpdate()
-            ->first();
+        if ($isLtcDomain) {
+            $senior = $match->request->senior;
 
-        if (!$voucher) {
-            return response()->json([
-                'success' => false,
-                'error_code' => 'NO_VOUCHER',
-                'message' => '장기요양 바우처가 없습니다.',
-            ], 422);
-        }
+            $voucher = LtcVoucher::where('senior_id', $senior->id)
+                ->where('period_month', now()->startOfMonth()->toDateString())
+                ->lockForUpdate()
+                ->first();
 
-        $split = $this->nhisService->calculateSplit($totalAmount, $senior->care_grade, $voucher->copay_rate);
-        if ($split['ltc_pay'] > $voucher->remaining_amount) {
-            $exceeded = $split['ltc_pay'] - $voucher->remaining_amount;
-            $split['self_pay'] += $exceeded;
-            $split['ltc_pay'] = $voucher->remaining_amount;
+            if (!$voucher) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'NO_VOUCHER',
+                    'message' => '장기요양 바우처가 없습니다.',
+                ], 422);
+            }
+
+            $split = $this->nhisService->calculateSplit($totalAmount, $senior->care_grade, $voucher->copay_rate);
+            if ($split['ltc_pay'] > $voucher->remaining_amount) {
+                $exceeded = $split['ltc_pay'] - $voucher->remaining_amount;
+                $split['self_pay'] += $exceeded;
+                $split['ltc_pay'] = $voucher->remaining_amount;
+            }
+        } else {
+            // 비급여 도메인(간병·가사 등): 100% 본인부담, 바우처 결제 불가
+            if (($data['method'] ?? null) === 'voucher_only') {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'INVALID_METHOD',
+                    'message' => '장기요양 바우처를 사용할 수 없는 서비스입니다.',
+                ], 422);
+            }
+            $voucher = null;
+            $split = ['self_pay' => $totalAmount, 'ltc_pay' => 0];
         }
 
         // PG 결제 + DB 저장 트랜잭션

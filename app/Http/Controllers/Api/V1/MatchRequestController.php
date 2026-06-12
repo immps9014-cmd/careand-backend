@@ -254,9 +254,15 @@ class MatchRequestController extends Controller
     {
         $matchRequest->load('senior');
 
-        // 인력 풀 조회 (활성, 자격 검증, 거리 기준)
+        $features = $matchRequest->recipientFeatures();
+        if (!$features) {
+            return;
+        }
+
+        // 인력 풀 조회 (활성, 자격 검증, 요청 도메인 서비스 가능)
         $caregivers = Caregiver::active()
             ->whereNotNull('license_verified_at')
+            ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
             ->limit(30)
             ->get();
 
@@ -266,13 +272,7 @@ class MatchRequestController extends Controller
 
         $aiResult = $this->aiService->recommendMatch(
             requestId: $matchRequest->id,
-            seniorFeatures: [
-                'id' => $matchRequest->senior->id,
-                'care_grade' => $matchRequest->senior->care_grade,
-                'diseases' => $matchRequest->senior->diseases ?? [],
-                'lat' => $matchRequest->senior->home_lat ? (float) $matchRequest->senior->home_lat : null,
-                'lng' => $matchRequest->senior->home_lng ? (float) $matchRequest->senior->home_lng : null,
-            ],
+            seniorFeatures: $features,
             caregiverPool: $caregivers->map(fn ($c) => [
                 'id' => $c->id,
                 'specialties' => $c->specialties ?? [],
