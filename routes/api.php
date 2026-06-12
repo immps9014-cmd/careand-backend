@@ -217,6 +217,9 @@ Route::prefix('v1')->group(function () {
 
     // === Phase 2 산후 도메인 ===
     require __DIR__ . '/api/postpartum.php';
+
+    // === 간병 도메인 ===
+    require __DIR__ . '/api/nursing.php';
 });
 
 // Health check (모니터링/배포 검증용 — DB/Redis 포함, /api/health + /api/v1/health)

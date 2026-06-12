@@ -11,6 +11,7 @@ class MatchRequestResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'service_domain' => $this->service_domain,
             'mode' => $this->mode,
             'status' => $this->status,
             'scheduled_start' => $this->scheduled_start?->toIso8601String(),
@@ -19,11 +20,19 @@ class MatchRequestResource extends JsonResource
             'matched_at' => $this->matched_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
 
-            'senior' => $this->whenLoaded('senior', fn () => [
+            'requirements' => $this->requirements,
+
+            'senior' => $this->whenLoaded('senior', fn () => $this->senior ? [
                 'id' => $this->senior->id,
                 'name' => $this->senior->name,
                 'care_grade' => $this->senior->care_grade,
-            ]),
+            ] : null),
+
+            'nursing_patient' => $this->whenLoaded('nursingPatient', fn () => $this->nursingPatient ? [
+                'id' => $this->nursingPatient->id,
+                'name' => $this->nursingPatient->name,
+                'hospital_name' => $this->nursingPatient->hospital_name,
+            ] : null),
 
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,

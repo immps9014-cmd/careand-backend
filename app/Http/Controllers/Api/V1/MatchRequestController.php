@@ -8,6 +8,7 @@ use App\Http\Resources\MatchCandidateResource;
 use App\Http\Resources\MatchRequestResource;
 use App\Jobs\GenerateMatchCandidatesJob;
 use App\Models\CareMatch;
+use App\Models\CareSession;
 use App\Models\Caregiver;
 use App\Models\MatchCandidate;
 use App\Models\MatchRequest;
@@ -40,6 +41,13 @@ class MatchRequestController extends Controller
         $data = $request->validated();
         $data['guardian_id'] = $guardian->id;
         $data['status'] = 'open';
+
+        // 도메인에 해당하지 않는 대상자 필드는 비운다 (혼합 전송 방어)
+        if ($data['service_domain'] === 'nursing') {
+            $data['senior_id'] = null;
+        } else {
+            $data['nursing_patient_id'] = null;
+        }
 
         $matchRequest = MatchRequest::create($data);
 
@@ -75,7 +83,7 @@ class MatchRequestController extends Controller
         }
 
         $requests = MatchRequest::where('guardian_id', $guardian->id)
-            ->with(['senior:id,name,care_grade', 'category:id,name'])
+            ->with(['senior:id,name,care_grade', 'nursingPatient:id,name,hospital_name', 'category:id,name'])
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -190,16 +198,34 @@ class MatchRequestController extends Controller
                 ->where('response', 'pending')
                 ->update(['response' => 'expired', 'responded_at' => now()]);
 
+            // 정기(recurring) 요청은 recurrence_rule.days 만큼 일 단위 세션 — 간병 교대/상주
+            $days = 1;
+            if ($request->mode === 'recurring') {
+                $days = max(1, min((int) ($request->recurrence_rule['days'] ?? 1), 30));
+            }
+
             // matches 테이블 생성
-            return CareMatch::create([
+            $match = CareMatch::create([
                 'request_id' => $request->id,
                 'caregiver_id' => $candidate->caregiver_id,
                 'scheduled_start' => $request->scheduled_start,
-                'scheduled_end' => $request->scheduled_start->copy()->addMinutes($request->duration_min),
+                'scheduled_end' => $request->scheduled_start->copy()->addDays($days - 1)->addMinutes($request->duration_min),
                 'hourly_rate' => $request->category->base_rate,
-                'estimated_amount' => round($request->category->base_rate * $request->duration_min / 60),
+                'estimated_amount' => round($request->category->base_rate * $request->duration_min / 60) * $days,
                 'status' => 'confirmed',
             ]);
+
+            // 일별 케어 세션 생성 (체크인/아웃 단위)
+            for ($i = 0; $i < $days; $i++) {
+                CareSession::create([
+                    'match_id' => $match->id,
+                    'scheduled_start' => $request->scheduled_start->copy()->addDays($i),
+                    'scheduled_end' => $request->scheduled_start->copy()->addDays($i)->addMinutes($request->duration_min),
+                    'status' => 'scheduled',
+                ]);
+            }
+
+            return $match;
         });
 
         // TODO: 양측에 FCM 푸시 (MATCH_CONFIRMED)
@@ -298,14 +324,15 @@ class MatchRequestController extends Controller
     }
 
     /**
-     * GET /v1/matching/categories
+     * GET /v1/matching/categories?domain=senior|nursing|housekeeping
      * 서비스 카테고리 목록 (요청 생성 폼용)
      */
-    public function categories(): JsonResponse
+    public function categories(Request $request): JsonResponse
     {
         $rows = DB::table('service_categories')
-            ->select('id', 'name')
+            ->select('id', 'name', 'domain', 'base_rate')
             ->where('is_active', 1)
+            ->when($request->input('domain'), fn ($q, $d) => $q->where('domain', $d))
             ->orderBy('id')
             ->get();
 

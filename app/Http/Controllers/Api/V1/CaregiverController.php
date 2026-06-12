@@ -67,6 +67,9 @@ class CaregiverController extends Controller
         $data = $request->validated();
         $data['user_id'] = $user->id;
 
+        // 활동 도메인 (SET 컬럼은 콤마 문자열)
+        $data['service_domains'] = implode(',', $data['service_domains'] ?? ['senior']);
+
         $caregiver = DB::transaction(function () use ($data, $user) {
             // 1단계: caregivers 테이블 INSERT (status=pending)
             $caregiver = Caregiver::create(array_merge($data, [
@@ -77,30 +80,32 @@ class CaregiverController extends Controller
                 'status' => 'pending',
             ]));
 
-            // 2단계: 보건복지부 자격증 진위확인
-            try {
-                $verification = $this->mohwService->verifyLicense(
-                    licenseNo: $caregiver->license_no,
-                    name: $user->name,
-                    birthDate: $caregiver->birth_date->toDateString(),
-                );
+            // 2단계: 보건복지부 자격증 진위확인 (자격증 제출자만 — 무자격 도메인은 관리자 수동 승인)
+            if ($caregiver->license_no) {
+                try {
+                    $verification = $this->mohwService->verifyLicense(
+                        licenseNo: $caregiver->license_no,
+                        name: $user->name,
+                        birthDate: $caregiver->birth_date->toDateString(),
+                    );
 
-                if ($verification['valid']) {
-                    $caregiver->update([
-                        'license_verified_at' => now(),
+                    if ($verification['valid']) {
+                        $caregiver->update([
+                            'license_verified_at' => now(),
+                        ]);
+                    } else {
+                        $caregiver->update([
+                            'status' => 'rejected',
+                            'rejection_reason' => '보건복지부 자격 진위확인 실패',
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('자격 진위확인 실패 - 수동 검수 필요', [
+                        'caregiver_id' => $caregiver->id,
+                        'error' => $e->getMessage(),
                     ]);
-                } else {
-                    $caregiver->update([
-                        'status' => 'rejected',
-                        'rejection_reason' => '보건복지부 자격 진위확인 실패',
-                    ]);
+                    // 자격 확인 실패해도 등록은 유지 (관리자가 수동 검수)
                 }
-            } catch (\Throwable $e) {
-                Log::warning('자격 진위확인 실패 - 수동 검수 필요', [
-                    'caregiver_id' => $caregiver->id,
-                    'error' => $e->getMessage(),
-                ]);
-                // 자격 확인 실패해도 등록은 유지 (관리자가 수동 검수)
             }
 
             return $caregiver;
@@ -226,12 +231,13 @@ class CaregiverController extends Controller
         $rows = \Illuminate\Support\Facades\DB::table('match_candidates as mc')
             ->join('match_requests as r', 'r.id', '=', 'mc.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+            ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->where('mc.caregiver_id', $caregiver->id)
             ->select(
                 'mc.id', 'mc.rank', 'mc.ai_score', 'mc.ai_reasons', 'mc.response',
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
-                's.name as senior_name'
+                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name) as senior_name')
             )
             ->orderByDesc('mc.created_at')
             ->get()
@@ -268,11 +274,15 @@ class CaregiverController extends Controller
             ->join('matches as m', 'm.id', '=', 'cs.match_id')
             ->leftJoin('match_requests as r', 'r.id', '=', 'm.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+            ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->where('m.caregiver_id', $caregiver->id)
             ->select(
                 'cs.id', 'cs.status', 'cs.actual_start', 'cs.actual_end',
-                'cs.duration_min', 'm.scheduled_start', 'm.scheduled_end',
-                'r.service_domain', 's.name as senior_name'
+                'cs.duration_min',
+                \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_start, m.scheduled_start) as scheduled_start'),
+                \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_end, m.scheduled_end) as scheduled_end'),
+                'r.service_domain',
+                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name) as senior_name')
             )
             ->orderByDesc('m.scheduled_start')
             ->get()

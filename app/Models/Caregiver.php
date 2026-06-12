@@ -19,6 +19,7 @@ class Caregiver extends Model
         'license_no',
         'license_issued_at',
         'license_verified_at',
+        'service_domains',
         'specialties',
         'base_address',
         'base_lat',

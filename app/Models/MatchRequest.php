@@ -12,12 +12,16 @@ class MatchRequest extends Model
     protected $fillable = [
         'guardian_id',
         'senior_id',
+        'nursing_patient_id',
+        'service_address_id',
+        'service_domain',
         'category_id',
         'mode',
         'scheduled_start',
         'duration_min',
         'recurrence_rule',
         'special_request',
+        'requirements',
         'status',
         'matched_at',
     ];
@@ -26,6 +30,7 @@ class MatchRequest extends Model
         'scheduled_start' => 'datetime',
         'matched_at' => 'datetime',
         'recurrence_rule' => 'array',
+        'requirements' => 'array',
     ];
 
     public function guardian()
@@ -36,6 +41,11 @@ class MatchRequest extends Model
     public function senior()
     {
         return $this->belongsTo(Senior::class);
+    }
+
+    public function nursingPatient()
+    {
+        return $this->belongsTo(\App\Domains\Nursing\Models\NursingPatient::class, 'nursing_patient_id');
     }
 
     public function category()
@@ -60,6 +70,7 @@ class MatchRequest extends Model
     public function recipient()
     {
         return match ($this->service_domain) {
+            'nursing' => $this->nursingPatient,
             default => $this->senior,
         };
     }
@@ -81,6 +92,13 @@ class MatchRequest extends Model
         }
 
         return match ($this->service_domain) {
+            'nursing' => [
+                'id' => $recipient->id,
+                'care_grade' => null,
+                'diseases' => $recipient->diseases ?? [],
+                'lat' => $recipient->hospital_lat !== null ? (float) $recipient->hospital_lat : null,
+                'lng' => $recipient->hospital_lng !== null ? (float) $recipient->hospital_lng : null,
+            ],
             default => [
                 'id' => $recipient->id,
                 'care_grade' => $recipient->care_grade,
@@ -99,6 +117,9 @@ class MatchRequest extends Model
         $recipient = $this->recipient();
 
         return match ($this->service_domain) {
+            'nursing' => $recipient && $recipient->hospital_lat !== null
+                ? [(float) $recipient->hospital_lat, (float) $recipient->hospital_lng]
+                : null,
             default => $recipient && $recipient->home_lat !== null
                 ? [(float) $recipient->home_lat, (float) $recipient->home_lng]
                 : null,

@@ -11,6 +11,8 @@ class CareSession extends Model
 
     protected $fillable = [
         'match_id',
+        'scheduled_start',
+        'scheduled_end',
         'actual_start',
         'actual_end',
         'duration_min',
@@ -19,6 +21,8 @@ class CareSession extends Model
     ];
 
     protected $casts = [
+        'scheduled_start' => 'datetime',
+        'scheduled_end' => 'datetime',
         'actual_start' => 'datetime',
         'actual_end' => 'datetime',
     ];
