@@ -38,7 +38,11 @@ class SettlementController extends Controller
         }
 
         $settlements = Settlement::where('caregiver_id', $caregiver->id)
-            ->with(['items.session.match.request.senior:id,name'])
+            ->with([
+                'items.session.match.request.senior:id,name',
+                'items.session.match.request.nursingPatient:id,name,hospital_name',
+                'items.session.match.request.serviceAddress:id,label,address',
+            ])
             ->orderByDesc('period_start')
             ->paginate(20);
 
@@ -58,7 +62,11 @@ class SettlementController extends Controller
      */
     public function show(Request $request, int $id): JsonResponse
     {
-        $settlement = Settlement::with(['items.session.match.request.senior:id,name'])
+        $settlement = Settlement::with([
+                'items.session.match.request.senior:id,name',
+                'items.session.match.request.nursingPatient:id,name,hospital_name',
+                'items.session.match.request.serviceAddress:id,label,address',
+            ])
             ->findOrFail($id);
 
         $this->authorize('view', $settlement);

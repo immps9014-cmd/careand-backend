@@ -38,6 +38,7 @@ class DashboardController extends Controller
                 'active_users' => User::where('status', 'active')->count(),
                 'active_seniors' => Senior::count(),
                 'active_caregivers' => Caregiver::where('status', 'active')->count(),
+                'by_domain' => $this->domainBreakdown(),
             ];
         });
 
@@ -58,6 +59,45 @@ class DashboardController extends Controller
             'data' => $kpi,
             'updated_at' => now()->toIso8601String(),
         ]);
+    }
+
+    /**
+     * 도메인별 현황 — 진행중 매칭 / 주간 요청 / 주간 매출
+     */
+    private function domainBreakdown(): array
+    {
+        $inProgress = DB::table('matches as m')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->whereIn('m.status', ['confirmed', 'in_progress'])
+            ->select('r.service_domain', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('r.service_domain')
+            ->pluck('cnt', 'service_domain');
+
+        $requestsWeek = DB::table('match_requests')
+            ->where('created_at', '>=', now()->startOfWeek())
+            ->select('service_domain', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('service_domain')
+            ->pluck('cnt', 'service_domain');
+
+        $revenueWeek = DB::table('payments as p')
+            ->join('matches as m', 'm.id', '=', 'p.match_id')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->where('p.status', 'paid')
+            ->where('p.paid_at', '>=', now()->startOfWeek())
+            ->select('r.service_domain', DB::raw('SUM(p.total_amount) as amt'))
+            ->groupBy('r.service_domain')
+            ->pluck('amt', 'service_domain');
+
+        $result = [];
+        foreach (['senior', 'postpartum', 'nursing', 'housekeeping'] as $domain) {
+            $result[$domain] = [
+                'matches_in_progress' => (int) ($inProgress[$domain] ?? 0),
+                'requests_this_week' => (int) ($requestsWeek[$domain] ?? 0),
+                'revenue_this_week' => (int) ($revenueWeek[$domain] ?? 0),
+            ];
+        }
+
+        return $result;
     }
 
     /**

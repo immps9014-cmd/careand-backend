@@ -344,6 +344,9 @@ class OperationsController extends Controller
         if ($request->filled('status')) {
             $query->where('r.status', $request->input('status'));
         }
+        if ($request->filled('domain')) {
+            $query->where('r.service_domain', $request->input('domain'));
+        }
 
         $paginated = $query->orderByDesc('r.created_at')->paginate($perPage);
 
