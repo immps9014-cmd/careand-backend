@@ -39,10 +39,12 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             return;
         }
 
-        // 인력 풀 조회 — 요청 도메인을 서비스할 수 있는 인력만
+        // 인력 풀 조회 — 요청 도메인을 서비스할 수 있는 인력만 (가사는 스킬 보유자만)
+        $requiredSkill = $matchRequest->requiredSkillTag();
         $caregivers = Caregiver::active()
             ->whereNotNull('license_verified_at')
             ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
+            ->when($requiredSkill, fn ($q, $skill) => $q->whereJsonContains('specialties', $skill))
             ->limit(50)
             ->get();
 

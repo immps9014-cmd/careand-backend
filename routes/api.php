@@ -220,6 +220,9 @@ Route::prefix('v1')->group(function () {
 
     // === 간병 도메인 ===
     require __DIR__ . '/api/nursing.php';
+
+    // === 가사 도메인 ===
+    require __DIR__ . '/api/housekeeping.php';
 });
 
 // Health check (모니터링/배포 검증용 — DB/Redis 포함, /api/health + /api/v1/health)

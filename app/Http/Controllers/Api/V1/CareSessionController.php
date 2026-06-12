@@ -151,6 +151,17 @@ class CareSessionController extends Controller
             'lng' => ['required', 'numeric', 'between:-180,180'],
         ]);
 
+        // 보호자가 완료사진을 요구한 요청(가사 등)은 사진 없이 체크아웃 불가
+        $session->loadMissing('match.request');
+        if (($session->match->request->requirements['photo_required'] ?? false)
+            && !$session->photos()->exists()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PHOTO_REQUIRED',
+                'message' => '작업 완료 사진을 1장 이상 등록해야 체크아웃할 수 있습니다.',
+            ], 422);
+        }
+
         DB::transaction(function () use ($session, $validated) {
             AttendanceLog::create([
                 'session_id' => $session->id,

@@ -43,11 +43,10 @@ class MatchRequestController extends Controller
         $data['status'] = 'open';
 
         // 도메인에 해당하지 않는 대상자 필드는 비운다 (혼합 전송 방어)
-        if ($data['service_domain'] === 'nursing') {
-            $data['senior_id'] = null;
-        } else {
-            $data['nursing_patient_id'] = null;
-        }
+        $domain = $data['service_domain'];
+        $data['senior_id'] = $domain === 'senior' ? ($data['senior_id'] ?? null) : null;
+        $data['nursing_patient_id'] = $domain === 'nursing' ? ($data['nursing_patient_id'] ?? null) : null;
+        $data['service_address_id'] = $domain === 'housekeeping' ? ($data['service_address_id'] ?? null) : null;
 
         $matchRequest = MatchRequest::create($data);
 
@@ -83,7 +82,7 @@ class MatchRequestController extends Controller
         }
 
         $requests = MatchRequest::where('guardian_id', $guardian->id)
-            ->with(['senior:id,name,care_grade', 'nursingPatient:id,name,hospital_name', 'category:id,name'])
+            ->with(['senior:id,name,care_grade', 'nursingPatient:id,name,hospital_name', 'serviceAddress:id,label,address', 'category:id,name'])
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -285,10 +284,12 @@ class MatchRequestController extends Controller
             return;
         }
 
-        // 인력 풀 조회 (활성, 자격 검증, 요청 도메인 서비스 가능)
+        // 인력 풀 조회 (활성, 자격 검증, 요청 도메인 서비스 가능, 가사는 스킬 보유자만)
+        $requiredSkill = $matchRequest->requiredSkillTag();
         $caregivers = Caregiver::active()
             ->whereNotNull('license_verified_at')
             ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
+            ->when($requiredSkill, fn ($q, $skill) => $q->whereJsonContains('specialties', $skill))
             ->limit(30)
             ->get();
 

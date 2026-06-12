@@ -34,6 +34,12 @@ class MatchRequestResource extends JsonResource
                 'hospital_name' => $this->nursingPatient->hospital_name,
             ] : null),
 
+            'service_address' => $this->whenLoaded('serviceAddress', fn () => $this->serviceAddress ? [
+                'id' => $this->serviceAddress->id,
+                'label' => $this->serviceAddress->label,
+                'address' => $this->serviceAddress->address,
+            ] : null),
+
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
                 'name' => $this->category->name,

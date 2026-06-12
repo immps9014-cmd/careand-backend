@@ -232,12 +232,13 @@ class CaregiverController extends Controller
             ->join('match_requests as r', 'r.id', '=', 'mc.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->where('mc.caregiver_id', $caregiver->id)
             ->select(
                 'mc.id', 'mc.rank', 'mc.ai_score', 'mc.ai_reasons', 'mc.response',
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
-                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name) as senior_name')
+                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
             )
             ->orderByDesc('mc.created_at')
             ->get()
@@ -275,6 +276,7 @@ class CaregiverController extends Controller
             ->leftJoin('match_requests as r', 'r.id', '=', 'm.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->where('m.caregiver_id', $caregiver->id)
             ->select(
                 'cs.id', 'cs.status', 'cs.actual_start', 'cs.actual_end',
@@ -282,7 +284,7 @@ class CaregiverController extends Controller
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_start, m.scheduled_start) as scheduled_start'),
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_end, m.scheduled_end) as scheduled_end'),
                 'r.service_domain',
-                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name) as senior_name')
+                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
             )
             ->orderByDesc('m.scheduled_start')
             ->get()

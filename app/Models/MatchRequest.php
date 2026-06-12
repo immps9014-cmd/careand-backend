@@ -48,6 +48,11 @@ class MatchRequest extends Model
         return $this->belongsTo(\App\Domains\Nursing\Models\NursingPatient::class, 'nursing_patient_id');
     }
 
+    public function serviceAddress()
+    {
+        return $this->belongsTo(\App\Domains\Housekeeping\Models\ServiceAddress::class, 'service_address_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id');
@@ -71,13 +76,17 @@ class MatchRequest extends Model
     {
         return match ($this->service_domain) {
             'nursing' => $this->nursingPatient,
+            'housekeeping' => $this->serviceAddress,
             default => $this->senior,
         };
     }
 
     public function recipientName(): ?string
     {
-        return $this->recipient()?->name;
+        // 가사는 대상이 사람이 아니라 주소 — label('우리집' 등)이 표시명
+        return $this->service_domain === 'housekeeping'
+            ? $this->recipient()?->label
+            : $this->recipient()?->name;
     }
 
     /**
@@ -98,6 +107,13 @@ class MatchRequest extends Model
                 'diseases' => $recipient->diseases ?? [],
                 'lat' => $recipient->hospital_lat !== null ? (float) $recipient->hospital_lat : null,
                 'lng' => $recipient->hospital_lng !== null ? (float) $recipient->hospital_lng : null,
+            ],
+            'housekeeping' => [
+                'id' => $recipient->id,
+                'care_grade' => null,
+                'diseases' => [],
+                'lat' => $recipient->lat !== null ? (float) $recipient->lat : null,
+                'lng' => $recipient->lng !== null ? (float) $recipient->lng : null,
             ],
             default => [
                 'id' => $recipient->id,
@@ -120,6 +136,9 @@ class MatchRequest extends Model
             'nursing' => $recipient && $recipient->hospital_lat !== null
                 ? [(float) $recipient->hospital_lat, (float) $recipient->hospital_lng]
                 : null,
+            'housekeeping' => $recipient && $recipient->lat !== null
+                ? [(float) $recipient->lat, (float) $recipient->lng]
+                : null,
             default => $recipient && $recipient->home_lat !== null
                 ? [(float) $recipient->home_lat, (float) $recipient->home_lng]
                 : null,
@@ -134,6 +153,24 @@ class MatchRequest extends Model
         return match ($this->service_domain) {
             'nursing' => 500,
             default => 200,
+        };
+    }
+
+    /**
+     * 가사 요청의 필수 스킬 태그 — 인력 풀 하드 필터(수리 요청에 청소 인력 차단).
+     * 카테고리 코드 ↔ caregivers.specialties 통제어휘 매핑.
+     */
+    public function requiredSkillTag(): ?string
+    {
+        if ($this->service_domain !== 'housekeeping') {
+            return null;
+        }
+
+        return match ($this->category?->code) {
+            'HK_CLEANING' => 'hk_cleaning',
+            'HK_REPAIR' => 'hk_repair',
+            'HK_ORGANIZING' => 'hk_organizing',
+            default => null,
         };
     }
 

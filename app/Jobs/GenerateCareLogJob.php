@@ -33,9 +33,10 @@ class GenerateCareLogJob implements ShouldQueue
             ->leftJoin('match_requests as r', 'r.id', '=', 'm.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->where('cs.id', $this->sessionId)
             ->select('cs.id', 'cs.duration_min', 'r.service_domain',
-                DB::raw('COALESCE(s.name, np.name) as senior_name'))
+                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'))
             ->first();
 
         if (! $session) {

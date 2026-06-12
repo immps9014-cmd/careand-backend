@@ -114,10 +114,11 @@ class OperationsController extends Controller
             ->leftJoin('match_requests as r', 'r.id', '=', 'm.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->select(
                 'm.id', 'm.request_id', 'm.caregiver_id',
                 'cu.name as caregiver_name',
-                DB::raw('COALESCE(s.name, np.name) as senior_name'),
+                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'),
                 'r.service_domain', 'r.mode',
                 'm.scheduled_start', 'm.scheduled_end',
                 'm.estimated_amount', 'm.status', 'm.created_at'
@@ -167,12 +168,13 @@ class OperationsController extends Controller
             ->leftJoin('match_requests as r', 'r.id', '=', 'm.request_id')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->select(
                 'cs.id', 'cs.match_id', 'cs.status', 'cs.review_status',
                 'cs.review_note', 'cs.duration_min',
                 'cs.actual_start', 'cs.actual_end', 'cs.reviewed_at',
                 'cu.name as caregiver_name',
-                DB::raw('COALESCE(s.name, np.name) as senior_name'),
+                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'),
                 'r.service_domain'
             );
 
@@ -329,10 +331,11 @@ class OperationsController extends Controller
         $query = DB::table('match_requests as r')
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->leftJoinSub($candidateCount, 'mc', 'mc.request_id', '=', 'r.id')
             ->select(
                 'r.id', 'r.senior_id',
-                DB::raw('COALESCE(s.name, np.name) as senior_name'),
+                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'),
                 'r.mode', 'r.service_domain', 'r.scheduled_start',
                 'r.status', 'r.created_at',
                 DB::raw('COALESCE(mc.cnt, 0) as candidate_count')

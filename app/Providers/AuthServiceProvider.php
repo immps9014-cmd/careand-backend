@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Domains\Housekeeping\Models\ServiceAddress;
+use App\Domains\Housekeeping\Policies\ServiceAddressPolicy;
 use App\Domains\Nursing\Models\NursingPatient;
 use App\Domains\Nursing\Policies\NursingPatientPolicy;
 use App\Models\CareMatch;
@@ -33,6 +35,7 @@ class AuthServiceProvider extends ServiceProvider
         Payment::class => PaymentPolicy::class,
         Settlement::class => SettlementPolicy::class,
         NursingPatient::class => NursingPatientPolicy::class,
+        ServiceAddress::class => ServiceAddressPolicy::class,
     ];
 
     public function boot(): void

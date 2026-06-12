@@ -14,7 +14,7 @@ class StoreActivityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category' => ['required', 'in:meal,medication,exercise,bath,mood,cognition,other'],
+            'category' => ['required', 'in:meal,medication,exercise,bath,mood,cognition,other,cleaning,repair,organizing,nursing_care,position_change'],
             'data' => ['required', 'array'],
             'memo' => ['nullable', 'string', 'max:500'],
         ];
