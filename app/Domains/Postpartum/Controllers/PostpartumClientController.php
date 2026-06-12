@@ -58,6 +58,8 @@ class PostpartumClientController extends Controller
         $this->authorize('create', PostpartumClient::class);
 
         $data = $request->validated();
+        // 산모 레코드 소유 계정 — 미지정 시 등록자 본인 (FK user_id NOT NULL)
+        $data['user_id'] = $data['user_id'] ?? $request->user()->id;
         // PII 암호화
         $data['phone_encrypted'] = encrypt($data['phone'] ?? '');
         $data['name_encrypted']  = encrypt($data['name'] ?? '');
