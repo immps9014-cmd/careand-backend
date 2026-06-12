@@ -47,13 +47,14 @@ class DemoSeeder extends Seeder
         '문경아', '백선영', '송미라', '양진주', '권혜영',
         '신은영', '구미영', '조선희', '임나영', '곽지은',
     ];
+    // PoC 1차 지역(화성·오산 2지점) 권역 — AI 매칭 거리감쇠(10km 컷)와 정합 (2026-06-13 서울→화성·오산 정리)
     private const SEOUL_AREAS = [
-        ['name' => '강남구', 'lat' => 37.5172, 'lng' => 127.0473],
-        ['name' => '서초구', 'lat' => 37.4837, 'lng' => 127.0324],
-        ['name' => '송파구', 'lat' => 37.5145, 'lng' => 127.1058],
-        ['name' => '마포구', 'lat' => 37.5663, 'lng' => 126.9019],
-        ['name' => '용산구', 'lat' => 37.5326, 'lng' => 126.9905],
-        ['name' => '성북구', 'lat' => 37.5894, 'lng' => 127.0167],
+        ['name' => '화성시 병점동', 'lat' => 37.2070, 'lng' => 127.0330],
+        ['name' => '화성시 향남읍', 'lat' => 37.0720, 'lng' => 126.9170],
+        ['name' => '화성시 동탄동', 'lat' => 37.2000, 'lng' => 127.0950],
+        ['name' => '오산시 중앙동', 'lat' => 37.1520, 'lng' => 127.0770],
+        ['name' => '오산시 세교동', 'lat' => 37.1660, 'lng' => 127.0450],
+        ['name' => '화성시 봉담읍', 'lat' => 37.2170, 'lng' => 126.9530],
     ];
     private const DISEASES_POOL = [
         ['고혈압'], ['당뇨'], ['관절염'], ['치매', '경증치매'],
@@ -122,7 +123,7 @@ class DemoSeeder extends Seeder
             $guardians[] = Guardian::create([
                 'user_id' => $user->id,
                 'relation' => collect(['자녀', '배우자', '며느리', '사위'])->random(),
-                'contact_address' => '서울시 ' . self::SEOUL_AREAS[array_rand(self::SEOUL_AREAS)]['name'] . ' ' . rand(100, 999) . '-' . rand(1, 50),
+                'contact_address' => '경기 ' . self::SEOUL_AREAS[array_rand(self::SEOUL_AREAS)]['name'] . ' ' . rand(100, 999) . '-' . rand(1, 50),
             ]);
         }
 
@@ -138,7 +139,7 @@ class DemoSeeder extends Seeder
                 'gender' => rand(0, 1) ? 'F' : 'M',
                 'care_grade' => collect(['1', '2', '3', '4', '5', 'cognitive'])->random(),
                 'diseases' => self::DISEASES_POOL[array_rand(self::DISEASES_POOL)],
-                'home_address' => '서울시 ' . $area['name'] . ' ' . rand(100, 999) . '-' . rand(1, 50),
+                'home_address' => '경기 ' . $area['name'] . ' ' . rand(100, 999) . '-' . rand(1, 50),
                 'home_lat' => $area['lat'] + (rand(-200, 200) / 10000),
                 'home_lng' => $area['lng'] + (rand(-200, 200) / 10000),
             ]);
@@ -168,7 +169,7 @@ class DemoSeeder extends Seeder
                 'license_issued_at' => now()->subYears(rand(2, 15))->toDateString(),
                 'license_verified_at' => $status === 'active' ? now()->subDays(rand(30, 300)) : null,
                 'specialties' => self::SPECIALTIES_POOL[array_rand(self::SPECIALTIES_POOL)],
-                'base_address' => '서울시 ' . $area['name'] . ' ' . rand(100, 999) . '-' . rand(1, 50),
+                'base_address' => '경기 ' . $area['name'] . ' ' . rand(100, 999) . '-' . rand(1, 50),
                 'base_lat' => $area['lat'] + (rand(-300, 300) / 10000),
                 'base_lng' => $area['lng'] + (rand(-300, 300) / 10000),
                 'rating_avg' => round(3.5 + (rand(0, 150) / 100), 2),
