@@ -19,6 +19,15 @@ class Handler extends ExceptionHandler
     ];
 
     /**
+     * API 경로는 Accept 헤더와 무관하게 항상 JSON으로 응답한다.
+     * (헤더 없는 미인증 요청이 route('login') 리다이렉트를 타며 500이 나는 문제 방지)
+     */
+    protected function shouldReturnJson($request, Throwable $e): bool
+    {
+        return $request->is('api/*') || parent::shouldReturnJson($request, $e);
+    }
+
+    /**
      * Register the exception handling callbacks for the application.
      */
     public function register(): void
