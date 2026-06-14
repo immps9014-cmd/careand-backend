@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationService;
 
 /**
  * 관리자 - 운영 관리
@@ -242,7 +243,13 @@ class OperationsController extends Controller
 
     private function setReview(int $id, string $status, ?string $note): JsonResponse
     {
-        $updated = DB::table('care_sessions')->where('id', $id)->update([
+        // 승인 전 상태 — 재승인 시 보호자 중복 알림 방지용
+        $prevStatus = DB::table('care_sessions')->where('id', $id)->value('review_status');
+        if ($prevStatus === null) {
+            return response()->json(['success' => false, 'message' => '일지를 찾을 수 없습니다.'], 404);
+        }
+
+        DB::table('care_sessions')->where('id', $id)->update([
             'review_status' => $status,
             'review_note' => $note,
             'reviewed_by' => Auth::id(),
@@ -250,11 +257,47 @@ class OperationsController extends Controller
             'updated_at' => now(),
         ]);
 
-        if (! $updated) {
-            return response()->json(['success' => false, 'message' => '일지를 찾을 수 없습니다.'], 404);
+        // 최초 승인 시에만 보호자에게 '케어 일지 도착' 알림
+        if ($status === 'approved' && $prevStatus !== 'approved') {
+            $this->notifyGuardianSummaryReady($id);
         }
 
         return response()->json(['success' => true, 'message' => $status === 'approved' ? '승인되었습니다.' : '반려되었습니다.']);
+    }
+
+    /** 승인된 케어 일지를 보호자에게 알림(FCM+DB). 실패해도 승인 응답은 유지. */
+    private function notifyGuardianSummaryReady(int $sessionId): void
+    {
+        try {
+            $ctx = DB::table('care_sessions as cs')
+                ->join('matches as m', 'm.id', '=', 'cs.match_id')
+                ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+                ->join('guardians as g', 'g.id', '=', 'r.guardian_id')
+                ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+                ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+                ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+                ->where('cs.id', $sessionId)
+                ->selectRaw('g.user_id as guardian_user_id, COALESCE(s.name, np.name, sa.label) as recipient_name')
+                ->first();
+
+            if (! $ctx || ! $ctx->guardian_user_id) {
+                return;
+            }
+
+            app(NotificationService::class)->notify(
+                (int) $ctx->guardian_user_id,
+                NotificationService::TYPE_CARE_SUMMARY_READY,
+                [
+                    'senior_name' => $ctx->recipient_name ?? '어르신',
+                    'session_id' => $sessionId,
+                ],
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('케어일지 승인 알림 발송 실패', [
+                'session_id' => $sessionId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /* ===================== #25 공지·푸시 알림 ===================== */

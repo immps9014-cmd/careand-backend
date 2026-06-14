@@ -301,6 +301,17 @@ class CareSessionController extends Controller
         $session = CareSession::with('aiSummaries')->findOrFail($id);
         $this->authorize('view', $session);
 
+        $isGuardian = $request->user()->isGuardian();
+
+        // INV-6: 보호자는 검수 '승인'된 일지만 열람
+        if ($isGuardian && $session->review_status !== 'approved') {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'SUMMARY_NOT_APPROVED',
+                'message' => 'AI 요약이 아직 준비되지 않았습니다.',
+            ], 404);
+        }
+
         $summary = $session->aiSummaries()->latest()->first();
 
         if (!$summary) {
@@ -311,15 +322,20 @@ class CareSessionController extends Controller
             ], 404);
         }
 
+        $data = [
+            'guardian_version' => $summary->guardian_version,
+            'categorized' => $summary->categorized,
+            'confidence' => $summary->confidence,
+            'generated_at' => $summary->generated_at->toIso8601String(),
+        ];
+        // INV-7: medical_version 은 보호자에게 노출하지 않음(인력/관리자만)
+        if (!$isGuardian) {
+            $data['medical_version'] = $summary->medical_version;
+        }
+
         return response()->json([
             'success' => true,
-            'data' => [
-                'guardian_version' => $summary->guardian_version,
-                'medical_version' => $summary->medical_version,
-                'categorized' => $summary->categorized,
-                'confidence' => $summary->confidence,
-                'generated_at' => $summary->generated_at->toIso8601String(),
-            ],
+            'data' => $data,
         ]);
     }
 
