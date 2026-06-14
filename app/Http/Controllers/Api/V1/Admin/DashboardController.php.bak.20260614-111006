@@ -133,26 +133,6 @@ class DashboardController extends Controller
 
         $peak = collect($result)->sortByDesc('count')->first();
 
-        // 매칭 성공률 & 평균 매칭 소요 (period 동일 적용)
-        $applyPeriod = function ($q, string $col = 'created_at') use ($period) {
-            return match ($period) {
-                'today' => $q->whereDate($col, today()),
-                '7d' => $q->where($col, '>=', now()->subDays(7)),
-                '30d' => $q->where($col, '>=', now()->subDays(30)),
-                default => $q,
-            };
-        };
-        $totalReq = $applyPeriod(MatchRequest::query())->count();
-        $matchedReq = $applyPeriod(MatchRequest::query())->where('status', 'matched')->count();
-        $matchSuccessRate = $totalReq > 0 ? round($matchedReq / $totalReq * 100, 1) : null;
-
-        $avgMatchMinutes = (int) round(
-            $applyPeriod(
-                DB::table('matches as m')->join('match_requests as r', 'r.id', '=', 'm.request_id'),
-                'r.created_at'
-            )->avg(DB::raw('TIMESTAMPDIFF(MINUTE, r.created_at, m.created_at)')) ?? 0
-        );
-
         return response()->json([
             'success' => true,
             'period' => $period,
@@ -160,8 +140,6 @@ class DashboardController extends Controller
             'peak_hour' => $peak['hour'] ?? null,
             'peak_count' => $peak['count'] ?? 0,
             'total_count' => array_sum(array_column($result, 'count')),
-            'match_success_rate' => $matchSuccessRate,
-            'avg_match_minutes' => $avgMatchMinutes ?: null,
         ]);
     }
 
