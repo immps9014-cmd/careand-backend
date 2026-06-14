@@ -304,4 +304,109 @@ class CaregiverController extends Controller
 
         return response()->json(['success' => true, 'data' => $rows]);
     }
+
+    /**
+     * GET /v1/caregivers/recommended
+     * 보호자 홈 '가까운 추천 인력' 피드 — 활성 인력 중 평점/실적 상위,
+     * 보호자 최근 요청의 대상자 위치 기준으로 거리순 정렬(위치 없으면 평점순).
+     */
+    public function recommended(Request $request): JsonResponse
+    {
+        $guardian = $request->user()->guardian;
+
+        // 거리 기준점: 보호자 최근 요청의 대상자 위치(없으면 거리 null)
+        $origin = null;
+        if ($guardian) {
+            $origin = \Illuminate\Support\Facades\DB::table('match_requests as r')
+                ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+                ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+                ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+                ->where('r.guardian_id', $guardian->id)
+                ->orderByDesc('r.id')
+                ->selectRaw('COALESCE(s.home_lat, np.hospital_lat, sa.lat) as lat, COALESCE(s.home_lng, np.hospital_lng, sa.lng) as lng')
+                ->first();
+        }
+        $oLat = $origin && $origin->lat !== null ? (float) $origin->lat : null;
+        $oLng = $origin && $origin->lng !== null ? (float) $origin->lng : null;
+
+        // 도메인별 최저 기준 시급
+        $rates = \Illuminate\Support\Facades\DB::table('service_categories')
+            ->where('is_active', 1)
+            ->selectRaw('domain, MIN(base_rate) as rate')
+            ->groupBy('domain')
+            ->pluck('rate', 'domain');
+
+        $rows = \Illuminate\Support\Facades\DB::table('caregivers as c')
+            ->join('users as u', 'u.id', '=', 'c.user_id')
+            ->where('c.status', 'active')
+            ->whereNull('c.deleted_at')
+            ->orderByDesc('c.rating_avg')
+            ->orderByDesc('c.completed_sessions')
+            ->limit(20)
+            ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+
+        $data = $rows->map(function ($c) use ($rates, $oLat, $oLng) {
+            $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
+            $primary = $domains[0] ?? 'senior';
+            $rate = isset($rates[$primary]) ? (int) $rates[$primary] : null;
+
+            $dist = null;
+            if ($oLat !== null && $c->base_lat !== null) {
+                $dist = round($this->haversineKm($oLat, $oLng, (float) $c->base_lat, (float) $c->base_lng), 1);
+            }
+
+            $tag = null;
+            if (in_array($c->career_track, ['premium', 'instructor'], true)) {
+                $tag = 'BEST';
+            } elseif ($c->career_track === 'excellent') {
+                $tag = '우수';
+            } elseif ($c->license_verified_at) {
+                $tag = '인증';
+            }
+
+            return [
+                'id' => (int) $c->id,
+                'name' => $c->name,
+                'rating' => number_format((float) $c->rating_avg, 1),
+                'rating_count' => (int) $c->rating_count,
+                'completed_sessions' => (int) $c->completed_sessions,
+                'spec' => $this->specLabel($c->specialties, $primary),
+                'base_rate' => $rate,
+                'distance_km' => $dist,
+                'tag' => $tag,
+            ];
+        })->values();
+
+        // 위치를 아는 경우 거리 오름차순(거리 미상은 뒤로), 상위 8명
+        if ($oLat !== null) {
+            $data = $data->sortBy(fn ($x) => $x['distance_km'] ?? 99999)->values();
+        }
+        $data = $data->take(8)->values();
+
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    private function specLabel(?string $specialtiesJson, string $domain): string
+    {
+        $map = [
+            'nursing_hospital' => '병원 간병', 'hk_cleaning' => '가사 청소',
+            'hk_repair' => '가사 수리', 'hk_organizing' => '정리수납',
+        ];
+        $domLabel = ['senior' => '시니어 돌봄', 'nursing' => '간병', 'housekeeping' => '가사', 'postpartum' => '산후 케어'];
+        $arr = json_decode($specialtiesJson ?? '[]', true);
+        if (is_array($arr) && count($arr) > 0) {
+            $labels = array_map(fn ($s) => $map[strtolower((string) $s)] ?? $s, $arr);
+            return implode('·', array_slice($labels, 0, 2));
+        }
+        return ($domLabel[$domain] ?? '돌봄') . ' 전문';
+    }
+
+    private function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r = 6371.0;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
 }
