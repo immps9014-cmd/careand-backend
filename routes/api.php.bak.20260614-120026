@@ -149,7 +149,6 @@ Route::prefix('v1')->group(function () {
             // 정산
             Route::post('settlements/run', [SettlementController::class, 'runWeekly']);
             Route::post('settlements/file-tax', [SettlementController::class, 'fileTax']);
-            Route::post('settlements/bulk-confirm', [SettlementController::class, 'bulkConfirm']);
             Route::post('settlements/{id}/confirm', [SettlementController::class, 'confirm'])->whereNumber('id');
 
             // Phase 2: 대시보드 KPI
@@ -173,7 +172,6 @@ Route::prefix('v1')->group(function () {
             Route::prefix('cs')->group(function () {
                 Route::get('stats', [CsController::class, 'stats']);
                 Route::get('reviews', [CsController::class, 'reviews']);
-                Route::post('reviews/{id}/reply', [CsController::class, 'replyReview'])->whereNumber('id');
                 Route::get('chatbot-sessions', [CsController::class, 'chatbotSessions']);
             });
 

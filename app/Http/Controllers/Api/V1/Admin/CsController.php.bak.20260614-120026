@@ -56,29 +56,6 @@ class CsController extends Controller
      * GET /v1/admin/cs/reviews
      * 후기 목록 (필터: rating, role, negative / 페이지네이션)
      */
-    public function replyReview(Request $request, int $id): JsonResponse
-    {
-        $validated = $request->validate(['reply' => 'required|string|max:2000']);
-
-        $review = DB::table('reviews')->where('id', $id)->first();
-        if (!$review) {
-            return response()->json(['success' => false, 'message' => '후기를 찾을 수 없습니다.'], 404);
-        }
-
-        DB::table('reviews')->where('id', $id)->update([
-            'admin_reply' => $validated['reply'],
-            'replied_at' => now(),
-            'replied_by' => $request->user()->id,
-            'updated_at' => now(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => '답글이 저장되었습니다.',
-            'data' => ['id' => $id, 'admin_reply' => $validated['reply'], 'replied_at' => now()->toIso8601String()],
-        ]);
-    }
-
     public function reviews(Request $request): JsonResponse
     {
         $perPage = min((int) $request->input('per_page', 20), 100);
@@ -94,8 +71,6 @@ class CsController extends Controller
                 'r.rating',
                 'r.comment',
                 'r.tags',
-                'r.admin_reply',
-                'r.replied_at',
                 'r.created_at'
             );
 
@@ -124,8 +99,6 @@ class CsController extends Controller
                 'comment' => $row->comment,
                 'tags' => is_array($tags) ? $tags : [],
                 'is_negative' => (int) $row->rating <= 2,
-                'admin_reply' => $row->admin_reply,
-                'replied_at' => $row->replied_at,
                 'created_at' => $row->created_at,
             ];
         });
