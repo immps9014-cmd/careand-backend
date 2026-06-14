@@ -284,6 +284,7 @@ class CaregiverController extends Controller
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_start, m.scheduled_start) as scheduled_start'),
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_end, m.scheduled_end) as scheduled_end'),
                 'r.service_domain',
+                'r.requirements',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
             )
             ->orderByDesc('m.scheduled_start')
@@ -298,6 +299,7 @@ class CaregiverController extends Controller
                 'actual_start' => $r->actual_start,
                 'actual_end' => $r->actual_end,
                 'duration_min' => $r->duration_min,
+                'photo_required' => (bool) (json_decode($r->requirements ?? '', true)['photo_required'] ?? false),
             ]);
 
         return response()->json(['success' => true, 'data' => $rows]);

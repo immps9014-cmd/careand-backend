@@ -18,6 +18,7 @@ use App\Services\External\AiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class CareSessionController extends Controller
 {
@@ -257,16 +258,31 @@ class CareSessionController extends Controller
         $session = CareSession::findOrFail($id);
         $this->authorizeAsCaregiver($request, $session);
 
-        $validated = $request->validate([
-            'photo_url' => ['required', 'url'],
-            'thumbnail_url' => ['nullable', 'url'],
-            'caption' => ['nullable', 'string', 'max:200'],
-        ]);
+        // 인력 앱(케어플로우)에서 직접 촬영한 파일 업로드 경로와,
+        // 기존 photo_url(이미 호스팅된 URL) 경로를 모두 지원한다.
+        if ($request->hasFile('file')) {
+            $validated = $request->validate([
+                'file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
+                'caption' => ['nullable', 'string', 'max:200'],
+            ]);
+
+            $path = $request->file('file')->store("care-photos/{$session->id}", 'public');
+            $photoUrl = Storage::disk('public')->url($path);
+            $thumbnailUrl = null;
+        } else {
+            $validated = $request->validate([
+                'photo_url' => ['required', 'url'],
+                'thumbnail_url' => ['nullable', 'url'],
+                'caption' => ['nullable', 'string', 'max:200'],
+            ]);
+            $photoUrl = $validated['photo_url'];
+            $thumbnailUrl = $validated['thumbnail_url'] ?? null;
+        }
 
         $photo = CarePhoto::create([
             'session_id' => $session->id,
-            'photo_url' => $validated['photo_url'],
-            'thumbnail_url' => $validated['thumbnail_url'] ?? null,
+            'photo_url' => $photoUrl,
+            'thumbnail_url' => $thumbnailUrl,
             'caption' => $validated['caption'] ?? null,
             'taken_at' => now(),
         ]);
