@@ -150,26 +150,9 @@ class OperationsController extends Controller
             'created_at' => $r->created_at,
         ]);
 
-        $countsQ = DB::table('matches as m');
-        if ($request->filled('domain')) {
-            $countsQ->leftJoin('match_requests as r', 'r.id', '=', 'm.request_id')
-                ->where('r.service_domain', $request->input('domain'));
-        }
-        $byStatus = (clone $countsQ)->select('m.status', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('m.status')->pluck('cnt', 'status');
-        $counts = [
-            'all' => (int) array_sum($byStatus->all()),
-            'confirmed' => (int) ($byStatus['confirmed'] ?? 0),
-            'in_progress' => (int) ($byStatus['in_progress'] ?? 0),
-            'completed' => (int) ($byStatus['completed'] ?? 0),
-            'cancelled' => (int) ($byStatus['cancelled'] ?? 0),
-            'no_show' => (int) ($byStatus['no_show'] ?? 0),
-        ];
-
         return response()->json([
             'success' => true,
             'data' => $items,
-            'counts' => $counts,
             'meta' => $this->meta($paginated),
         ]);
     }
@@ -381,25 +364,9 @@ class OperationsController extends Controller
             'created_at' => $r->created_at,
         ]);
 
-        $countsQ = DB::table('match_requests as r');
-        if ($request->filled('domain')) {
-            $countsQ->where('r.service_domain', $request->input('domain'));
-        }
-        $byStatus = (clone $countsQ)->select('r.status', DB::raw('COUNT(*) as cnt'))
-            ->groupBy('r.status')->pluck('cnt', 'status');
-        $counts = [
-            'all' => (int) array_sum($byStatus->all()),
-            'open' => (int) ($byStatus['open'] ?? 0),
-            'matching' => (int) ($byStatus['matching'] ?? 0),
-            'matched' => (int) ($byStatus['matched'] ?? 0),
-            'expired' => (int) ($byStatus['expired'] ?? 0),
-            'cancelled' => (int) ($byStatus['cancelled'] ?? 0),
-        ];
-
         return response()->json([
             'success' => true,
             'data' => $items,
-            'counts' => $counts,
             'meta' => $this->meta($paginated),
         ]);
     }
@@ -488,10 +455,6 @@ class OperationsController extends Controller
 
         $paginated = $query->orderByDesc('created_at')->paginate($perPage);
 
-        $cgStatus = DB::table('caregivers')
-            ->whereIn('user_id', collect($paginated->items())->pluck('id'))
-            ->pluck('status', 'user_id');
-
         $items = collect($paginated->items())->map(fn ($u) => [
             'id' => $u->id,
             'name' => $u->name,
@@ -499,7 +462,6 @@ class OperationsController extends Controller
             'phone' => $u->phone,
             'role' => $u->role,
             'status' => $u->status,
-            'caregiver_status' => $u->role === 'caregiver' ? ($cgStatus[$u->id] ?? null) : null,
             'created_at' => $u->created_at,
         ]);
 
