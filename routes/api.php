@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AnomalyAlertController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CaregiverController;
 use App\Http\Controllers\Api\V1\CareSessionController;
+use App\Http\Controllers\Api\V1\GuardianController;
 use App\Http\Controllers\Api\V1\ChatbotController;
 use App\Http\Controllers\Api\V1\MatchRequestController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -77,6 +78,11 @@ Route::prefix('v1')->group(function () {
             Route::post('me/leave', [CaregiverController::class, 'requestLeave']);
             Route::post('me/return', [CaregiverController::class, 'requestReturn']);
             Route::get('{id}', [CaregiverController::class, 'show'])->whereNumber('id');
+        });
+
+        // 보호자
+        Route::prefix('guardians')->group(function () {
+            Route::get('me/sessions', [GuardianController::class, 'mySessions']);
         });
 
         // 매칭
