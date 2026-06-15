@@ -174,6 +174,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('{id}/promote', [AiModelController::class, 'promote'])->whereNumber('id');
                 Route::post('{id}/rollback', [AiModelController::class, 'rollback'])->whereNumber('id');
                 Route::post('{id}/audit', [AiModelController::class, 'audit'])->whereNumber('id');
+                Route::get('{id}/audit-log', [AiModelController::class, 'auditLog'])->whereNumber('id');
             });
 
             // 후기·CS 관리 (#24)
