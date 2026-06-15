@@ -99,7 +99,7 @@ class AiModelController extends Controller
      */
     private function recentReviewHistory(AiModel $model): array
     {
-        if ($model->model_name !== 'matching') {
+        if (! str_contains($model->model_name, 'matching')) {
             return [];
         }
 
@@ -234,7 +234,7 @@ class AiModelController extends Controller
     {
         $model = AiModel::findOrFail($id);
 
-        if ($model->model_name !== 'matching') {
+        if (! str_contains($model->model_name, 'matching')) {
             return response()->json([
                 'success' => false,
                 'error_code' => 'NOT_AUDITABLE',
