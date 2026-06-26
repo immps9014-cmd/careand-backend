@@ -40,20 +40,11 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         }
 
         // 인력 풀 조회 — 요청 도메인을 서비스할 수 있는 인력만 (가사는 스킬 보유자만)
-        // + 이 보호대상을 기피(차단)한 돌봄전문가는 제외
         $requiredSkill = $matchRequest->requiredSkillTag();
-        $recipient = $matchRequest->recipient();
         $caregivers = Caregiver::active()
             ->whereNotNull('license_verified_at')
             ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
             ->when($requiredSkill, fn ($q, $skill) => $q->whereJsonContains('specialties', $skill))
-            ->when($recipient, fn ($q) => $q->whereNotExists(function ($sub) use ($matchRequest, $recipient) {
-                $sub->select(DB::raw(1))
-                    ->from('caregiver_blocks')
-                    ->whereColumn('caregiver_blocks.caregiver_id', 'caregivers.id')
-                    ->where('caregiver_blocks.target_type', $matchRequest->service_domain)
-                    ->where('caregiver_blocks.target_id', $recipient->id);
-            }))
             ->limit(50)
             ->get();
 

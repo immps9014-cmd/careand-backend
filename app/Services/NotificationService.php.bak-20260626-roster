@@ -36,11 +36,6 @@ class NotificationService
     public const TYPE_SETTLEMENT_CONFIRMED = 'SETTLEMENT_CONFIRMED';
     public const TYPE_SETTLEMENT_PAID = 'SETTLEMENT_PAID';
     public const TYPE_MATCH_REQUEST_EXPIRED = 'MATCH_REQUEST_EXPIRED';
-    public const TYPE_ORG_CAREGIVER_JOINED = 'ORG_CAREGIVER_JOINED';
-    public const TYPE_ORG_CAREGIVER_REMOVED = 'ORG_CAREGIVER_REMOVED';
-    public const TYPE_CAREGIVER_APPROVED = 'CAREGIVER_APPROVED';
-    public const TYPE_CAREGIVER_REJECTED = 'CAREGIVER_REJECTED';
-    public const TYPE_CAREGIVER_APPLIED = 'CAREGIVER_APPLIED';
 
     public function __construct(private FcmService $fcm)
     {
@@ -199,36 +194,6 @@ class NotificationService
                 'body' => sprintf(
                     '%s원이 입금되었어요. 수고하셨습니다.',
                     number_format($payload['net_amount'] ?? 0)
-                ),
-            ],
-            self::TYPE_ORG_CAREGIVER_JOINED => [
-                'title' => '기관 소속 연결',
-                'body' => sprintf('%s 기관에 소속 간병인으로 연결되었어요.', $payload['org_name'] ?? '기관'),
-            ],
-            self::TYPE_ORG_CAREGIVER_REMOVED => [
-                'title' => '기관 소속 해제',
-                'body' => sprintf('%s 기관 소속이 해제되었어요.', $payload['org_name'] ?? '기관'),
-            ],
-            self::TYPE_CAREGIVER_APPROVED => [
-                'title' => '자격 심사 완료',
-                'body' => sprintf(
-                    '%s님, 자격 심사가 완료되었어요. 이제 케어 활동을 시작할 수 있어요!',
-                    $payload['caregiver_name'] ?? '돌봄전문가'
-                ),
-            ],
-            self::TYPE_CAREGIVER_REJECTED => [
-                'title' => '자격 심사 결과 안내',
-                'body' => sprintf(
-                    '자격 심사가 반려되었어요. 사유: %s',
-                    $payload['reason'] ?? '자격 정보를 다시 확인해주세요.'
-                ),
-            ],
-            self::TYPE_CAREGIVER_APPLIED => [
-                'title' => '돌봄전문가 지원 도착',
-                'body' => sprintf(
-                    '%s 돌봄전문가가 %s 케어에 지원했어요. 후보를 확인해보세요.',
-                    $payload['caregiver_name'] ?? '돌봄전문가',
-                    $payload['recipient_name'] ?? '대상자'
                 ),
             ],
             default => null,

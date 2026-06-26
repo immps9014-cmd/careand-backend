@@ -10,9 +10,7 @@ class MatchRequestPolicy
     public function view(User $user, MatchRequest $request): bool
     {
         if ($user->isAdmin()) return true;
-        // 요청자(guardian) 프로필 소유 기준으로 판정한다.
-        // 기관(organization)도 guardian형 요청자 프로필로 발주하므로 role 이 아닌 소유권으로 본다.
-        return $user->guardian !== null && $user->guardian->id === $request->guardian_id;
+        return $user->isGuardian() && $user->guardian?->id === $request->guardian_id;
     }
 
     public function update(User $user, MatchRequest $request): bool

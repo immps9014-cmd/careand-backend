@@ -19,6 +19,12 @@ class Kernel extends ConsoleKernel
             ->timezone('UTC')
             ->emailOutputOnFailure(config('mail.from.address', 'admin@careand.co.kr'))
             ->appendOutputTo(storage_path('logs/settlements.log'));
+
+        // 미매칭 요청 자동 만료 (매시 정각) — 예정시각 지난 open/matching → expired + 보호자 알림
+        $schedule->command('requests:expire-stale')
+            ->hourly()
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/expire-stale.log'));
     }
 
     /**

@@ -90,22 +90,11 @@ Route::prefix('v1')->group(function () {
         Route::prefix('organizations')->group(function () {
             Route::get('me', [OrganizationController::class, 'me']);
             Route::post('register', [OrganizationController::class, 'register']);
-            // 소속 간병인 관리
-            Route::get('me/caregivers', [OrganizationController::class, 'caregivers']);
-            Route::post('me/caregivers/invite', [OrganizationController::class, 'inviteCaregiver']);
-            Route::delete('me/caregivers/{caregiverId}', [OrganizationController::class, 'removeCaregiver'])->whereNumber('caregiverId');
-            Route::delete('me/invites/{inviteId}', [OrganizationController::class, 'cancelInvite'])->whereNumber('inviteId');
         });
 
         // 매칭
         Route::prefix('matching')->group(function () {
             Route::get('categories', [MatchRequestController::class, 'categories']);
-            // 돌봄전문가 주도(pull): 열린 요청 탐색 / 직접 지원 / 기피(차단)
-            Route::get('open-requests', [MatchRequestController::class, 'openRequests']);
-            Route::post('requests/{id}/apply', [MatchRequestController::class, 'apply'])->whereNumber('id');
-            Route::get('blocks', [MatchRequestController::class, 'myBlocks']);
-            Route::post('blocks', [MatchRequestController::class, 'blockTarget']);
-            Route::delete('blocks/{blockId}', [MatchRequestController::class, 'unblock'])->whereNumber('blockId');
             Route::get('requests', [MatchRequestController::class, 'index']);
             Route::post('requests', [MatchRequestController::class, 'store']);
             Route::get('requests/{id}/candidates', [MatchRequestController::class, 'candidates'])

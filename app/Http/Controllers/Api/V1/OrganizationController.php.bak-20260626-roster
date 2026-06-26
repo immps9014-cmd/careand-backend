@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Organization\RegisterOrganizationRequest;
+use App\Models\Guardian;
+use App\Models\Organization;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class OrganizationController extends Controller
+{
+    /**
+     * GET /v1/organizations/me
+     * 내 기관 정보 + 승인 상태 조회.
+     */
+    public function me(Request $request): JsonResponse
+    {
+        $org = $request->user()->organization;
+
+        if (!$org) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'NOT_REGISTERED',
+                'message' => '기관 등록 정보가 없습니다.',
+            ], 404);
+        }
+
+        return response()->json(['success' => true, 'data' => $org]);
+    }
+
+    /**
+     * POST /v1/organizations/register
+     * 기관(에이전시) 회원 등록 — 사업자 정보(organizations) + 요청자 프로필(guardians) 동시 생성.
+     *
+     * 기관은 "간병인을 구하는 요청"을 보호자와 동일한 매칭 흐름(MatchRequest)으로 올린다.
+     * MatchRequestController::store 는 요청자가 guardian 프로필을 갖도록 요구하므로,
+     * 기관에도 guardian(요청자) 프로필을 함께 생성해 기존 매칭 엔진을 그대로 재사용한다.
+     * (relation="기관" 으로 일반 보호자와 구분 가능)
+     */
+    public function register(RegisterOrganizationRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'organization') {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'INVALID_ROLE',
+                'message' => '기관 회원만 등록 가능합니다.',
+            ], 403);
+        }
+
+        if ($user->organization) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'ALREADY_REGISTERED',
+                'message' => '이미 등록된 기관입니다.',
+            ], 409);
+        }
+
+        $data = $request->validated();
+
+        $org = DB::transaction(function () use ($data, $user) {
+            $org = Organization::create(array_merge($data, [
+                'user_id' => $user->id,
+                'status' => 'pending',
+            ]));
+
+            // 요청자(guardian) 프로필 — 기관 발주용. 이미 있으면 건너뜀.
+            if (!$user->guardian) {
+                Guardian::create([
+                    'user_id' => $user->id,
+                    'relation' => '기관',
+                ]);
+            }
+
+            return $org;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => '기관 등록이 접수되었습니다. 관리자 검수 후 이용하실 수 있습니다.',
+            'data' => ['id' => $org->id, 'status' => $org->status],
+        ], 201);
+    }
+}

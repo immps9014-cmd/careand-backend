@@ -13,4 +13,4 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', fn () => redirect('/admin'));
+Route::get('/', fn () => file_get_contents(public_path('portal.html')));

@@ -154,6 +154,8 @@ class AuthController extends Controller
             $user->update(['fcm_token' => $request->input('fcm_token')]);
         }
 
+        $user->load(['guardian', 'caregiver', 'organization', 'admin']);
+
         return response()->json([
             'success' => true,
             'user' => new UserResource($user),

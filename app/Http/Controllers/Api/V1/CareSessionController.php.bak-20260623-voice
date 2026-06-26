@@ -69,10 +69,9 @@ class CareSessionController extends Controller
 
         $data = $request->validated();
         $matchRequest = $session->match->request;
-        $isManual = (bool) ($session->match->is_manual ?? false);
 
         $location = $matchRequest->recipientLocation();
-        if (!$isManual && !$location) {
+        if (!$location) {
             return response()->json([
                 'success' => false,
                 'error_code' => 'NO_RECIPIENT_LOCATION',
@@ -81,13 +80,13 @@ class CareSessionController extends Controller
         }
         $radius = $matchRequest->checkinRadiusMeters();
 
-        // 서비스 장소와의 거리 계산 (Haversine). 수동매칭은 거리 제한 미적용(자동매칭만 반영).
-        $distance = $location ? $this->calculateDistance(
+        // 서비스 장소와의 거리 계산 (Haversine)
+        $distance = $this->calculateDistance(
             $data['lat'], $data['lng'],
             $location[0], $location[1]
-        ) : 0;
+        );
 
-        $isValid = $isManual ? true : ($distance <= $radius);
+        $isValid = $distance <= $radius;
 
         DB::transaction(function () use ($session, $data, $distance, $isValid) {
             AttendanceLog::create([
@@ -223,37 +222,17 @@ class CareSessionController extends Controller
      * POST /v1/care-sessions/{id}/voice-log
      * 음성 일지 업로드 → STT/LLM 처리 큐 등록
      */
-    public function uploadVoiceLog(Request $request, int $id): JsonResponse
+    public function uploadVoiceLog(UploadVoiceLogRequest $request, int $id): JsonResponse
     {
         $session = CareSession::findOrFail($id);
         $this->authorizeAsCaregiver($request, $session);
 
-        // 인력 앱(브라우저 녹음)에서 직접 업로드한 오디오 파일과,
-        // 기존 audio_url(이미 호스팅된 URL) 경로를 모두 지원한다.
-        if ($request->hasFile('file')) {
-            $validated = $request->validate([
-                'file' => ['required', 'file', 'max:51200'], // 최대 50MB
-                'duration_sec' => ['required', 'integer', 'between:1,1800'],
-            ]);
-            // 음성은 보호자에게 노출되지 않고 STT 처리에만 쓰이므로 비공개(local) 디스크에 저장.
-            // AI 서비스가 같은 서버에서 절대경로로 직접 읽어 헤어핀 다운로드를 피한다
-            // (ai-service _fetch_audio 의 os.path.isfile 분기).
-            $path = $request->file('file')->store("voice-logs/{$session->id}", 'local');
-            $audioUrl = Storage::disk('local')->path($path);
-            $durationSec = (int) $validated['duration_sec'];
-        } else {
-            $validated = $request->validate([
-                'audio_url' => ['required', 'url', 'max:500'],
-                'duration_sec' => ['required', 'integer', 'between:1,1800'],
-            ]);
-            $audioUrl = $validated['audio_url'];
-            $durationSec = (int) $validated['duration_sec'];
-        }
+        $data = $request->validated();
 
         $voiceLog = VoiceLog::create([
             'session_id' => $session->id,
-            'audio_url' => $audioUrl,
-            'duration_sec' => $durationSec,
+            'audio_url' => $data['audio_url'],
+            'duration_sec' => $data['duration_sec'],
             'status' => 'uploaded',
         ]);
 

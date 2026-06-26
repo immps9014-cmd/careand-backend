@@ -12,7 +12,6 @@ class MatchCandidate extends Model
     protected $fillable = [
         'request_id',
         'caregiver_id',
-        'source',
         'ai_score',
         'ai_reasons',
         'rank',

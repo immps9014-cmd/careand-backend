@@ -103,36 +103,6 @@ class OtpService
     }
 
     /**
-     * 기관 → 간병인 가입 초대 SMS. 스텁 모드에서는 로그만 출력.
-     */
-    public function sendCaregiverInvite(string $phone, string $orgName, string $link): void
-    {
-        $msg = "[케어앤] {$orgName} 기관이 간병인으로 초대했어요. 가입하고 활동을 시작하세요: {$link}";
-
-        if (config('services.external.stub')) {
-            Log::info("[INVITE-DEV] {$phone} → {$msg}");
-            return;
-        }
-
-        $provider = config('services.sms.provider', 'aligo');
-        if ($provider !== 'aligo') {
-            throw new RuntimeException("지원하지 않는 SMS 공급자: {$provider}");
-        }
-
-        $response = Http::asForm()->post('https://apis.aligo.in/send/', [
-            'key' => config('services.sms.api_key'),
-            'user_id' => config('services.sms.user_id'),
-            'sender' => config('services.sms.sender'),
-            'receiver' => $phone,
-            'msg' => $msg,
-        ]);
-
-        if (!$response->successful() || ($response->json('result_code') ?? -1) != 1) {
-            throw new RuntimeException('초대 SMS 발송 실패: ' . $response->body());
-        }
-    }
-
-    /**
      * 실제 SMS 발송 (Aligo 예시)
      */
     private function sendSms(string $phone, string $code): void

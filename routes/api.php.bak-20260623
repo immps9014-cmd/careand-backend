@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CaregiverController;
 use App\Http\Controllers\Api\V1\CareSessionController;
 use App\Http\Controllers\Api\V1\GuardianController;
-use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\ChatbotController;
 use App\Http\Controllers\Api\V1\MatchRequestController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -86,26 +85,9 @@ Route::prefix('v1')->group(function () {
             Route::get('me/sessions', [GuardianController::class, 'mySessions']);
         });
 
-        // 기관 (에이전시) — 간병인을 구하는 매칭요청 발주. 요청자 프로필은 guardian 재사용.
-        Route::prefix('organizations')->group(function () {
-            Route::get('me', [OrganizationController::class, 'me']);
-            Route::post('register', [OrganizationController::class, 'register']);
-            // 소속 간병인 관리
-            Route::get('me/caregivers', [OrganizationController::class, 'caregivers']);
-            Route::post('me/caregivers/invite', [OrganizationController::class, 'inviteCaregiver']);
-            Route::delete('me/caregivers/{caregiverId}', [OrganizationController::class, 'removeCaregiver'])->whereNumber('caregiverId');
-            Route::delete('me/invites/{inviteId}', [OrganizationController::class, 'cancelInvite'])->whereNumber('inviteId');
-        });
-
         // 매칭
         Route::prefix('matching')->group(function () {
             Route::get('categories', [MatchRequestController::class, 'categories']);
-            // 돌봄전문가 주도(pull): 열린 요청 탐색 / 직접 지원 / 기피(차단)
-            Route::get('open-requests', [MatchRequestController::class, 'openRequests']);
-            Route::post('requests/{id}/apply', [MatchRequestController::class, 'apply'])->whereNumber('id');
-            Route::get('blocks', [MatchRequestController::class, 'myBlocks']);
-            Route::post('blocks', [MatchRequestController::class, 'blockTarget']);
-            Route::delete('blocks/{blockId}', [MatchRequestController::class, 'unblock'])->whereNumber('blockId');
             Route::get('requests', [MatchRequestController::class, 'index']);
             Route::post('requests', [MatchRequestController::class, 'store']);
             Route::get('requests/{id}/candidates', [MatchRequestController::class, 'candidates'])
@@ -208,19 +190,14 @@ Route::prefix('v1')->group(function () {
                 Route::get('/', [OperationsController::class, 'caregivers']);
                 Route::post('{id}/approve', [OperationsController::class, 'approveCaregiver'])->whereNumber('id');
                 Route::post('{id}/reject', [OperationsController::class, 'rejectCaregiver'])->whereNumber('id');
-                Route::patch('{id}', [OperationsController::class, 'updateCaregiver'])->whereNumber('id');
             });
 
             // 계약·일정 관리 (#21)
             Route::get('contracts', [OperationsController::class, 'contracts']);
 
-            // 케어 진행 현황(Working List)
-            Route::get('care-sessions', [OperationsController::class, 'careSessions']);
-
             // AI 일지 검수·승인 (#22)
             Route::prefix('care-logs')->group(function () {
                 Route::get('/', [OperationsController::class, 'careLogs']);
-                Route::get('{id}', [OperationsController::class, 'careLogDetail'])->whereNumber('id');
                 Route::post('{id}/approve', [OperationsController::class, 'approveCareLog'])->whereNumber('id');
                 Route::post('{id}/reject', [OperationsController::class, 'rejectCareLog'])->whereNumber('id');
             });
@@ -233,24 +210,13 @@ Route::prefix('v1')->group(function () {
 
             // 매칭 모니터링 + 수동매칭 (#18)
             Route::get('matching/requests', [OperationsController::class, 'matchingRequests']);
-            Route::get('matching/requests/{id}', [OperationsController::class, 'matchingRequestDetail'])->whereNumber('id');
             Route::post('matching/requests/{id}/manual-assign', [OperationsController::class, 'manualAssign'])->whereNumber('id');
-            Route::patch('matching/requests/{id}/match', [OperationsController::class, 'updateMatch'])->whereNumber('id');
 
             // 회원·인력 통합관리 (#19)
             Route::get('members', [OperationsController::class, 'members']);
-            Route::post('members', [OperationsController::class, 'createMember']);
-            Route::patch('members/{id}/status', [OperationsController::class, 'updateMemberStatus'])->whereNumber('id');
-            Route::get('members/{id}', [OperationsController::class, 'memberDetail'])->whereNumber('id');
-            Route::patch('organizations/{id}', [OperationsController::class, 'updateOrganization'])->whereNumber('id');
-            Route::patch('members/{id}/credentials', [OperationsController::class, 'updateMemberCredentials'])->whereNumber('id');
-            Route::get('monitoring/alerts', [OperationsController::class, 'monitoringAlerts']);
-            Route::post('monitoring/alerts/{id}/acknowledge', [OperationsController::class, 'acknowledgeAlert'])->whereNumber('id');
-            Route::post('monitoring/alerts/{id}/resolve', [OperationsController::class, 'resolveAlert'])->whereNumber('id');
 
             // 정산 (#23)
             Route::get('settlements', [OperationsController::class, 'settlements']);
-            Route::get('settlements/{id}', [OperationsController::class, 'settlementDetail'])->whereNumber('id');
         });
     });
 
