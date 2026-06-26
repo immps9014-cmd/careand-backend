@@ -9,3 +9,10 @@ bootstrap/cache/config.php
 bootstrap/cache/packages.php
 bootstrap/cache/routes-v7.php
 bootstrap/cache/services.php
+
+# 타임스탬프 백업 파일 (배포 스냅샷에 쌓이는 노이즈)
+*.bak
+*.bak*
+
+# 사용자 업로드 콘텐츠 (음성일지 등 — 코드 아님, 백업 tar가 담당)
+storage/app/voice-logs/
