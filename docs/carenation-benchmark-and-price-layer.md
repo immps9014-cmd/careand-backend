@@ -55,7 +55,13 @@
 
 ### Phase 1 — 적정 간병비 산출 (`ea96dd6`)
 - **`pricing_rules`** 테이블: 카테고리(×지역)별 `region_index / night_mult(1.3) / holiday_mult(1.5) / emergency_mult(1.2) / acuity_addons / min_hourly`. 활성 카테고리에 전국 기본행 시드.
-- **`PricingService::estimate()`**: `base × 배수 + 난이도가산`에 과거 `matches.hourly_rate` 백분위(p25/p50/p75)를 **베이지안 블렌딩**(표본 적으면 룰 우세) → `[floor, suggested, ceil]`.
+- **`PricingService::estimate()`**: `ruleSuggested = base × 배수 + 난이도가산`에 과거 `matches.hourly_rate` 백분위(p25/p50/p75)를 **베이지안 블렌딩** → `[floor, suggested, ceil]`.
+  - 블렌딩 가중: `blend = min(n/40 × 0.5, 0.5)` — 0건→0, **40건→0.5(포화), 시장 반영 최대 50%**. `suggested = ruleSuggested×(1−blend) + p50×blend`.
+  - 곡선: n=10→12.5% · n=20→25% · n=30→37.5% · n=40↑→50%(룰값 절반은 항상 유지 → 이상치·과적합 방지). n=0이면 순수 룰값.
+
+  | 표본 n | 0 | 10 | 20 | 30 | 40+ |
+  |---|---|---|---|---|---|
+  | 시장(p50) 반영 | 0% | 12.5% | 25% | 37.5% | 50% |
 - `match_requests.price_estimate`(스냅샷)·`budget_hourly` 추가. `GET /v1/matching/pricing/estimate`(생성 전 미리보기).
 - ⚠️ 함정: Laravel `datetime` 캐스트가 미저장 모델의 오프셋을 버려 야간/주간 판정 반전 → `store()`처럼 `->utc()` 선정규화로 해결.
 
@@ -105,3 +111,43 @@
 - 결제(PG 실연동)·가상계좌 정산·배상책임보험.
 - ML 매칭(ALS/KoSimCSE) — 박스 제약으로 보류.
 - 네이티브 앱.
+
+---
+
+## 부록 A. 서버 디렉터리 구조 (Care& 플랫폼)
+
+| 구성요소 | 경로 | 포트 | systemd | 외부 URL |
+|---|---|---|---|---|
+| 백엔드 API (Laravel 11) | `/var/www/careand-backend` | PHP-FPM 9000 | `careand-queue`(워커) | `/api/v1/*` |
+| 관리자 웹 (Next.js) | `/root/careand-admin-web` | 3105 | `careand-admin-web` | `/admin` |
+| 회원 웹 (Next.js) | `/root/careand-member-web` | 3106 | `careand-member-web` | `/app` |
+| AI 서비스 (FastAPI) | `/root/careand-ai-service` | 8001 | `careand-ai` | (내부) |
+
+- DB: MySQL `careand_platform` · 큐/캐시: Redis · vhost: `/etc/httpd/conf.d/20-migrated-ssl.conf`(careand.aiclaude.kr)
+
+```
+/var/www/careand-backend/          # 백엔드 API
+├── app/
+│   ├── Domains/                    #   Nursing·Housekeeping 도메인
+│   ├── Http/                       #   Controllers / Requests / Resources
+│   ├── Jobs/                       #   GenerateMatchCandidatesJob 등(큐)
+│   ├── Models/                     #   MatchRequest, MatchCandidate, PricingRule…
+│   ├── Services/
+│   │   ├── Pricing/                #   ★ PricingService · BiddingService
+│   │   └── External/               #   AiService · PgService · NhisService 등
+│   └── Policies/ Providers/ Console/
+├── config/  database/(migrations)  routes/(api.php)
+├── public/(DocumentRoot)  docs/(본 문서)  storage/ vendor/
+
+/root/careand-member-web/          # 회원 웹 (보호자/돌봄전문가)
+├── app/(member)/                   #   home·request·seniors·patients·addresses·
+│                                   #   caregivers·open-requests·mypage·session…
+├── lib/api/(member.ts·caregiver.ts·auth.ts·client.ts)
+└── components/ hooks/ types/ public/
+
+/root/careand-admin-web/           # 관리자 웹  (app/ components/ lib/ hooks/ types/)
+
+/root/careand-ai-service/          # AI 마이크로서비스
+├── main.py                         #   매칭·가성비(value-rank)·STT·챗봇·이상징후
+└── models/  venv/
+```
