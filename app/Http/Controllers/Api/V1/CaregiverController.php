@@ -167,6 +167,9 @@ class CaregiverController extends Controller
             'base_address' => ['nullable', 'string', 'max:255'],
             'base_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'base_lng' => ['nullable', 'numeric', 'between:-180,180'],
+            // 역경매: 표준 희망 시급 / 자동입찰 설정
+            'default_rate' => ['nullable', 'numeric', 'min:0'],
+            'auto_bid' => ['nullable', 'boolean'],
         ]);
 
         // 주소가 바뀌었는데 좌표를 직접 안 줬으면 재지오코딩 (매칭 거리 랭킹 유지)
@@ -273,26 +276,41 @@ class CaregiverController extends Controller
             ->where('mc.caregiver_id', $caregiver->id)
             ->select(
                 'mc.id', 'mc.rank', 'mc.ai_score', 'mc.ai_reasons', 'mc.response',
+                'mc.bid_hourly', 'mc.bid_note', 'mc.bid_status',
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
+                'r.price_estimate',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
             )
             ->orderByDesc('mc.created_at')
             ->get()
-            ->map(fn ($r) => [
-                'candidate_id' => $r->id,
-                'rank' => $r->rank,
-                'ai_score' => (float) $r->ai_score,
-                'ai_reasons' => $r->ai_reasons ? json_decode($r->ai_reasons, true) : [],
-                'response' => $r->response,
-                'request_id' => $r->request_id,
-                'service_domain' => $r->service_domain,
-                'mode' => $r->mode,
-                'scheduled_start' => $r->scheduled_start,
-                'duration_min' => $r->duration_min,
-                'request_status' => $r->request_status,
-                'senior_name' => $r->senior_name ?? '(미상)',
-            ]);
+            ->map(function ($r) {
+                $est = $r->price_estimate ? json_decode($r->price_estimate, true) : null;
+
+                return [
+                    'candidate_id' => $r->id,
+                    'rank' => $r->rank,
+                    'ai_score' => (float) $r->ai_score,
+                    'ai_reasons' => $r->ai_reasons ? json_decode($r->ai_reasons, true) : [],
+                    'response' => $r->response,
+                    'request_id' => $r->request_id,
+                    'service_domain' => $r->service_domain,
+                    'mode' => $r->mode,
+                    'scheduled_start' => $r->scheduled_start,
+                    'duration_min' => $r->duration_min,
+                    'request_status' => $r->request_status,
+                    'senior_name' => $r->senior_name ?? '(미상)',
+                    // 역경매 입찰 (입찰 화면용)
+                    'bid_hourly' => $r->bid_hourly !== null ? (float) $r->bid_hourly : null,
+                    'bid_note' => $r->bid_note,
+                    'bid_status' => $r->bid_status,
+                    'price_guide' => $est ? [
+                        'floor' => $est['floor'] ?? null,
+                        'suggested' => $est['suggested'] ?? null,
+                        'ceil' => $est['ceil'] ?? null,
+                    ] : null,
+                ];
+            });
 
         return response()->json(['success' => true, 'data' => $rows]);
     }

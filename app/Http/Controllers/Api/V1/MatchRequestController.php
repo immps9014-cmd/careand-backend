@@ -17,6 +17,7 @@ use App\Models\Senior;
 use App\Domains\Nursing\Models\NursingPatient;
 use App\Domains\Housekeeping\Models\ServiceAddress;
 use App\Services\External\AiService;
+use App\Services\Pricing\BiddingService;
 use App\Services\Pricing\PricingService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
@@ -225,6 +226,24 @@ class MatchRequestController extends Controller
             ], 422);
         }
 
+        // 역경매: 입찰가 있는 후보 선택은 즉시 확정(입찰=확약). 입찰 없으면 기존 2단계(인력 수락 대기).
+        $auctionEnabled = (bool) config('services.pricing.auction_enabled', true);
+        if ($auctionEnabled && $candidate->bid_hourly !== null) {
+            $match = $this->confirmMatch($candidate, (float) $candidate->bid_hourly);
+
+            return response()->json([
+                'success' => true,
+                'message' => '입찰가로 매칭이 확정되었습니다.',
+                'candidate' => new MatchCandidateResource($candidate->fresh()),
+                'match' => [
+                    'id' => $match->id,
+                    'scheduled_start' => $match->scheduled_start->toIso8601String(),
+                    'hourly_rate' => (float) $match->hourly_rate,
+                    'estimated_amount' => $match->estimated_amount,
+                ],
+            ]);
+        }
+
         $matchRequest->update(['status' => 'matching']);
 
         // TODO: 인력에게 FCM 푸시 알림 (MATCH_REQUEST_ASSIGNED)
@@ -257,7 +276,30 @@ class MatchRequestController extends Controller
             ->where('response', 'pending')
             ->firstOrFail();
 
-        $match = DB::transaction(function () use ($candidate) {
+        // 합의 시급: 입찰가 우선 → 적정가 산출(suggested) → 카테고리 정액 폴백
+        $match = $this->confirmMatch($candidate, $this->agreedHourlyRate($candidate));
+
+        // TODO: 양측에 FCM 푸시 (MATCH_CONFIRMED)
+
+        return response()->json([
+            'success' => true,
+            'message' => '매칭이 확정되었습니다.',
+            'match' => [
+                'id' => $match->id,
+                'scheduled_start' => $match->scheduled_start->toIso8601String(),
+                'hourly_rate' => (float) $match->hourly_rate,
+                'estimated_amount' => $match->estimated_amount,
+            ],
+        ]);
+    }
+
+    /**
+     * 후보 수락/선택을 확정 매칭(matches)으로 전환한다.
+     * 후보 accepted, 요청 matched, 잔여 후보 expired, matches + 일별 세션 생성.
+     */
+    private function confirmMatch(MatchCandidate $candidate, float $hourlyRate): CareMatch
+    {
+        return DB::transaction(function () use ($candidate, $hourlyRate) {
             $candidate->update([
                 'response' => 'accepted',
                 'responded_at' => now(),
@@ -281,14 +323,14 @@ class MatchRequestController extends Controller
                 $days = max(1, min((int) ($request->recurrence_rule['days'] ?? 1), 30));
             }
 
-            // matches 테이블 생성
+            // matches 테이블 생성 (합의 시급 반영)
             $match = CareMatch::create([
                 'request_id' => $request->id,
                 'caregiver_id' => $candidate->caregiver_id,
                 'scheduled_start' => $request->scheduled_start,
                 'scheduled_end' => $request->scheduled_start->copy()->addDays($days - 1)->addMinutes($request->duration_min),
-                'hourly_rate' => $request->category->base_rate,
-                'estimated_amount' => round($request->category->base_rate * $request->duration_min / 60) * $days,
+                'hourly_rate' => $hourlyRate,
+                'estimated_amount' => round($hourlyRate * $request->duration_min / 60) * $days,
                 'status' => 'confirmed',
             ]);
 
@@ -304,17 +346,72 @@ class MatchRequestController extends Controller
 
             return $match;
         });
+    }
 
-        // TODO: 양측에 FCM 푸시 (MATCH_CONFIRMED)
+    /** 후보의 합의 시급: 입찰가 → 적정가 suggested → 카테고리 base_rate 순 폴백. */
+    private function agreedHourlyRate(MatchCandidate $candidate): float
+    {
+        if ($candidate->bid_hourly !== null) {
+            return (float) $candidate->bid_hourly;
+        }
+        $request = $candidate->request;
+        $suggested = $request->price_estimate['suggested'] ?? null;
+        return (float) ($suggested ?? $request->category->base_rate);
+    }
+
+    /**
+     * POST /v1/matching/candidates/{candidateId}/bid
+     * 돌봄전문가가 입찰가(시급)를 제시/수정. 입찰=확약 — 보호자가 선택하면 즉시 확정된다.
+     */
+    public function submitBid(Request $request, int $candidateId): JsonResponse
+    {
+        $caregiver = $request->user()->caregiver;
+        if (!$caregiver) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'NOT_CAREGIVER',
+                'message' => '인력 회원만 사용 가능합니다.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'bid_hourly' => ['required', 'numeric', 'min:1'],
+            'bid_note' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $candidate = MatchCandidate::where('id', $candidateId)
+            ->where('caregiver_id', $caregiver->id)
+            ->where('response', 'pending')
+            ->whereIn('bid_status', ['invited', 'bid'])
+            ->firstOrFail();
+
+        $estimate = $candidate->request->price_estimate;
+        $bidding = app(BiddingService::class);
+        $bid = (float) $validated['bid_hourly'];
+
+        // 하드 하한: 법정 최저시급 미만 입찰 차단
+        $minHourly = $bidding->minHourly($estimate);
+        if ($bid < $minHourly) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'BID_BELOW_MINIMUM',
+                'message' => '최저시급(' . number_format($minHourly) . '원) 미만으로는 입찰할 수 없습니다.',
+            ], 422);
+        }
+
+        $candidate->update([
+            'bid_hourly' => $bid,
+            'bid_note' => $validated['bid_note'] ?? null,
+            'bid_status' => 'bid',
+            'bid_at' => now(),
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => '매칭이 확정되었습니다.',
-            'match' => [
-                'id' => $match->id,
-                'scheduled_start' => $match->scheduled_start->toIso8601String(),
-                'estimated_amount' => $match->estimated_amount,
-            ],
+            'message' => '입찰이 등록되었습니다.',
+            // 권장 가격대 밖이면 경고(차단 아님) — 프론트에서 확인 유도
+            'warn_out_of_band' => $bidding->isOutOfBand($bid, $estimate),
+            'candidate' => new MatchCandidateResource($candidate->fresh()),
         ]);
     }
 
@@ -442,9 +539,12 @@ class MatchRequestController extends Controller
                     'ai_reasons' => $cand['reasons'],
                     'rank' => $cand['rank'],
                     'response' => 'pending',
+                    'bid_status' => 'invited',
                 ]);
             }
         });
+
+        app(BiddingService::class)->applyAutoBids($matchRequest);
     }
 
     /**

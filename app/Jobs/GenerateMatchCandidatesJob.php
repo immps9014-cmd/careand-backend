@@ -143,9 +143,13 @@ class GenerateMatchCandidatesJob implements ShouldQueue
                     'ai_reasons' => $cand['reasons'],
                     'rank' => $cand['rank'],
                     'response' => 'pending',
+                    'bid_status' => 'invited',
                 ]);
             }
         });
+
+        // 자동입찰 설정 돌봄전문가는 즉시 입찰 채움(입찰 공백 방지)
+        app(\App\Services\Pricing\BiddingService::class)->applyAutoBids($matchRequest);
 
         // TODO: 보호자에게 FCM 푸시 (CANDIDATES_READY)
         Log::info("매칭 요청 {$this->matchRequestId}: " . count($aiResult['candidates']) . "명 후보 산출 완료");

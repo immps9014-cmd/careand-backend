@@ -28,6 +28,8 @@ class Caregiver extends Model
         'rating_count',
         'completed_sessions',
         'grade_level',
+        'default_rate',
+        'auto_bid',
         'status',
         'rejection_reason',
     ];
@@ -40,6 +42,8 @@ class Caregiver extends Model
         'base_lat' => 'decimal:7',
         'base_lng' => 'decimal:7',
         'rating_avg' => 'decimal:2',
+        'default_rate' => 'decimal:2',
+        'auto_bid' => 'boolean',
     ];
 
     public function user()

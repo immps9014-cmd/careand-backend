@@ -19,6 +19,12 @@ class MatchCandidateResource extends JsonResource
             'response' => $this->response,
             'responded_at' => $this->responded_at?->toIso8601String(),
 
+            // 역경매 입찰
+            'bid_hourly' => $this->bid_hourly !== null ? (float) $this->bid_hourly : null,
+            'bid_note' => $this->bid_note,
+            'bid_status' => $this->bid_status,
+            'bid_at' => $this->bid_at?->toIso8601String(),
+
             'caregiver' => $this->whenLoaded('caregiver', fn () => [
                 'id' => $this->caregiver->id,
                 'name' => $this->caregiver->user->name ?? null,

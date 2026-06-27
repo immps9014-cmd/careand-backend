@@ -113,6 +113,7 @@ Route::prefix('v1')->group(function () {
             Route::get('requests/{id}/candidates', [MatchRequestController::class, 'candidates'])
                 ->whereNumber('id')->name('api.v1.matching.candidates');
             Route::post('requests/{id}/select', [MatchRequestController::class, 'selectCandidate'])->whereNumber('id');
+            Route::post('candidates/{candidateId}/bid', [MatchRequestController::class, 'submitBid'])->whereNumber('candidateId');
             Route::post('candidates/{candidateId}/accept', [MatchRequestController::class, 'acceptByCaregiver'])->whereNumber('candidateId');
             Route::post('candidates/{candidateId}/reject', [MatchRequestController::class, 'rejectByCaregiver'])->whereNumber('candidateId');
         });

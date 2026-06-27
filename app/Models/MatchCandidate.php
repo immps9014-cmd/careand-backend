@@ -18,12 +18,18 @@ class MatchCandidate extends Model
         'rank',
         'response',
         'responded_at',
+        'bid_hourly',
+        'bid_note',
+        'bid_status',
+        'bid_at',
     ];
 
     protected $casts = [
         'ai_score' => 'decimal:3',
         'ai_reasons' => 'array',
         'responded_at' => 'datetime',
+        'bid_hourly' => 'decimal:2',
+        'bid_at' => 'datetime',
     ];
 
     public function request()
