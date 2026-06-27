@@ -295,10 +295,10 @@ class MatchRequestController extends Controller
         // + 이 보호대상을 기피(차단)한 돌봄전문가는 제외
         $requiredSkill = $matchRequest->requiredSkillTag();
         $recipient = $matchRequest->recipient();
-        $caregivers = Caregiver::active()
+        $buildPool = fn (bool $withSkill) => Caregiver::active()
             ->whereNotNull('license_verified_at')
             ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
-            ->when($requiredSkill, fn ($q, $skill) => $q->whereJsonContains('specialties', $skill))
+            ->when($withSkill && $requiredSkill, fn ($q) => $q->whereJsonContains('specialties', $requiredSkill))
             ->when($recipient, fn ($q) => $q->whereNotExists(function ($sub) use ($matchRequest, $recipient) {
                 $sub->select(DB::raw(1))
                     ->from('caregiver_blocks')
@@ -308,6 +308,13 @@ class MatchRequestController extends Controller
             }))
             ->limit(30)
             ->get();
+
+        $caregivers = $buildPool(true);
+
+        // 공급 희박 폴백: 스킬 보유자 0이면 도메인 적격자 전체로 완화 (Job과 동일 정책)
+        if ($caregivers->isEmpty() && $requiredSkill) {
+            $caregivers = $buildPool(false);
+        }
 
         if ($caregivers->isEmpty()) {
             return;

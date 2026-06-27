@@ -43,10 +43,10 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         // + 이 보호대상을 기피(차단)한 돌봄전문가는 제외
         $requiredSkill = $matchRequest->requiredSkillTag();
         $recipient = $matchRequest->recipient();
-        $caregivers = Caregiver::active()
+        $buildPool = fn (bool $withSkill) => Caregiver::active()
             ->whereNotNull('license_verified_at')
             ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
-            ->when($requiredSkill, fn ($q, $skill) => $q->whereJsonContains('specialties', $skill))
+            ->when($withSkill && $requiredSkill, fn ($q) => $q->whereJsonContains('specialties', $requiredSkill))
             ->when($recipient, fn ($q) => $q->whereNotExists(function ($sub) use ($matchRequest, $recipient) {
                 $sub->select(DB::raw(1))
                     ->from('caregiver_blocks')
@@ -56,6 +56,15 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             }))
             ->limit(50)
             ->get();
+
+        $caregivers = $buildPool(true);
+
+        // 공급 희박 폴백: 스킬(가사 hk_*) 보유 인력이 0이면 도메인 적격자 전체로 완화한다.
+        // "도메인 인력은 있는데 스킬 미태깅이라 0건 → 침묵 만료"를 방지 (min_score 완화와 동일 철학).
+        if ($caregivers->isEmpty() && $requiredSkill) {
+            Log::info("매칭 요청 {$this->matchRequestId}: 스킬({$requiredSkill}) 보유 인력 0 → 도메인 적격자로 완화 재조회");
+            $caregivers = $buildPool(false);
+        }
 
         if ($caregivers->isEmpty()) {
             Log::warning("매칭 요청 {$this->matchRequestId}: 활성 인력이 없습니다.");
