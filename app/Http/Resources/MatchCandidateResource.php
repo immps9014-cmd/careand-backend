@@ -24,6 +24,9 @@ class MatchCandidateResource extends JsonResource
             'bid_note' => $this->bid_note,
             'bid_status' => $this->bid_status,
             'bid_at' => $this->bid_at?->toIso8601String(),
+            // 가성비 재랭킹(입찰 반영, 보호자 조회 시점 산정) — 미산정 시 null
+            'value_score' => isset($this->value_score) ? (float) $this->value_score : null,
+            'value_reason' => $this->value_reason ?? null,
 
             'caregiver' => $this->whenLoaded('caregiver', fn () => [
                 'id' => $this->caregiver->id,

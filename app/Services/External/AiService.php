@@ -45,6 +45,20 @@ class AiService
     }
 
     /**
+     * 1-b. 가성비 재랭킹 - 입찰가 대비 가성비를 AI 점수에 소프트 가산해 추천순 보정
+     *
+     * @param  array<int, array{candidate_id:int, ai_score:float, bid_hourly:float|null}>  $items
+     * @return array{ranked: array<int, array{candidate_id:int, value_score:float, reason:?string}>}
+     */
+    public function valueRank(float $suggested, array $items): array
+    {
+        return $this->call('/matching/value-rank', [
+            'suggested' => $suggested,
+            'items' => array_values($items),
+        ], 5);
+    }
+
+    /**
      * 2. STT - 음성 → 텍스트 (Whisper-ko)
      *
      * @return array{stt_text: string, confidence: float, duration_sec: int, language: string}
@@ -212,6 +226,7 @@ class AiService
     {
         return match ($endpoint) {
             '/ai/match/recommend' => $this->mockMatchRecommend($payload),
+            '/matching/value-rank' => $this->mockValueRank($payload),
             '/ai/voice/transcribe' => [
                 'stt_text' => '오늘 어머님 점심 반 그릇 드시고, 산책 30분 하셨고, 혈압 정상이었어요. 기분도 좋아 보이셨어요.',
                 'confidence' => 0.948,
@@ -279,5 +294,30 @@ class AiService
         }
 
         return ['candidates' => $candidates];
+    }
+
+    /**
+     * 가성비 재랭킹 모의 응답 — AI 서비스의 value-v1 공식을 미러링.
+     */
+    private function mockValueRank(array $payload): array
+    {
+        $suggested = (float) ($payload['suggested'] ?? 0);
+        $wPrice = 0.10;
+        $ranked = [];
+        foreach (($payload['items'] ?? []) as $it) {
+            $ai = (float) ($it['ai_score'] ?? 0);
+            $bid = $it['bid_hourly'] ?? null;
+            $reason = null;
+            $vs = $ai;
+            if ($bid !== null && $suggested > 0) {
+                $vfm = max(-0.10, min(($suggested - (float) $bid) / $suggested, 0.15));
+                $vs = $ai + $wPrice * $vfm;
+                $reason = $vfm >= 0.05 ? '가성비 좋음' : ($vfm <= -0.05 ? '권장가 대비 높음' : null);
+            }
+            $ranked[] = ['candidate_id' => $it['candidate_id'] ?? null, 'value_score' => round($vs, 4), 'reason' => $reason];
+        }
+        usort($ranked, fn ($a, $b) => $b['value_score'] <=> $a['value_score']);
+
+        return ['ranked' => $ranked, 'scoring_method' => 'value-v1', 'w_price' => $wPrice];
     }
 }

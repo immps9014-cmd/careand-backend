@@ -191,6 +191,10 @@ class MatchRequestController extends Controller
             ->orderBy('rank')
             ->get();
 
+        // 가성비 재랭킹: 입찰이 들어온 미확정 요청은 AI가 입찰가 대비 가성비를 반영해
+        // 추천순을 보정한다(소프트). AI 실패 시 기존 rank 순서 유지(graceful).
+        $candidates = $this->applyValueRank($matchRequest, $candidates);
+
         return response()->json([
             'success' => true,
             'request_status' => $matchRequest->status,
@@ -200,6 +204,45 @@ class MatchRequestController extends Controller
                 ? 'AI가 추천 후보를 산출 중입니다. 잠시 후 다시 확인해주세요.'
                 : null,
         ]);
+    }
+
+    /**
+     * 입찰가 대비 가성비를 AI 점수에 소프트 가산해 후보를 재정렬한다.
+     * 미확정 + 입찰 1건 이상 + 적정가(suggested) 존재 시에만 동작. 실패하면 원본 유지.
+     *
+     * @param  \Illuminate\Support\Collection<int, MatchCandidate>  $candidates
+     * @return \Illuminate\Support\Collection<int, MatchCandidate>
+     */
+    private function applyValueRank(MatchRequest $matchRequest, $candidates)
+    {
+        $suggested = (float) ($matchRequest->price_estimate['suggested'] ?? 0);
+        $hasBids = $candidates->contains(fn ($c) => $c->bid_hourly !== null);
+        if ($matchRequest->status === 'matched' || $suggested <= 0 || !$hasBids) {
+            return $candidates;
+        }
+
+        try {
+            $result = $this->aiService->valueRank($suggested, $candidates->map(fn ($c) => [
+                'candidate_id' => $c->id,
+                'ai_score' => (float) $c->ai_score,
+                'bid_hourly' => $c->bid_hourly !== null ? (float) $c->bid_hourly : null,
+            ])->all());
+
+            $byId = collect($result['ranked'] ?? [])->keyBy('candidate_id');
+            foreach ($candidates as $c) {
+                $row = $byId->get($c->id);
+                $c->value_score = $row['value_score'] ?? null;
+                $c->value_reason = $row['reason'] ?? null;
+            }
+
+            // value_score 내림차순(미산정은 기존 rank 보존하도록 폴백 키)
+            return $candidates
+                ->sortByDesc(fn ($c) => $c->value_score ?? (1.0 - $c->rank / 100))
+                ->values();
+        } catch (\Throwable $e) {
+            Log::warning("가성비 재랭킹 실패 request_id={$matchRequest->id}: {$e->getMessage()}");
+            return $candidates;
+        }
     }
 
     /**
