@@ -72,14 +72,20 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             return;
         }
 
+        // 연속성(재돌봄) 신호: 이 대상자를 과거에 수락(accepted)으로 맡았던 횟수를 caregiver별 집계.
+        // 가족·환자는 익숙한 인력을 선호 → 동일 대상 재요청 시 기존 담당자를 상위로.
+        $priorMatches = $this->priorMatchCounts($matchRequest, $recipient, $caregivers->pluck('id'));
+
         // AI 추천 호출
         $pool = $caregivers->map(fn ($c) => [
             'id' => $c->id,
             'specialties' => $c->specialties ?? [],
             'rating_avg' => (float) $c->rating_avg,
+            'rating_count' => (int) $c->rating_count,
             'completed_sessions' => (int) $c->completed_sessions,
             'lat' => $c->base_lat ? (float) $c->base_lat : null,
             'lng' => $c->base_lng ? (float) $c->base_lng : null,
+            'prior_matches' => (int) ($priorMatches[$c->id] ?? 0),
         ])->toArray();
 
         $aiResult = $aiService->recommendMatch(
@@ -129,5 +135,42 @@ class GenerateMatchCandidatesJob implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error("매칭 후보 생성 실패: request_id={$this->matchRequestId}, error={$exception->getMessage()}");
+    }
+
+    /**
+     * 대상자(recipient)를 과거에 수락(accepted)으로 맡았던 횟수를 caregiver_id별로 집계.
+     * 현재 요청은 제외. 풀에 속한 caregiver만 조회.
+     *
+     * @param  \Illuminate\Support\Collection<int,int>  $caregiverIds
+     * @return array<int,int>  caregiver_id => 과거 매칭 횟수
+     */
+    private function priorMatchCounts(MatchRequest $matchRequest, $recipient, $caregiverIds): array
+    {
+        if (!$recipient || $caregiverIds->isEmpty()) {
+            return [];
+        }
+
+        $recipientCol = match ($matchRequest->service_domain) {
+            'nursing' => 'nursing_patient_id',
+            'housekeeping' => 'service_address_id',
+            default => 'senior_id',
+        };
+
+        $historyRequestIds = MatchRequest::where('service_domain', $matchRequest->service_domain)
+            ->where($recipientCol, $recipient->id)
+            ->where('id', '!=', $matchRequest->id)
+            ->pluck('id');
+
+        if ($historyRequestIds->isEmpty()) {
+            return [];
+        }
+
+        return MatchCandidate::whereIn('request_id', $historyRequestIds)
+            ->whereIn('caregiver_id', $caregiverIds)
+            ->where('response', 'accepted')
+            ->selectRaw('caregiver_id, COUNT(*) as c')
+            ->groupBy('caregiver_id')
+            ->pluck('c', 'caregiver_id')
+            ->all();
     }
 }

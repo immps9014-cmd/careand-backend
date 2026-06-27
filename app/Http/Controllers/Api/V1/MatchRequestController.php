@@ -320,6 +320,24 @@ class MatchRequestController extends Controller
             return;
         }
 
+        // 연속성(재돌봄) 신호 — Job과 동일 정책 (대상자 과거 수락 매칭 횟수)
+        $priorMatches = [];
+        if ($recipient) {
+            $historyRequestIds = MatchRequest::where('service_domain', $matchRequest->service_domain)
+                ->where($this->recipientColumn($matchRequest->service_domain), $recipient->id)
+                ->where('id', '!=', $matchRequest->id)
+                ->pluck('id');
+            if ($historyRequestIds->isNotEmpty()) {
+                $priorMatches = MatchCandidate::whereIn('request_id', $historyRequestIds)
+                    ->whereIn('caregiver_id', $caregivers->pluck('id'))
+                    ->where('response', 'accepted')
+                    ->selectRaw('caregiver_id, COUNT(*) as c')
+                    ->groupBy('caregiver_id')
+                    ->pluck('c', 'caregiver_id')
+                    ->all();
+            }
+        }
+
         $aiResult = $this->aiService->recommendMatch(
             requestId: $matchRequest->id,
             seniorFeatures: $features,
@@ -327,9 +345,11 @@ class MatchRequestController extends Controller
                 'id' => $c->id,
                 'specialties' => $c->specialties ?? [],
                 'rating_avg' => (float) $c->rating_avg,
+                'rating_count' => (int) $c->rating_count,
                 'completed_sessions' => (int) $c->completed_sessions,
                 'lat' => $c->base_lat ? (float) $c->base_lat : null,
                 'lng' => $c->base_lng ? (float) $c->base_lng : null,
+                'prior_matches' => (int) ($priorMatches[$c->id] ?? 0),
             ])->toArray(),
             serviceDomain: $matchRequest->service_domain,
             requiredSkills: $requiredSkill ? [$requiredSkill] : [],
