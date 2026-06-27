@@ -22,6 +22,8 @@ class MatchRequest extends Model
         'recurrence_rule',
         'special_request',
         'requirements',
+        'price_estimate',
+        'budget_hourly',
         'status',
         'matched_at',
     ];
@@ -31,6 +33,8 @@ class MatchRequest extends Model
         'matched_at' => 'datetime',
         'recurrence_rule' => 'array',
         'requirements' => 'array',
+        'price_estimate' => 'array',
+        'budget_hourly' => 'decimal:2',
     ];
 
     public function guardian()

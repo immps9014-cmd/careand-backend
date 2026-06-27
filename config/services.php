@@ -82,6 +82,13 @@ return [
         'base_url' => env('SBA_BASE_URL', 'https://api.socialservice.go.kr/v1'),
         'api_key'  => env('SBA_API_KEY', ''),
     ],
+    // 가격 레이어 (적정 간병비 산출 / 역경매)
+    'pricing' => [
+        'min_hourly' => (float) env('PRICING_MIN_HOURLY', 10030), // 법정 최저시급 하한
+        // 공휴일(YYYY-MM-DD) 목록 — 지정 시 holiday_mult 적용(일요일은 자동)
+        'holidays' => array_filter(explode(',', env('PRICING_HOLIDAYS', ''))),
+    ],
+
     // 지오코딩 (주소→좌표). 키 없으면 Nominatim(OSM)로 폴백.
     'geocoding' => [
         'provider' => env('GEOCODING_PROVIDER', 'nominatim'),

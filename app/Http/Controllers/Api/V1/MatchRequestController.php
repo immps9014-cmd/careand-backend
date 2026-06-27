@@ -13,7 +13,11 @@ use App\Models\Caregiver;
 use App\Models\CaregiverBlock;
 use App\Models\MatchCandidate;
 use App\Models\MatchRequest;
+use App\Models\Senior;
+use App\Domains\Nursing\Models\NursingPatient;
+use App\Domains\Housekeeping\Models\ServiceAddress;
 use App\Services\External\AiService;
+use App\Services\Pricing\PricingService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,6 +61,14 @@ class MatchRequestController extends Controller
 
         $matchRequest = MatchRequest::create($data);
 
+        // 적정 간병비 스냅샷 산출(best-effort) — 실패해도 요청 생성은 막지 않는다.
+        try {
+            $matchRequest->price_estimate = app(PricingService::class)->estimate($matchRequest);
+            $matchRequest->save();
+        } catch (\Throwable $e) {
+            Log::warning("적정가 산출 실패 request_id={$matchRequest->id}: {$e->getMessage()}");
+        }
+
         // 비동기 큐 작업으로 AI 후보 산출 (즉시 반환, 후속 polling)
         // 실제 환경에서는 dispatch, 로컬에서는 동기로 즉시 처리
         if (app()->environment('local', 'testing')) {
@@ -71,6 +83,65 @@ class MatchRequestController extends Controller
             'data' => new MatchRequestResource($matchRequest->fresh()),
             'polling_url' => route('api.v1.matching.candidates', ['id' => $matchRequest->id]),
         ], 201);
+    }
+
+    /**
+     * GET /v1/matching/pricing/estimate
+     * 요청 생성 전 적정 간병비 미리보기(미저장). 입력 변경 시 폼에서 실시간 호출.
+     */
+    public function pricingEstimate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'service_domain' => ['nullable', 'in:senior,nursing,housekeeping'],
+            'category_id' => ['required', 'exists:service_categories,id'],
+            'mode' => ['nullable', 'in:normal,emergency,recurring'],
+            'scheduled_start' => ['nullable', 'date'],
+            'duration_min' => ['nullable', 'integer', 'between:1,1440'],
+            'senior_id' => ['nullable', 'integer'],
+            'nursing_patient_id' => ['nullable', 'integer'],
+            'service_address_id' => ['nullable', 'integer'],
+            'requirements' => ['nullable', 'array'],
+        ]);
+
+        // 대상자 참조는 본인 소유만 반영(난이도 가산 정보 노출 방지). 미소유/미상이면 가산 없이 산출.
+        $guardianId = optional($request->user()->guardian)->id;
+        $seniorId = $this->ownedId(Senior::class, $validated['senior_id'] ?? null, $guardianId);
+        $nursingId = $this->ownedId(NursingPatient::class, $validated['nursing_patient_id'] ?? null, $guardianId);
+        $addressId = $this->ownedId(ServiceAddress::class, $validated['service_address_id'] ?? null, $guardianId);
+
+        // 캐스트가 wall-clock을 UTC로 라벨링하므로 store()와 동일하게 UTC 인스턴트로 정규화.
+        // (미정규화 시 +09:00 오프셋이 무시돼 야간/주간 판정이 뒤집힌다)
+        $scheduledStart = !empty($validated['scheduled_start'])
+            ? \Illuminate\Support\Carbon::parse($validated['scheduled_start'])->utc()
+            : null;
+
+        $preview = new MatchRequest([
+            'service_domain' => $validated['service_domain'] ?? 'senior',
+            'category_id' => $validated['category_id'],
+            'mode' => $validated['mode'] ?? 'normal',
+            'scheduled_start' => $scheduledStart,
+            'duration_min' => $validated['duration_min'] ?? 60,
+            'senior_id' => $seniorId,
+            'nursing_patient_id' => $nursingId,
+            'service_address_id' => $addressId,
+            'requirements' => $validated['requirements'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => app(PricingService::class)->estimate($preview),
+        ]);
+    }
+
+    /** 주어진 대상자 ID가 해당 보호자 소유면 그대로, 아니면 null 반환. */
+    private function ownedId(string $modelClass, $id, $guardianId): ?int
+    {
+        if (!$id || !$guardianId) {
+            return null;
+        }
+        return $modelClass::where('id', $id)->where('guardian_id', $guardianId)->exists()
+            ? (int) $id
+            : null;
     }
 
     /**

@@ -21,6 +21,8 @@ class MatchRequestResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
 
             'requirements' => $this->requirements,
+            'price_estimate' => $this->price_estimate,
+            'budget_hourly' => $this->budget_hourly !== null ? (float) $this->budget_hourly : null,
 
             'senior' => $this->whenLoaded('senior', fn () => $this->senior ? [
                 'id' => $this->senior->id,
