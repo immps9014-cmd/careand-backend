@@ -194,6 +194,7 @@ class MatchRequestController extends Controller
         return response()->json([
             'success' => true,
             'request_status' => $matchRequest->status,
+            'price_estimate' => $matchRequest->price_estimate,
             'data' => MatchCandidateResource::collection($candidates),
             'message' => $candidates->isEmpty()
                 ? 'AI가 추천 후보를 산출 중입니다. 잠시 후 다시 확인해주세요.'

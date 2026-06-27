@@ -27,6 +27,8 @@ class CaregiverResource extends JsonResource
             'base_address' => $this->base_address,
             'base_lat' => $this->base_lat,
             'base_lng' => $this->base_lng,
+            'default_rate' => $this->default_rate !== null ? (float) $this->default_rate : null,
+            'auto_bid' => (bool) $this->auto_bid,
 
             'organization' => $this->whenLoaded('organization', fn () => $this->organization ? [
                 'id' => $this->organization->id,
