@@ -174,4 +174,14 @@ class MatchRequest extends Model
         };
     }
 
+    /**
+     * 동성(같은 성별) 돌봄전문가만 배정해야 하는 카테고리인가.
+     * 방문목욕(BATH)은 신체 노출을 동반하므로 존엄·안전상 동성 매칭이 하드 조건.
+     * (선호 성별 preferred_gender 의 '소프트'와 달리 반대 성별은 후보에서 하드 제외)
+     */
+    public function requiresSameGender(): bool
+    {
+        return $this->category?->code === 'BATH';
+    }
+
 }

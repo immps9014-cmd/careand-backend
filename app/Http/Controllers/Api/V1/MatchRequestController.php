@@ -295,10 +295,15 @@ class MatchRequestController extends Controller
         // + 이 보호대상을 기피(차단)한 돌봄전문가는 제외
         $requiredSkill = $matchRequest->requiredSkillTag();
         $recipient = $matchRequest->recipient();
+
+        // 동성 매칭 하드 조건(방문목욕 등) — Job과 동일 정책. 반대 성별 제외, 폴백서도 유지.
+        $requiredGender = $matchRequest->requiresSameGender() ? ($recipient->gender ?? null) : null;
+
         $buildPool = fn (bool $withSkill) => Caregiver::active()
             ->whereNotNull('license_verified_at')
             ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
             ->when($withSkill && $requiredSkill, fn ($q) => $q->whereJsonContains('specialties', $requiredSkill))
+            ->when($requiredGender, fn ($q) => $q->where('gender', $requiredGender))
             ->when($recipient, fn ($q) => $q->whereNotExists(function ($sub) use ($matchRequest, $recipient) {
                 $sub->select(DB::raw(1))
                     ->from('caregiver_blocks')
@@ -378,7 +383,7 @@ class MatchRequestController extends Controller
     public function categories(Request $request): JsonResponse
     {
         $rows = DB::table('service_categories')
-            ->select('id', 'name', 'domain', 'base_rate')
+            ->select('id', 'code', 'name', 'domain', 'base_rate')
             ->where('is_active', 1)
             ->when($request->input('domain'), fn ($q, $d) => $q->where('domain', $d))
             ->orderBy('id')
