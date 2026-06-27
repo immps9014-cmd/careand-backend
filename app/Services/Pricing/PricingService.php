@@ -21,8 +21,11 @@ class PricingService
 {
     private const TZ = 'Asia/Seoul';
 
-    /** 과거 데이터가 이 표본수에 도달하면 블렌딩 비중이 최대(0.5)가 된다. */
+    /** 과거 합의시급 표본이 이 건수에 도달하면 블렌딩 비중이 최대(0.5)가 된다(선형 램프). */
     private const BLEND_FULL_AT = 40;
+
+    /** 블렌딩 최대 비중 — 표본이 많아도 룰값 절반은 항상 유지(이상치·과적합 방지). */
+    private const BLEND_MAX = 0.5;
 
     public function estimate(MatchRequest $req): array
     {
@@ -43,7 +46,9 @@ class PricingService
         );
 
         [$p25, $p50, $p75, $n] = $this->history((int) $req->category_id);
-        $blend = min($n / self::BLEND_FULL_AT, 0.5); // 표본 적으면 룰 우세, 많아도 최대 0.5
+        // 0건→0, BLEND_FULL_AT(40)건→BLEND_MAX(0.5)로 선형 램프 후 포화.
+        // 표본 적으면 룰 우세, 충분해도 시장 반영은 최대 50%.
+        $blend = min($n / self::BLEND_FULL_AT * self::BLEND_MAX, self::BLEND_MAX);
 
         $suggested = $n > 0
             ? $this->round100($ruleSuggested * (1 - $blend) + $p50 * $blend)
