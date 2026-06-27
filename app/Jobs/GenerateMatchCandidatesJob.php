@@ -76,10 +76,14 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         // 가족·환자는 익숙한 인력을 선호 → 동일 대상 재요청 시 기존 담당자를 상위로.
         $priorMatches = $this->priorMatchCounts($matchRequest, $recipient, $caregivers->pluck('id'));
 
+        // 선호 성별(보호자 지정, M/F) — 매칭에서 소프트 가산 신호
+        $preferredGender = $matchRequest->requirements['preferred_gender'] ?? null;
+
         // AI 추천 호출
         $pool = $caregivers->map(fn ($c) => [
             'id' => $c->id,
             'specialties' => $c->specialties ?? [],
+            'gender' => $c->gender,
             'rating_avg' => (float) $c->rating_avg,
             'rating_count' => (int) $c->rating_count,
             'completed_sessions' => (int) $c->completed_sessions,
@@ -94,6 +98,7 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             caregiverPool: $pool,
             serviceDomain: $matchRequest->service_domain,
             requiredSkills: $requiredSkill ? [$requiredSkill] : [],
+            preferredGender: $preferredGender,
         );
 
         // 공급 희박 폴백: 적격 인력 풀은 있는데 점수 임계(min_score)로 후보가 0건이면,
@@ -107,6 +112,7 @@ class GenerateMatchCandidatesJob implements ShouldQueue
                 serviceDomain: $matchRequest->service_domain,
                 requiredSkills: $requiredSkill ? [$requiredSkill] : [],
                 minScore: 0.0,
+                preferredGender: $preferredGender,
             );
         }
 

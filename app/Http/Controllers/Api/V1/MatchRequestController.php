@@ -344,6 +344,7 @@ class MatchRequestController extends Controller
             caregiverPool: $caregivers->map(fn ($c) => [
                 'id' => $c->id,
                 'specialties' => $c->specialties ?? [],
+                'gender' => $c->gender,
                 'rating_avg' => (float) $c->rating_avg,
                 'rating_count' => (int) $c->rating_count,
                 'completed_sessions' => (int) $c->completed_sessions,
@@ -353,6 +354,7 @@ class MatchRequestController extends Controller
             ])->toArray(),
             serviceDomain: $matchRequest->service_domain,
             requiredSkills: $requiredSkill ? [$requiredSkill] : [],
+            preferredGender: $matchRequest->requirements['preferred_gender'] ?? null,
         );
 
         DB::transaction(function () use ($matchRequest, $aiResult) {

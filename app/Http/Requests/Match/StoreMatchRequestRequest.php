@@ -42,6 +42,8 @@ class StoreMatchRequestRequest extends FormRequest
             'recurrence_rule.days' => ['nullable', 'integer', 'between:1,30'],
             'special_request' => ['nullable', 'string', 'max:1000'],
             'requirements' => ['nullable', 'array'],
+            // 선호 돌봄전문가 성별 (M/F). 미지정=무관 — 매칭에서 소프트 가산 신호로만 사용
+            'requirements.preferred_gender' => ['nullable', 'in:M,F'],
         ];
     }
 
