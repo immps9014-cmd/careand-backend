@@ -43,9 +43,8 @@ Route::prefix('v1')->group(function () {
     });
 
     // ========== 공개 웹(/www, 비로그인) 읽기 전용 ==========
+    // 돌봄전문가 개별 노출은 회원 전용(/app)으로 전환 — 비로그인은 집계 통계만.
     Route::prefix('public')->middleware('throttle:60,1')->group(function () {
-        Route::get('caregivers', [PublicController::class, 'caregivers']);
-        Route::get('caregivers/{id}', [PublicController::class, 'caregiver'])->whereNumber('id');
         Route::get('stats', [PublicController::class, 'stats']);
     });
 
