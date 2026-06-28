@@ -96,6 +96,9 @@
     .cta.secondary{background:var(--card);color:var(--blue);border:1.5px solid var(--blue-soft);
       box-shadow:0 8px 22px rgba(61,90,254,.12);}
     .cta.secondary:hover{border-color:var(--blue);box-shadow:0 12px 30px rgba(61,90,254,.2);}
+    .cta.signup{background:var(--card);color:var(--coral-d);border:1.5px solid var(--coral);
+      box-shadow:0 8px 22px rgba(16,185,129,.14);}
+    .cta.signup:hover{background:var(--coral);color:#fff;box-shadow:0 12px 30px rgba(16,185,129,.32);}
     /* sheen sweep */
     .cta.primary::after{content:"";position:absolute;top:0;left:-120%;width:60%;height:100%;
       background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);
@@ -305,6 +308,9 @@
       <div class="cta-row reveal in d3">
         <a class="cta primary" href="/app/login">
           <span class="ic">💚</span> 회원 앱 로그인 <span class="arr">→</span>
+        </a>
+        <a class="cta signup" href="/app/signup">
+          <span class="ic">📝</span> 신규회원 등록 <span class="arr">→</span>
         </a>
         <a class="cta secondary" href="/admin/login">
           <span class="ic">🛡️</span> 관리자 콘솔 로그인 <span class="arr">→</span>

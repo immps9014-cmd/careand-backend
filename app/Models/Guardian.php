@@ -12,6 +12,7 @@ class Guardian extends Model
     protected $fillable = [
         'user_id',
         'relation',
+        'intent',
         'contact_address',
         'preferences',
     ];

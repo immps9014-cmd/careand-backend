@@ -103,6 +103,7 @@ class AuthController extends Controller
                 Guardian::create([
                     'user_id' => $user->id,
                     'relation' => $data['relation'] ?? null,
+                    'intent' => ($data['intent'] ?? null) === 'housekeeping' ? 'housekeeping' : 'care',
                 ]);
             }
             // caregiver/organization은 별도 register 단계에서 추가 정보 수집
@@ -134,7 +135,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'error_code' => 'INVALID_CREDENTIALS',
-                'message' => '이메일 또는 비밀번호가 올바르지 않습니다.',
+                'message' => '아이디 또는 비밀번호가 올바르지 않습니다.',
             ], 401);
         }
 

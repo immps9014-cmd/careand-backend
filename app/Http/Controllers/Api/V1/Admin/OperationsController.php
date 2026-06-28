@@ -1245,11 +1245,24 @@ class OperationsController extends Controller
             ->leftJoin('caregivers as cg', function ($j) {
                 $j->on('cg.user_id', '=', 'users.id')->whereNull('cg.deleted_at');
             })
-            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.status', 'users.created_at', 'cg.status as caregiver_status', 'cg.service_domains')
+            ->leftJoin('guardians as g', 'g.user_id', '=', 'users.id')
+            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.status', 'users.created_at', 'cg.status as caregiver_status', 'cg.service_domains', 'g.intent as guardian_intent')
             ->whereNull('users.deleted_at');
 
         if ($request->filled('role')) {
-            $query->where('users.role', $request->input('role'));
+            $role = $request->input('role');
+            // 가상 역할: housekeeping=가사요청자(role=guardian + intent=housekeeping),
+            // guardian=순수 보호자(intent=care 또는 미지정)
+            if ($role === 'housekeeping') {
+                $query->where('users.role', 'guardian')->where('g.intent', 'housekeeping');
+            } elseif ($role === 'guardian') {
+                $query->where('users.role', 'guardian')
+                    ->where(function ($w) {
+                        $w->where('g.intent', '<>', 'housekeeping')->orWhereNull('g.intent');
+                    });
+            } else {
+                $query->where('users.role', $role);
+            }
         }
         if ($request->filled('q')) {
             $kw = $request->input('q');
@@ -1282,6 +1295,8 @@ class OperationsController extends Controller
             'email' => $u->email,
             'phone' => $u->phone,
             'role' => $u->role,
+            // 가사요청자는 role=guardian이지만 intent로 구분. 보호자는 care(미지정 포함).
+            'intent' => $u->role === 'guardian' ? ($u->guardian_intent ?? 'care') : null,
             'status' => $u->status,
             'caregiver_status' => $u->role === 'caregiver' ? ($cgStatus[$u->id] ?? null) : null,
             'service_domains' => $u->role === 'caregiver' ? $u->service_domains : null,
@@ -1291,11 +1306,22 @@ class OperationsController extends Controller
         $counts = DB::table('users')->whereNull('deleted_at')
             ->select('role', DB::raw('COUNT(*) as cnt'))->groupBy('role')->pluck('cnt', 'role');
 
+        // 보호자(guardian) 내에서 가사요청자(housekeeping) 분리 집계
+        $housekeeping = (int) DB::table('users')
+            ->join('guardians as g', 'g.user_id', '=', 'users.id')
+            ->whereNull('users.deleted_at')
+            ->where('users.role', 'guardian')
+            ->where('g.intent', 'housekeeping')
+            ->count();
+        $guardianTotal = (int) ($counts['guardian'] ?? 0);
+
         return response()->json([
             'success' => true,
             'data' => $items,
             'summary' => [
-                'guardian' => (int) ($counts['guardian'] ?? 0),
+                // 순수 보호자 = 전체 guardian - 가사요청자 (intent 미지정 레거시는 보호자로 집계)
+                'guardian' => $guardianTotal - $housekeeping,
+                'housekeeping' => $housekeeping,
                 'caregiver' => (int) ($counts['caregiver'] ?? 0),
                 'organization' => (int) ($counts['organization'] ?? 0),
                 'admin' => (int) ($counts['admin'] ?? 0),

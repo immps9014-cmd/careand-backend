@@ -14,7 +14,8 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email'],
+            // 아이디 로그인 허용 — email 컬럼(=아이디)을 식별자로 사용. 형식 강제 없음.
+            'email' => ['required', 'string'],
             'password' => ['required', 'string'],
             'fcm_token' => ['nullable', 'string'],
         ];
