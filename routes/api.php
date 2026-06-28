@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\ChatbotController;
 use App\Http\Controllers\Api\V1\MatchRequestController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\V1\PublicController;
 use App\Http\Controllers\Api\V1\SeniorController;
 use App\Http\Controllers\Api\V1\SettlementController;
 use App\Http\Controllers\Api\V1\VitalRecordController;
@@ -39,6 +40,13 @@ Route::prefix('v1')->group(function () {
         Route::post('signup', [AuthController::class, 'signup'])->middleware('throttle:10,1');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
         Route::post('refresh', [AuthController::class, 'refresh'])->middleware('throttle:20,1');
+    });
+
+    // ========== 공개 웹(/www, 비로그인) 읽기 전용 ==========
+    Route::prefix('public')->middleware('throttle:60,1')->group(function () {
+        Route::get('caregivers', [PublicController::class, 'caregivers']);
+        Route::get('caregivers/{id}', [PublicController::class, 'caregiver'])->whereNumber('id');
+        Route::get('stats', [PublicController::class, 'stats']);
     });
 
     // ========== Phase 1+2: 인증 필요 ==========
