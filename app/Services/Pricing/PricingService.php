@@ -101,7 +101,10 @@ class PricingService
             return null;
         }
         $first = preg_split('/\s+/', trim($address))[0] ?? null;
-        return $first ?: null;
+
+        // 표기 편차(서울/서울시/서울특별시, 경기/경기도 …)를 표준 시/도 키로 정규화해
+        // pricing_rules.region_code(지역행)와 안정적으로 매칭. 미상이면 null=전국 기본.
+        return PricingRule::canonicalSido($first);
     }
 
     private function localStart(MatchRequest $req): ?Carbon
