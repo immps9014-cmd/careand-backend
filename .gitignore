@@ -1,0 +1,28 @@
+# /root 는 캐시·비밀·중첩 git 리포·무관 프로젝트가 뒤섞인 홈 디렉터리다.
+# 안전을 위해 "전부 무시" 후 큐레이션한 설정/문서/스크립트만 화이트리스트한다.
+# (자격증명 .claude/, 개인키 .ssh/, 비번파일, .env, .bash_history, zip/백업,
+#  spacer-mes·ai-doc-helper·lt-mes·bizcard-crm 등 별도 리포는 자동 제외)
+/*
+
+# --- shell / git dotfiles ---
+!/.gitignore
+# .bashrc 는 라이브 ANTHROPIC_API_KEY 평문 포함 → 추적 제외
+!/.bash_profile
+!/.bash_logout
+!/.cshrc
+!/.tcshrc
+!/.gitconfig
+!/.npmrc
+
+# --- ops 스크립트 ---
+!/README.md
+!/npm-tunnel-on.sh
+!/npm-tunnel-off.sh
+!/cdp_pipe.js
+!/shot_smoke.js
+!/gen_careand_manual.py
+!/gen_careand_pdf.py
+
+# --- careand 운영/설계 문서 (대문자만 — 소문자 careand-계정비번.pdf 등은 제외 유지) ---
+!/CAREAND-*
+!/CareAnd-AI*
