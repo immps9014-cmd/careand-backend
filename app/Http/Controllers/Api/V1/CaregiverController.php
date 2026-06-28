@@ -274,6 +274,20 @@ class CaregiverController extends Controller
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->where('mc.caregiver_id', $caregiver->id)
+            // 매칭이 안 된 채 지나간 제안은 숨긴다(요양보호사 홈 '새 매칭 제안').
+            // 이미 응답한 건(수락/거절 등)은 이력으로 보존하고, '대기중(pending)' 제안만
+            // ① 요청이 아직 매칭 대기 상태(open/matching/pending)이고
+            // ② 예정 시각이 지나지 않은(또는 일정 미정) 경우에만 노출한다.
+            ->where(function ($q) {
+                $q->where('mc.response', '!=', 'pending')
+                  ->orWhere(function ($q2) {
+                      $q2->whereIn('r.status', ['open', 'matching', 'pending'])
+                         ->where(function ($q3) {
+                             $q3->whereNull('r.scheduled_start')
+                                ->orWhere('r.scheduled_start', '>=', now());
+                         });
+                  });
+            })
             ->select(
                 'mc.id', 'mc.rank', 'mc.ai_score', 'mc.ai_reasons', 'mc.response',
                 'mc.bid_hourly', 'mc.bid_note', 'mc.bid_status',
