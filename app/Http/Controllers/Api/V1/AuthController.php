@@ -217,6 +217,49 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * PATCH /v1/auth/me
+     * 계정 정보 수정 (이름·연락처·이메일·비밀번호). 비밀번호 변경 시 현재 비밀번호 확인 필요.
+     */
+    public function updateMe(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = auth('api')->user();
+
+        $validated = $request->validate([
+            'name'  => ['sometimes', 'string', 'max:50'],
+            'phone' => ['sometimes', 'string', 'max:20', 'regex:/^[0-9+\-]+$/', 'unique:users,phone,'.$user->id],
+            'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'current_password' => ['required_with:password', 'current_password:api'],
+            'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
+        ], [
+            'current_password.required_with' => '현재 비밀번호를 입력해주세요.',
+            'current_password.current_password' => '현재 비밀번호가 일치하지 않습니다.',
+            'phone.unique' => '이미 사용 중인 연락처입니다.',
+            'email.unique' => '이미 사용 중인 이메일입니다.',
+            'password.confirmed' => '새 비밀번호 확인이 일치하지 않습니다.',
+            'password.min' => '비밀번호는 8자 이상이어야 합니다.',
+        ]);
+
+        $payload = array_intersect_key($validated, array_flip(['name', 'phone', 'email']));
+        if (!empty($validated['password'])) {
+            $payload['password'] = $validated['password']; // User 모델 casts(password => hashed)로 자동 해시
+        }
+
+        if (empty($payload)) {
+            return response()->json(['success' => false, 'message' => '변경할 정보가 없습니다.'], 422);
+        }
+
+        $user->update($payload);
+        $user->load(['guardian', 'caregiver', 'organization', 'admin']);
+
+        return response()->json([
+            'success' => true,
+            'message' => '계정 정보가 수정되었습니다.',
+            'user' => new UserResource($user),
+        ]);
+    }
+
     private function generateRefreshToken(User $user): string
     {
         return JWTAuth::customClaims([

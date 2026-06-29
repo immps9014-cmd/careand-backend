@@ -54,6 +54,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('auth')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me', [AuthController::class, 'me']);
+            Route::patch('me', [AuthController::class, 'updateMe']);
         });
 
         // === Phase 1 ===
@@ -81,6 +82,7 @@ Route::prefix('v1')->group(function () {
             Route::get('me/matches', [CaregiverController::class, 'myMatches']);
             Route::get('me/sessions', [CaregiverController::class, 'mySessions']);
             Route::get('recommended', [CaregiverController::class, 'recommended']);
+            Route::get('/', [CaregiverController::class, 'index']);
             Route::post('register', [CaregiverController::class, 'register']);
             Route::patch('me/profile', [CaregiverController::class, 'updateProfile']);
             Route::post('me/leave', [CaregiverController::class, 'requestLeave']);
@@ -107,6 +109,8 @@ Route::prefix('v1')->group(function () {
         // 매칭
         Route::prefix('matching')->group(function () {
             Route::get('categories', [MatchRequestController::class, 'categories']);
+            // 서비스 도메인 레지스트리(SSOT) — 역할별 활성 도메인 + 카테고리
+            Route::get('service-domains', [MatchRequestController::class, 'serviceDomains']);
             // 적정 간병비 미리보기(요청 생성 전)
             Route::get('pricing/estimate', [MatchRequestController::class, 'pricingEstimate']);
             // 돌봄전문가 주도(pull): 열린 요청 탐색 / 직접 지원 / 기피(차단)

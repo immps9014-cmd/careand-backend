@@ -1,0 +1,97 @@
+<?php
+
+namespace App\Support;
+
+use Illuminate\Support\Facades\DB;
+
+/**
+ * 서비스 도메인 레지스트리 접근 헬퍼 (SSOT).
+ * config/service_domains.php 를 읽어 라벨/가시성/활성 카테고리를 제공한다.
+ * 도메인 라벨/카테고리 라벨의 인라인 중복을 이 한 곳으로 일원화.
+ *
+ * @see config/service_domains.php
+ * @see /root/CAREAND-DOMAIN-INTEGRATION.md
+ */
+class ServiceDomains
+{
+    /**
+     * 돌봄전문가 전문분야(specialty 코드) → 표시 라벨.
+     * 카테고리 코드(소문자)와 매핑. 카테고리 추가 시 여기 한 곳만 보강.
+     */
+    private const SPECIALTY_LABELS = [
+        'nursing_hospital' => '병원 간병',
+        'hk_cleaning'      => '가사 청소',
+        'hk_repair'        => '가사 수리',
+        'hk_organizing'    => '정리수납',
+        'ls_companion'     => '동행',
+    ];
+
+    /** @return array<string,array> 전체 도메인 메타 (order 정렬) */
+    public static function all(): array
+    {
+        $domains = config('service_domains', []);
+        uasort($domains, fn ($a, $b) => ($a['order'] ?? 999) <=> ($b['order'] ?? 999));
+
+        return $domains;
+    }
+
+    /** @return array<string,mixed>|null 단일 도메인 메타 */
+    public static function meta(string $token): ?array
+    {
+        return config("service_domains.$token");
+    }
+
+    /** 도메인 표시 라벨 (없으면 '돌봄') */
+    public static function label(string $token): string
+    {
+        return config("service_domains.$token.domain_label", '돌봄');
+    }
+
+    /** 전문분야 코드 → 라벨 (없으면 원본 코드 반환) */
+    public static function specialtyLabel(string $code): string
+    {
+        return self::SPECIALTY_LABELS[strtolower($code)] ?? $code;
+    }
+
+    /**
+     * 역할(role)에게 노출 가능한 활성 도메인 + 각 도메인의 활성 카테고리.
+     * 활성 카테고리가 없는 도메인은 자동 제외(잠복).
+     *
+     * @return array<int,array{token:string,label:string,desc:string,icon:string,picker:?string,categories:\Illuminate\Support\Collection}>
+     */
+    public static function activeForRole(?string $role): array
+    {
+        $catsByDomain = DB::table('service_categories')
+            ->select('id', 'code', 'name', 'domain', 'base_rate')
+            ->where('is_active', 1)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('domain');
+
+        $out = [];
+        foreach (self::all() as $token => $m) {
+            if (!($m['is_active'] ?? false)) {
+                continue;
+            }
+            if ($role !== null && in_array($role, $m['hidden_for_roles'] ?? [], true)) {
+                continue;
+            }
+
+            $domainCats = $catsByDomain->get($token, collect())->values();
+            if ($domainCats->isEmpty()) {
+                continue; // 활성 카테고리 없는 도메인은 노출하지 않음
+            }
+
+            $out[] = [
+                'token'      => $token,
+                'label'      => $m['label'],
+                'desc'       => $m['desc'] ?? '',
+                'icon'       => $m['icon'] ?? 'heart-pulse',
+                'picker'     => $m['picker']['type'] ?? null,
+                'categories' => $domainCats,
+            ];
+        }
+
+        return $out;
+    }
+}

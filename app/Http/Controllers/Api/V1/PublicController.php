@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 비로그인 공개 웹(careand.aiclaude.kr/www)용 읽기 전용 엔드포인트.
+ * 비로그인 공개 웹(caren.aiclaude.kr/www)용 읽기 전용 엔드포인트.
  *
  * 정책(2026-06-28): 돌봄전문가 개별 노출은 회원 전용으로 전환했다. 비로그인 공개는
  * 개인 식별이 불가능한 "집계 신뢰지표"(stats)만 제공한다. 인력 목록/상세는

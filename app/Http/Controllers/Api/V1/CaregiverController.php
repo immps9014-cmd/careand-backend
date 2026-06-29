@@ -210,6 +210,92 @@ class CaregiverController extends Controller
     }
 
     /**
+     * GET /v1/caregivers?domain=senior|nursing|housekeeping
+     * 검증·활동중 돌봄전문가 목록(회원 전용). recommended 와 동일 카드 형태로 반환한다.
+     * domain 미지정 시 전체. 보호자면 최근 요청 위치 기준 거리(distance_km) 포함·정렬.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $domain = $request->query('domain');
+        $guardian = $request->user()->guardian;
+
+        // 거리 기준점: 보호자 최근 요청의 대상자 위치(없으면 거리 null) — recommended 와 동일
+        $oLat = null;
+        $oLng = null;
+        if ($guardian) {
+            $origin = \Illuminate\Support\Facades\DB::table('match_requests as r')
+                ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+                ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+                ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+                ->where('r.guardian_id', $guardian->id)
+                ->orderByDesc('r.id')
+                ->selectRaw('COALESCE(s.home_lat, np.hospital_lat, sa.lat) as lat, COALESCE(s.home_lng, np.hospital_lng, sa.lng) as lng')
+                ->first();
+            if ($origin) {
+                $oLat = $origin->lat !== null ? (float) $origin->lat : null;
+                $oLng = $origin->lng !== null ? (float) $origin->lng : null;
+            }
+        }
+
+        $rates = \Illuminate\Support\Facades\DB::table('service_categories')
+            ->where('is_active', 1)
+            ->selectRaw('domain, MIN(base_rate) as rate')
+            ->groupBy('domain')
+            ->pluck('rate', 'domain');
+
+        $q = \Illuminate\Support\Facades\DB::table('caregivers as c')
+            ->join('users as u', 'u.id', '=', 'c.user_id')
+            ->where('c.status', 'active')
+            ->whereNull('c.deleted_at');
+        if ($domain) {
+            // service_domains 는 "senior,housekeeping" 형태의 콤마 목록 → 정확 매칭
+            $q->whereRaw('FIND_IN_SET(?, c.service_domains)', [$domain]);
+        }
+        $rows = $q->orderByDesc('c.rating_avg')
+            ->orderByDesc('c.completed_sessions')
+            ->limit(60)
+            ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+
+        $data = $rows->map(function ($c) use ($rates, $oLat, $oLng) {
+            $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
+            $primary = $domains[0] ?? 'senior';
+            $rate = isset($rates[$primary]) ? (int) $rates[$primary] : null;
+
+            $dist = null;
+            if ($oLat !== null && $c->base_lat !== null) {
+                $dist = round($this->haversineKm($oLat, $oLng, (float) $c->base_lat, (float) $c->base_lng), 1);
+            }
+
+            $tag = null;
+            if (in_array($c->career_track, ['premium', 'instructor'], true)) {
+                $tag = 'BEST';
+            } elseif ($c->career_track === 'excellent') {
+                $tag = '우수';
+            } elseif ($c->license_verified_at) {
+                $tag = '인증';
+            }
+
+            return [
+                'id' => (int) $c->id,
+                'name' => $c->name,
+                'rating' => number_format((float) $c->rating_avg, 1),
+                'rating_count' => (int) $c->rating_count,
+                'completed_sessions' => (int) $c->completed_sessions,
+                'spec' => $this->specLabel($c->specialties, $primary),
+                'base_rate' => $rate,
+                'distance_km' => $dist,
+                'tag' => $tag,
+            ];
+        })->values();
+
+        if ($oLat !== null) {
+            $data = $data->sortBy(fn ($x) => $x['distance_km'] ?? 99999)->values();
+        }
+
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /**
      * POST /v1/caregivers/me/leave
      * 휴직 요청
      */
@@ -457,17 +543,13 @@ class CaregiverController extends Controller
 
     private function specLabel(?string $specialtiesJson, string $domain): string
     {
-        $map = [
-            'nursing_hospital' => '병원 간병', 'hk_cleaning' => '가사 청소',
-            'hk_repair' => '가사 수리', 'hk_organizing' => '정리수납',
-        ];
-        $domLabel = ['senior' => '시니어 돌봄', 'nursing' => '간병', 'housekeeping' => '가사', 'postpartum' => '산후 케어'];
+        // 도메인/전문분야 라벨은 레지스트리(SSOT)로 일원화 — \App\Support\ServiceDomains
         $arr = json_decode($specialtiesJson ?? '[]', true);
         if (is_array($arr) && count($arr) > 0) {
-            $labels = array_map(fn ($s) => $map[strtolower((string) $s)] ?? $s, $arr);
+            $labels = array_map(fn ($s) => \App\Support\ServiceDomains::specialtyLabel((string) $s), $arr);
             return implode('·', array_slice($labels, 0, 2));
         }
-        return ($domLabel[$domain] ?? '돌봄') . ' 전문';
+        return \App\Support\ServiceDomains::label($domain) . ' 전문';
     }
 
     private function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float

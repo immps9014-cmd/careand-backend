@@ -607,6 +607,22 @@ class MatchRequestController extends Controller
         return response()->json(['success' => true, 'data' => $rows]);
     }
 
+    /**
+     * GET /v1/matching/service-domains
+     * 서비스 도메인 레지스트리(SSOT) — 요청자 역할에게 노출 가능한 활성 도메인 + 활성 카테고리.
+     * FE는 이 응답으로 도메인 카드/대상선택기/카테고리를 동적 렌더한다.
+     * @see \App\Support\ServiceDomains
+     */
+    public function serviceDomains(Request $request): JsonResponse
+    {
+        $role = $request->user()?->role;
+
+        return response()->json([
+            'success' => true,
+            'data'    => \App\Support\ServiceDomains::activeForRole($role),
+        ]);
+    }
+
     /* ===================== 돌봄전문가 주도(pull) 흐름 ===================== */
 
     /**
