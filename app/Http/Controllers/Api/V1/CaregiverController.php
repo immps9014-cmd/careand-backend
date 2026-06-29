@@ -210,7 +210,7 @@ class CaregiverController extends Controller
     }
 
     /**
-     * GET /v1/caregivers?domain=senior|nursing|housekeeping
+     * GET /v1/caregivers?domain=senior|nursing|living_support
      * 검증·활동중 돌봄전문가 목록(회원 전용). recommended 와 동일 카드 형태로 반환한다.
      * domain 미지정 시 전체. 보호자면 최근 요청 위치 기준 거리(distance_km) 포함·정렬.
      */
@@ -248,7 +248,7 @@ class CaregiverController extends Controller
             ->where('c.status', 'active')
             ->whereNull('c.deleted_at');
         if ($domain) {
-            // service_domains 는 "senior,housekeeping" 형태의 콤마 목록 → 정확 매칭
+            // service_domains 는 "senior,living_support" 형태의 콤마 목록 → 정확 매칭
             $q->whereRaw('FIND_IN_SET(?, c.service_domains)', [$domain]);
         }
         $rows = $q->orderByDesc('c.rating_avg')

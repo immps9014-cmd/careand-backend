@@ -58,7 +58,7 @@ class MatchRequestController extends Controller
         $domain = $data['service_domain'];
         $data['senior_id'] = $domain === 'senior' ? ($data['senior_id'] ?? null) : null;
         $data['nursing_patient_id'] = $domain === 'nursing' ? ($data['nursing_patient_id'] ?? null) : null;
-        $data['service_address_id'] = $domain === 'housekeeping' ? ($data['service_address_id'] ?? null) : null;
+        $data['service_address_id'] = $domain === 'living_support' ? ($data['service_address_id'] ?? null) : null;
 
         $matchRequest = MatchRequest::create($data);
 
@@ -93,7 +93,7 @@ class MatchRequestController extends Controller
     public function pricingEstimate(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'service_domain' => ['nullable', 'in:senior,nursing,housekeeping'],
+            'service_domain' => ['nullable', 'in:senior,nursing,living_support'],
             'category_id' => ['required', 'exists:service_categories,id'],
             'mode' => ['nullable', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['nullable', 'date'],
@@ -592,7 +592,7 @@ class MatchRequestController extends Controller
     }
 
     /**
-     * GET /v1/matching/categories?domain=senior|nursing|housekeeping
+     * GET /v1/matching/categories?domain=senior|nursing|living_support
      * 서비스 카테고리 목록 (요청 생성 폼용)
      */
     public function categories(Request $request): JsonResponse
@@ -855,7 +855,7 @@ class MatchRequestController extends Controller
 
         $rawAddr = match ($r->service_domain) {
             'nursing' => $recipient->hospital_address ?? null,
-            'housekeeping' => $recipient->address ?? null,
+            'living_support' => $recipient->address ?? null,
             default => $recipient->home_address ?? null,
         };
 
@@ -881,7 +881,7 @@ class MatchRequestController extends Controller
     {
         return match ($domain) {
             'nursing' => 'nursing_patient_id',
-            'housekeeping' => 'service_address_id',
+            'living_support' => 'service_address_id',
             default => 'senior_id',
         };
     }
@@ -890,7 +890,7 @@ class MatchRequestController extends Controller
     {
         return match ($type) {
             'nursing' => DB::table('nursing_patients')->where('id', $id)->value('name'),
-            'housekeeping' => DB::table('service_addresses')->where('id', $id)->value('label'),
+            'living_support' => DB::table('service_addresses')->where('id', $id)->value('label'),
             default => DB::table('seniors')->where('id', $id)->value('name'),
         };
     }

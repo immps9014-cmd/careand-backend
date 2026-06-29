@@ -89,7 +89,7 @@ class DashboardController extends Controller
             ->pluck('amt', 'service_domain');
 
         $result = [];
-        foreach (['senior', 'postpartum', 'nursing', 'housekeeping'] as $domain) {
+        foreach (['senior', 'postpartum', 'nursing', 'living_support'] as $domain) {
             $result[$domain] = [
                 'matches_in_progress' => (int) ($inProgress[$domain] ?? 0),
                 'requests_this_week' => (int) ($requestsWeek[$domain] ?? 0),

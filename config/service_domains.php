@@ -39,31 +39,31 @@ return [
         'domain_label'     => '간병',
     ],
 
-    // Phase 0 현행 유지. Phase 1에서 living_support로 토큰 전환.
+    // Phase 1 전환 완료: housekeeping 데이터는 living_support로 이전됨. 토큰 비활성(잔존).
     'housekeeping' => [
         'order'            => 30,
         'label'            => '가사 서비스',
         'desc'             => '청소·정리',
         'icon'             => 'sparkles',
-        'is_active'        => true,
+        'is_active'        => false,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'address', 'fk' => 'service_address_id'],
         'domain_label'     => '가사',
     ],
 
-    // ── 아래는 잠복(Phase 1~4에서 오픈) ─────────────────────────────────
-
-    // Phase 1: housekeeping에서 전환 + 동행·정리수납 편입.
+    // Phase 1: housekeeping에서 전환 + 동행·정리수납 편입 (활성).
     'living_support' => [
-        'order'            => 35,
+        'order'            => 30,
         'label'            => '생활지원서비스',
         'desc'             => '청소·정리·동행',
         'icon'             => 'sparkles',
-        'is_active'        => false,
+        'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'address', 'fk' => 'service_address_id'],
         'domain_label'     => '생활지원',
     ],
+
+    // ── 아래는 잠복(Phase 2~4에서 오픈) ─────────────────────────────────
 
     // Phase 2: 이미 배선됨(postpartum_clients) — 오픈만.
     'postpartum' => [

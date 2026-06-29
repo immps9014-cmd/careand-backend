@@ -74,13 +74,13 @@ class MatchRequest extends Model
 
     /**
      * 서비스 도메인별 대상자(수혜자) 추상화.
-     * 신규 도메인(nursing/housekeeping) 추가 시 아래 match 분기만 확장한다.
+     * 신규 도메인(nursing/living_support) 추가 시 아래 match 분기만 확장한다.
      */
     public function recipient()
     {
         return match ($this->service_domain) {
             'nursing' => $this->nursingPatient,
-            'housekeeping' => $this->serviceAddress,
+            'living_support' => $this->serviceAddress,
             default => $this->senior,
         };
     }
@@ -88,7 +88,7 @@ class MatchRequest extends Model
     public function recipientName(): ?string
     {
         // 가사는 대상이 사람이 아니라 주소 — label('우리집' 등)이 표시명
-        return $this->service_domain === 'housekeeping'
+        return $this->service_domain === 'living_support'
             ? $this->recipient()?->label
             : $this->recipient()?->name;
     }
@@ -112,7 +112,7 @@ class MatchRequest extends Model
                 'lat' => $recipient->hospital_lat !== null ? (float) $recipient->hospital_lat : null,
                 'lng' => $recipient->hospital_lng !== null ? (float) $recipient->hospital_lng : null,
             ],
-            'housekeeping' => [
+            'living_support' => [
                 'id' => $recipient->id,
                 'care_grade' => null,
                 'diseases' => [],
@@ -140,7 +140,7 @@ class MatchRequest extends Model
             'nursing' => $recipient && $recipient->hospital_lat !== null
                 ? [(float) $recipient->hospital_lat, (float) $recipient->hospital_lng]
                 : null,
-            'housekeeping' => $recipient && $recipient->lat !== null
+            'living_support' => $recipient && $recipient->lat !== null
                 ? [(float) $recipient->lat, (float) $recipient->lng]
                 : null,
             default => $recipient && $recipient->home_lat !== null
@@ -166,7 +166,7 @@ class MatchRequest extends Model
      */
     public function requiredSkillTag(): ?string
     {
-        if ($this->service_domain !== 'housekeeping') {
+        if ($this->service_domain !== 'living_support') {
             return null;
         }
 

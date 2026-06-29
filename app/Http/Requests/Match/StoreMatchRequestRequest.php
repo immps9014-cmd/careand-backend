@@ -29,10 +29,10 @@ class StoreMatchRequestRequest extends FormRequest
         $domain = $this->input('service_domain');
 
         return [
-            'service_domain' => ['required', 'in:senior,nursing,housekeeping'],
+            'service_domain' => ['required', 'in:senior,nursing,living_support'],
             'senior_id' => ['required_if:service_domain,senior', 'nullable', 'exists:seniors,id'],
             'nursing_patient_id' => ['required_if:service_domain,nursing', 'nullable', 'exists:nursing_patients,id'],
-            'service_address_id' => ['required_if:service_domain,housekeeping', 'nullable', 'exists:service_addresses,id'],
+            'service_address_id' => ['required_if:service_domain,living_support', 'nullable', 'exists:service_addresses,id'],
             'category_id' => ['required', 'exists:service_categories,id,is_active,1'],
             'mode' => ['required', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['required', 'date_format:Y-m-d\TH:i:sP', 'after:now'],
@@ -73,7 +73,7 @@ class StoreMatchRequestRequest extends FormRequest
             }
 
             // 가사 주소 소유권
-            if ($this->input('service_domain') === 'housekeeping' && $this->filled('service_address_id')) {
+            if ($this->input('service_domain') === 'living_support' && $this->filled('service_address_id')) {
                 $owned = ServiceAddress::where('id', $this->input('service_address_id'))
                     ->where('guardian_id', $this->user()->guardian?->id)
                     ->exists();

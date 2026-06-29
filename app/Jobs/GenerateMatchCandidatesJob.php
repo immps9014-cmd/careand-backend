@@ -175,7 +175,7 @@ class GenerateMatchCandidatesJob implements ShouldQueue
 
         $recipientCol = match ($matchRequest->service_domain) {
             'nursing' => 'nursing_patient_id',
-            'housekeeping' => 'service_address_id',
+            'living_support' => 'service_address_id',
             default => 'senior_id',
         };
 

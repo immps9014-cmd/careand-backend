@@ -19,7 +19,7 @@ class RegisterCaregiverRequest extends FormRequest
             'license_no' => ['nullable', 'string', 'max:30', 'unique:caregivers,license_no'],
             'license_issued_at' => ['nullable', 'required_with:license_no', 'date_format:Y-m-d', 'before_or_equal:today'],
             'service_domains' => ['nullable', 'array'],
-            'service_domains.*' => ['in:senior,postpartum,nursing,housekeeping'],
+            'service_domains.*' => ['in:senior,postpartum,nursing,living_support'],
             'specialties' => ['nullable', 'array'],
             'specialties.*' => ['string', 'max:50'],
             'base_address' => ['required', 'string', 'max:255'],

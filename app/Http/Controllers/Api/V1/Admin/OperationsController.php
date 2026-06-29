@@ -912,7 +912,7 @@ class OperationsController extends Controller
             'service_domains' => ['required', 'string', 'max:60'],
         ]);
 
-        $allowed = ['senior', 'nursing', 'housekeeping', 'postpartum', 'companion', 'care'];
+        $allowed = ['senior', 'nursing', 'housekeeping', 'living_support', 'postpartum', 'companion', 'care'];
         $codes = array_values(array_unique(array_filter(array_map('trim', explode(',', $data['service_domains'])))));
         if (empty($codes) || array_diff($codes, $allowed)) {
             return response()->json(['success' => false, 'error_code' => 'INVALID_DOMAIN', 'message' => '유효하지 않은 직군입니다.'], 422);
