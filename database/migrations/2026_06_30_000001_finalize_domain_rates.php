@@ -19,12 +19,14 @@ return new class extends Migration
         'CC_INFANT'    => 15000, // 영아돌봄 — 영아 고난도(난이도 프리미엄)
         'MC_SUPPORT'   => 15000, // 정서지원 — 말벗·정서지원
         'MC_COMPANION' => 16000, // 심리상담 동행 — 의료기관 동행 포함
+        'HK_ORGANIZING' => 22000, // 정리수납(기존) — 청소(20k) 대비 전문성 프리미엄 유지하며 하향
     ];
 
     private const PROVISIONAL = [
         'LS_COMPANION' => 16000, 'PP_CARE' => 15000, 'PP_NIGHT' => 18000,
         'CC_PICKUP' => 14000, 'CC_PLAY' => 14000, 'CC_INFANT' => 16000,
         'MC_SUPPORT' => 16000, 'MC_COMPANION' => 16000,
+        'HK_ORGANIZING' => 25000, // 기존 시드값(롤백 복원용)
     ];
 
     public function up(): void
