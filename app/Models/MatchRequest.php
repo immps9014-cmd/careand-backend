@@ -15,6 +15,7 @@ class MatchRequest extends Model
         'nursing_patient_id',
         'service_address_id',
         'postpartum_client_id',
+        'childcare_child_id',
         'service_domain',
         'category_id',
         'mode',
@@ -63,6 +64,11 @@ class MatchRequest extends Model
         return $this->belongsTo(\App\Domains\Postpartum\Models\PostpartumClient::class, 'postpartum_client_id');
     }
 
+    public function childcareChild()
+    {
+        return $this->belongsTo(\App\Models\Child::class, 'childcare_child_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id');
@@ -89,6 +95,7 @@ class MatchRequest extends Model
             'nursing' => $this->nursingPatient,
             'living_support' => $this->serviceAddress,
             'postpartum' => $this->postpartumClient,
+            'childcare' => $this->childcareChild,
             default => $this->senior,
         };
     }

@@ -77,13 +77,13 @@ return [
         'domain_label'     => '산후 케어',
     ],
 
-    // Phase 3: 신규 엔티티(children) 필요.
+    // Phase 3: 아이돌봄 오픈 (children 엔티티 + generic 흐름 편입).
     'childcare' => [
         'order'            => 50,
         'label'            => '아이돌봄',
         'desc'             => '등하원·놀이돌봄',
-        'icon'             => 'baby',
-        'is_active'        => false,
+        'icon'             => 'backpack',
+        'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'child', 'fk' => 'childcare_child_id'],
         'domain_label'     => '아이돌봄',

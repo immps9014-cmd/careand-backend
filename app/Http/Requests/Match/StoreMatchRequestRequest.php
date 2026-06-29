@@ -29,11 +29,12 @@ class StoreMatchRequestRequest extends FormRequest
         $domain = $this->input('service_domain');
 
         return [
-            'service_domain' => ['required', 'in:senior,nursing,living_support,postpartum'],
+            'service_domain' => ['required', 'in:senior,nursing,living_support,postpartum,childcare'],
             'senior_id' => ['required_if:service_domain,senior', 'nullable', 'exists:seniors,id'],
             'nursing_patient_id' => ['required_if:service_domain,nursing', 'nullable', 'exists:nursing_patients,id'],
             'service_address_id' => ['required_if:service_domain,living_support', 'nullable', 'exists:service_addresses,id'],
             'postpartum_client_id' => ['required_if:service_domain,postpartum', 'nullable', 'exists:postpartum_clients,id'],
+            'childcare_child_id' => ['required_if:service_domain,childcare', 'nullable', 'exists:children,id'],
             'category_id' => ['required', 'exists:service_categories,id,is_active,1'],
             'mode' => ['required', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['required', 'date_format:Y-m-d\TH:i:sP', 'after:now'],
@@ -92,6 +93,16 @@ class StoreMatchRequestRequest extends FormRequest
                     $v->errors()->add('postpartum_client_id', '본인이 등록한 산모만 매칭 요청할 수 있습니다.');
                 }
             }
+
+            // 아동 소유권 (children은 guardian_id 기준)
+            if ($this->input('service_domain') === 'childcare' && $this->filled('childcare_child_id')) {
+                $owned = \App\Models\Child::where('id', $this->input('childcare_child_id'))
+                    ->where('guardian_id', $this->user()->guardian?->id)
+                    ->exists();
+                if (!$owned) {
+                    $v->errors()->add('childcare_child_id', '본인이 등록한 아동만 매칭 요청할 수 있습니다.');
+                }
+            }
         });
     }
 
@@ -103,6 +114,7 @@ class StoreMatchRequestRequest extends FormRequest
             'senior_id.required_if' => '시니어 돌봄 요청에는 어르신 선택이 필요합니다.',
             'nursing_patient_id.required_if' => '간병 요청에는 환자 선택이 필요합니다.',
             'postpartum_client_id.required_if' => '산후관리 요청에는 산모 선택이 필요합니다.',
+            'childcare_child_id.required_if' => '아이돌봄 요청에는 아동 선택이 필요합니다.',
         ];
     }
 }

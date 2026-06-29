@@ -60,6 +60,7 @@ class MatchRequestController extends Controller
         $data['nursing_patient_id'] = $domain === 'nursing' ? ($data['nursing_patient_id'] ?? null) : null;
         $data['service_address_id'] = $domain === 'living_support' ? ($data['service_address_id'] ?? null) : null;
         $data['postpartum_client_id'] = $domain === 'postpartum' ? ($data['postpartum_client_id'] ?? null) : null;
+        $data['childcare_child_id'] = $domain === 'childcare' ? ($data['childcare_child_id'] ?? null) : null;
 
         $matchRequest = MatchRequest::create($data);
 
@@ -94,7 +95,7 @@ class MatchRequestController extends Controller
     public function pricingEstimate(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'service_domain' => ['nullable', 'in:senior,nursing,living_support,postpartum'],
+            'service_domain' => ['nullable', 'in:senior,nursing,living_support,postpartum,childcare'],
             'category_id' => ['required', 'exists:service_categories,id'],
             'mode' => ['nullable', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['nullable', 'date'],
@@ -678,6 +679,58 @@ class MatchRequestController extends Controller
         return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $data['name']]], 201);
     }
 
+    /**
+     * GET /v1/matching/children
+     * 통합 요청 폼의 아동 선택기용 — 본인(보호자) 소유 아동 목록.
+     */
+    public function children(Request $request): JsonResponse
+    {
+        $guardian = $request->user()->guardian;
+        if (!$guardian) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_GUARDIAN', 'message' => '보호자 회원만 사용 가능합니다.'], 403);
+        }
+
+        $rows = \App\Models\Child::where('guardian_id', $guardian->id)
+            ->orderByDesc('created_at')
+            ->get(['id', 'name', 'birth_date', 'gender']);
+
+        return response()->json(['success' => true, 'data' => $rows]);
+    }
+
+    /**
+     * POST /v1/matching/children
+     * 아동 등록 — 통합 요청 폼용. 주소→좌표 자동 보정(매칭 거리 랭킹).
+     */
+    public function storeChild(Request $request): JsonResponse
+    {
+        $guardian = $request->user()->guardian;
+        if (!$guardian) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_GUARDIAN', 'message' => '보호자 회원만 사용 가능합니다.'], 403);
+        }
+
+        $data = $request->validate([
+            'name'          => ['required', 'string', 'max:50'],
+            'birth_date'    => ['required', 'date', 'before:today'],
+            'gender'        => ['required', 'in:M,F'],
+            'home_address'  => ['required', 'string', 'max:255'],
+            'home_lat'      => ['nullable', 'numeric', 'between:-90,90'],
+            'home_lng'      => ['nullable', 'numeric', 'between:-180,180'],
+            'special_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+        $data['guardian_id'] = $guardian->id;
+
+        if (empty($data['home_lat']) && empty($data['home_lng'])) {
+            if ($coords = app(\App\Services\GeocodingService::class)->geocode($data['home_address'])) {
+                $data['home_lat'] = $coords['lat'];
+                $data['home_lng'] = $coords['lng'];
+            }
+        }
+
+        $child = \App\Models\Child::create($data);
+
+        return response()->json(['success' => true, 'data' => ['id' => $child->id, 'name' => $child->name]], 201);
+    }
+
     /* ===================== 돌봄전문가 주도(pull) 흐름 ===================== */
 
     /**
@@ -911,7 +964,7 @@ class MatchRequestController extends Controller
         $rawAddr = match ($r->service_domain) {
             'nursing' => $recipient->hospital_address ?? null,
             'living_support', 'postpartum' => $recipient->address ?? null,
-            default => $recipient->home_address ?? null,
+            default => $recipient->home_address ?? null, // senior·childcare
         };
 
         return [
@@ -938,6 +991,7 @@ class MatchRequestController extends Controller
             'nursing' => 'nursing_patient_id',
             'living_support' => 'service_address_id',
             'postpartum' => 'postpartum_client_id',
+            'childcare' => 'childcare_child_id',
             default => 'senior_id',
         };
     }
@@ -948,6 +1002,7 @@ class MatchRequestController extends Controller
             'nursing' => DB::table('nursing_patients')->where('id', $id)->value('name'),
             'living_support' => DB::table('service_addresses')->where('id', $id)->value('label'),
             'postpartum' => DB::table('postpartum_clients')->where('id', $id)->value('name'),
+            'childcare' => DB::table('children')->where('id', $id)->value('name'),
             default => DB::table('seniors')->where('id', $id)->value('name'),
         };
     }

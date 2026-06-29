@@ -177,6 +177,7 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             'nursing' => 'nursing_patient_id',
             'living_support' => 'service_address_id',
             'postpartum' => 'postpartum_client_id',
+            'childcare' => 'childcare_child_id',
             default => 'senior_id',
         };
 
