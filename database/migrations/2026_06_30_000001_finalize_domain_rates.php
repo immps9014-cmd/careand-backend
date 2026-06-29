@@ -21,13 +21,14 @@ return new class extends Migration
         'MC_COMPANION' => 16000, // 심리상담 동행 — 의료기관 동행 포함
         'HK_ORGANIZING' => 22000, // 정리수납(기존) — 청소 대비 전문성 프리미엄 유지하며 하향
         'HK_CLEANING'   => 18000, // 가사 청소(기존) — 하향
+        'HK_REPAIR'     => 35000, // 가사 수리(기존) — 숙련 작업, 도메인 내 최고가 유지하며 하향
     ];
 
     private const PROVISIONAL = [
         'LS_COMPANION' => 16000, 'PP_CARE' => 15000, 'PP_NIGHT' => 18000,
         'CC_PICKUP' => 14000, 'CC_PLAY' => 14000, 'CC_INFANT' => 16000,
         'MC_SUPPORT' => 16000, 'MC_COMPANION' => 16000,
-        'HK_ORGANIZING' => 25000, 'HK_CLEANING' => 20000, // 기존 시드값(롤백 복원용)
+        'HK_ORGANIZING' => 25000, 'HK_CLEANING' => 20000, 'HK_REPAIR' => 40000, // 기존 시드값(롤백 복원용)
     ];
 
     public function up(): void
