@@ -11,7 +11,7 @@ return new class extends Migration
      * (base_rate는 PricingService가 region_index·야간/휴일/긴급 배수와 결합, min_hourly 10,030으로 하한)
      */
     private const FINAL = [
-        'LS_COMPANION' => 16000, // 동행 — 기존 COMPANION 동일(경증 동행)
+        'LS_COMPANION' => 14000, // 동행 — 경증 동행(시장 수준 하향)
         'PP_CARE'      => 13000, // 산후관리 — 정부 산모신생아 건강관리 바우처 시장 수준으로 하향
         'PP_NIGHT'     => 18000, // 산후 야간케어 — 야간 할증(산후관리 14k 대비 +4k)
         'CC_PICKUP'    => 12000, // 등하원 동행 — 단순 동행(아이돌봄 정부 시간제 수준)
