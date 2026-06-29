@@ -13,7 +13,7 @@ return new class extends Migration
     private const FINAL = [
         'LS_COMPANION' => 16000, // 동행 — 기존 COMPANION 동일(경증 동행)
         'PP_CARE'      => 14000, // 산후관리 — 정부 산모신생아 건강관리 바우처 시장 수준으로 하향
-        'PP_NIGHT'     => 20000, // 산후 야간케어 — 야간 할증(NIGHT_CARE 정합)
+        'PP_NIGHT'     => 18000, // 산후 야간케어 — 야간 할증(산후관리 14k 대비 +4k)
         'CC_PICKUP'    => 13000, // 등하원 동행 — 단순 동행(아이돌봄 정부 시간제 수준)
         'CC_PLAY'      => 14000, // 놀이돌봄
         'CC_INFANT'    => 16000, // 영아돌봄 — 영아 고난도
