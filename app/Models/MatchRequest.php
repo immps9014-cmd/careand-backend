@@ -14,6 +14,7 @@ class MatchRequest extends Model
         'senior_id',
         'nursing_patient_id',
         'service_address_id',
+        'postpartum_client_id',
         'service_domain',
         'category_id',
         'mode',
