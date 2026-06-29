@@ -17,8 +17,8 @@ return new class extends Migration
         'CC_PICKUP'    => 12000, // 등하원 동행 — 단순 동행(아이돌봄 정부 시간제 수준)
         'CC_PLAY'      => 13000, // 놀이돌봄
         'CC_INFANT'    => 15000, // 영아돌봄 — 영아 고난도(난이도 프리미엄)
-        'MC_SUPPORT'   => 16000, // 정서지원 — 말벗·정서지원
-        'MC_COMPANION' => 17000, // 심리상담 동행 — 의료기관 동행 포함
+        'MC_SUPPORT'   => 15000, // 정서지원 — 말벗·정서지원
+        'MC_COMPANION' => 16000, // 심리상담 동행 — 의료기관 동행 포함
     ];
 
     private const PROVISIONAL = [
