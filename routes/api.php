@@ -117,6 +117,9 @@ Route::prefix('v1')->group(function () {
             // 아동 선택기(통합 요청 폼) — 본인 소유 아동 목록/등록
             Route::get('children', [MatchRequestController::class, 'children']);
             Route::post('children', [MatchRequestController::class, 'storeChild']);
+            // 마음돌봄 대상 선택기(통합 요청 폼) — 본인 소유 대상 목록/등록
+            Route::get('mental-care-clients', [MatchRequestController::class, 'mentalCareClients']);
+            Route::post('mental-care-clients', [MatchRequestController::class, 'storeMentalCareClient']);
             // 적정 간병비 미리보기(요청 생성 전)
             Route::get('pricing/estimate', [MatchRequestController::class, 'pricingEstimate']);
             // 돌봄전문가 주도(pull): 열린 요청 탐색 / 직접 지원 / 기피(차단)

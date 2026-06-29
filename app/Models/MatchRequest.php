@@ -16,6 +16,7 @@ class MatchRequest extends Model
         'service_address_id',
         'postpartum_client_id',
         'childcare_child_id',
+        'mental_care_client_id',
         'service_domain',
         'category_id',
         'mode',
@@ -69,6 +70,11 @@ class MatchRequest extends Model
         return $this->belongsTo(\App\Models\Child::class, 'childcare_child_id');
     }
 
+    public function mentalCareClient()
+    {
+        return $this->belongsTo(\App\Models\MentalCareClient::class, 'mental_care_client_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id');
@@ -96,6 +102,7 @@ class MatchRequest extends Model
             'living_support' => $this->serviceAddress,
             'postpartum' => $this->postpartumClient,
             'childcare' => $this->childcareChild,
+            'mental_care' => $this->mentalCareClient,
             default => $this->senior,
         };
     }

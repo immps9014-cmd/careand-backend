@@ -89,13 +89,13 @@ return [
         'domain_label'     => '아이돌봄',
     ],
 
-    // Phase 4: 신규 엔티티(mental_care_clients) 필요.
+    // Phase 4: 마음돌봄 오픈 (mental_care_clients 엔티티 + generic 흐름 편입).
     'mental_care' => [
         'order'            => 60,
         'label'            => '마음돌봄',
         'desc'             => '정서지원·상담동행',
         'icon'             => 'heart-handshake',
-        'is_active'        => false,
+        'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'mental_client', 'fk' => 'mental_care_client_id'],
         'domain_label'     => '마음돌봄',

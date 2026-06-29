@@ -29,12 +29,13 @@ class StoreMatchRequestRequest extends FormRequest
         $domain = $this->input('service_domain');
 
         return [
-            'service_domain' => ['required', 'in:senior,nursing,living_support,postpartum,childcare'],
+            'service_domain' => ['required', 'in:senior,nursing,living_support,postpartum,childcare,mental_care'],
             'senior_id' => ['required_if:service_domain,senior', 'nullable', 'exists:seniors,id'],
             'nursing_patient_id' => ['required_if:service_domain,nursing', 'nullable', 'exists:nursing_patients,id'],
             'service_address_id' => ['required_if:service_domain,living_support', 'nullable', 'exists:service_addresses,id'],
             'postpartum_client_id' => ['required_if:service_domain,postpartum', 'nullable', 'exists:postpartum_clients,id'],
             'childcare_child_id' => ['required_if:service_domain,childcare', 'nullable', 'exists:children,id'],
+            'mental_care_client_id' => ['required_if:service_domain,mental_care', 'nullable', 'exists:mental_care_clients,id'],
             'category_id' => ['required', 'exists:service_categories,id,is_active,1'],
             'mode' => ['required', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['required', 'date_format:Y-m-d\TH:i:sP', 'after:now'],
@@ -103,6 +104,16 @@ class StoreMatchRequestRequest extends FormRequest
                     $v->errors()->add('childcare_child_id', '본인이 등록한 아동만 매칭 요청할 수 있습니다.');
                 }
             }
+
+            // 마음돌봄 대상 소유권 (mental_care_clients는 guardian_id 기준)
+            if ($this->input('service_domain') === 'mental_care' && $this->filled('mental_care_client_id')) {
+                $owned = \App\Models\MentalCareClient::where('id', $this->input('mental_care_client_id'))
+                    ->where('guardian_id', $this->user()->guardian?->id)
+                    ->exists();
+                if (!$owned) {
+                    $v->errors()->add('mental_care_client_id', '본인이 등록한 대상만 매칭 요청할 수 있습니다.');
+                }
+            }
         });
     }
 
@@ -115,6 +126,7 @@ class StoreMatchRequestRequest extends FormRequest
             'nursing_patient_id.required_if' => '간병 요청에는 환자 선택이 필요합니다.',
             'postpartum_client_id.required_if' => '산후관리 요청에는 산모 선택이 필요합니다.',
             'childcare_child_id.required_if' => '아이돌봄 요청에는 아동 선택이 필요합니다.',
+            'mental_care_client_id.required_if' => '마음돌봄 요청에는 대상 선택이 필요합니다.',
         ];
     }
 }
