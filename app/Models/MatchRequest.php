@@ -57,6 +57,11 @@ class MatchRequest extends Model
         return $this->belongsTo(\App\Domains\Housekeeping\Models\ServiceAddress::class, 'service_address_id');
     }
 
+    public function postpartumClient()
+    {
+        return $this->belongsTo(\App\Domains\Postpartum\Models\PostpartumClient::class, 'postpartum_client_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(ServiceCategory::class, 'category_id');
@@ -74,13 +79,15 @@ class MatchRequest extends Model
 
     /**
      * 서비스 도메인별 대상자(수혜자) 추상화.
-     * 신규 도메인(nursing/living_support) 추가 시 아래 match 분기만 확장한다.
+     * 신규 도메인 추가 시 아래 match 분기만 확장한다.
+     * (postpartum은 좌표 컬럼이 없어 features/location의 default 분기가 null 좌표로 안전 처리됨)
      */
     public function recipient()
     {
         return match ($this->service_domain) {
             'nursing' => $this->nursingPatient,
             'living_support' => $this->serviceAddress,
+            'postpartum' => $this->postpartumClient,
             default => $this->senior,
         };
     }

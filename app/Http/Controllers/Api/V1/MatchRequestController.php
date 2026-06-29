@@ -59,6 +59,7 @@ class MatchRequestController extends Controller
         $data['senior_id'] = $domain === 'senior' ? ($data['senior_id'] ?? null) : null;
         $data['nursing_patient_id'] = $domain === 'nursing' ? ($data['nursing_patient_id'] ?? null) : null;
         $data['service_address_id'] = $domain === 'living_support' ? ($data['service_address_id'] ?? null) : null;
+        $data['postpartum_client_id'] = $domain === 'postpartum' ? ($data['postpartum_client_id'] ?? null) : null;
 
         $matchRequest = MatchRequest::create($data);
 
@@ -93,7 +94,7 @@ class MatchRequestController extends Controller
     public function pricingEstimate(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'service_domain' => ['nullable', 'in:senior,nursing,living_support'],
+            'service_domain' => ['nullable', 'in:senior,nursing,living_support,postpartum'],
             'category_id' => ['required', 'exists:service_categories,id'],
             'mode' => ['nullable', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['nullable', 'date'],
@@ -623,6 +624,60 @@ class MatchRequestController extends Controller
         ]);
     }
 
+    /**
+     * GET /v1/matching/postpartum-clients
+     * 통합 요청 폼의 산모 선택기용 — 본인(user_id) 소유 산모 목록.
+     * (산후 staff 서브시스템과 분리된 소비자용 스코프 — 타인 산모 노출 방지)
+     */
+    public function postpartumClients(Request $request): JsonResponse
+    {
+        $rows = DB::table('postpartum_clients')
+            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status')
+            ->where('user_id', $request->user()->id)
+            ->whereNull('deleted_at')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $rows]);
+    }
+
+    /**
+     * POST /v1/matching/postpartum-clients
+     * 산모 간이 등록 — 통합 요청 폼용. 매칭에 필요한 최소 필드만. user_id=본인.
+     * (고급 필드/바우처는 산후 전용 서브시스템에서 관리)
+     */
+    public function storePostpartumClient(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name'          => ['required', 'string', 'max:50'],
+            'phone'         => ['required', 'string', 'max:20'],
+            'birth_date'    => ['required', 'date', 'before:today'],
+            'address'       => ['required', 'string', 'max:500'],
+            'region_code'   => ['required', 'string', 'max:20'],
+            'delivery_date' => ['required', 'date'],
+            'delivery_type' => ['required', 'in:natural,cesarean,vbac'],
+            'is_first_baby' => ['nullable', 'boolean'],
+        ]);
+
+        $id = DB::table('postpartum_clients')->insertGetId([
+            'user_id'         => $request->user()->id,
+            'name'            => $data['name'],
+            'name_encrypted'  => encrypt($data['name']),
+            'phone_encrypted' => encrypt($data['phone']),
+            'birth_date'      => $data['birth_date'],
+            'address'         => $data['address'],
+            'region_code'     => $data['region_code'],
+            'delivery_date'   => $data['delivery_date'],
+            'delivery_type'   => $data['delivery_type'],
+            'is_first_baby'   => (int) ($data['is_first_baby'] ?? 1),
+            'status'          => 'active',
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        return response()->json(['success' => true, 'data' => ['id' => $id, 'name' => $data['name']]], 201);
+    }
+
     /* ===================== 돌봄전문가 주도(pull) 흐름 ===================== */
 
     /**
@@ -855,7 +910,7 @@ class MatchRequestController extends Controller
 
         $rawAddr = match ($r->service_domain) {
             'nursing' => $recipient->hospital_address ?? null,
-            'living_support' => $recipient->address ?? null,
+            'living_support', 'postpartum' => $recipient->address ?? null,
             default => $recipient->home_address ?? null,
         };
 
@@ -882,6 +937,7 @@ class MatchRequestController extends Controller
         return match ($domain) {
             'nursing' => 'nursing_patient_id',
             'living_support' => 'service_address_id',
+            'postpartum' => 'postpartum_client_id',
             default => 'senior_id',
         };
     }
@@ -891,6 +947,7 @@ class MatchRequestController extends Controller
         return match ($type) {
             'nursing' => DB::table('nursing_patients')->where('id', $id)->value('name'),
             'living_support' => DB::table('service_addresses')->where('id', $id)->value('label'),
+            'postpartum' => DB::table('postpartum_clients')->where('id', $id)->value('name'),
             default => DB::table('seniors')->where('id', $id)->value('name'),
         };
     }

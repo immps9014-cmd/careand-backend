@@ -65,13 +65,13 @@ return [
 
     // ── 아래는 잠복(Phase 2~4에서 오픈) ─────────────────────────────────
 
-    // Phase 2: 이미 배선됨(postpartum_clients) — 오픈만.
+    // Phase 2: 산모·산후관리 오픈 (통합 generic 흐름 편입). subject=postpartum_clients(user_id 스코프).
     'postpartum' => [
         'order'            => 40,
         'label'            => '산모·산후관리',
         'desc'             => '산모·신생아',
         'icon'             => 'baby',
-        'is_active'        => false,
+        'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'postpartum', 'fk' => 'postpartum_client_id'],
         'domain_label'     => '산후 케어',

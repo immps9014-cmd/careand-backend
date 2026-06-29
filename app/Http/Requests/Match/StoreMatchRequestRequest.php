@@ -29,10 +29,11 @@ class StoreMatchRequestRequest extends FormRequest
         $domain = $this->input('service_domain');
 
         return [
-            'service_domain' => ['required', 'in:senior,nursing,living_support'],
+            'service_domain' => ['required', 'in:senior,nursing,living_support,postpartum'],
             'senior_id' => ['required_if:service_domain,senior', 'nullable', 'exists:seniors,id'],
             'nursing_patient_id' => ['required_if:service_domain,nursing', 'nullable', 'exists:nursing_patients,id'],
             'service_address_id' => ['required_if:service_domain,living_support', 'nullable', 'exists:service_addresses,id'],
+            'postpartum_client_id' => ['required_if:service_domain,postpartum', 'nullable', 'exists:postpartum_clients,id'],
             'category_id' => ['required', 'exists:service_categories,id,is_active,1'],
             'mode' => ['required', 'in:normal,emergency,recurring'],
             'scheduled_start' => ['required', 'date_format:Y-m-d\TH:i:sP', 'after:now'],
@@ -81,6 +82,16 @@ class StoreMatchRequestRequest extends FormRequest
                     $v->errors()->add('service_address_id', '본인이 등록한 주소만 매칭 요청할 수 있습니다.');
                 }
             }
+
+            // 산모 소유권 (postpartum_clients는 guardian_id가 아니라 user_id 기준)
+            if ($this->input('service_domain') === 'postpartum' && $this->filled('postpartum_client_id')) {
+                $owned = \App\Domains\Postpartum\Models\PostpartumClient::where('id', $this->input('postpartum_client_id'))
+                    ->where('user_id', $this->user()->id)
+                    ->exists();
+                if (!$owned) {
+                    $v->errors()->add('postpartum_client_id', '본인이 등록한 산모만 매칭 요청할 수 있습니다.');
+                }
+            }
         });
     }
 
@@ -91,6 +102,7 @@ class StoreMatchRequestRequest extends FormRequest
             'duration_min.between' => '소요 시간이 허용 범위를 벗어났습니다.',
             'senior_id.required_if' => '시니어 돌봄 요청에는 어르신 선택이 필요합니다.',
             'nursing_patient_id.required_if' => '간병 요청에는 환자 선택이 필요합니다.',
+            'postpartum_client_id.required_if' => '산후관리 요청에는 산모 선택이 필요합니다.',
         ];
     }
 }
