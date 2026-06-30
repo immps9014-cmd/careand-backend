@@ -300,6 +300,7 @@ careand는 도메인별로 앱/스키마를 분리하지 않고 **하나의 플�
 - `CaregiverController::register`: **MOHW 진위확인을 verify=mohw 도메인(요양보호)에만 호출** — 상담/간병/산후 등 manual 도메인은 자동조회 스킵(요양보호사 시스템 오탐 거부 방지) → pending 유지 → 관리자 수동 검증. license_type 영속.
 - `/v1/matching/service-domains` 응답에 qualification 노출(공급자 FE 구동). 관리자 `caregivers()`에 license_type/license_verified 반환, caregiver-approval 화면에 자격종류 배지 + 도메인 인정자격 대비 검증보조.
 - www signup: `cg_mental_care`(상담 전문가) 직군 카드 + 자격종류 드롭다운(도메인 accepted_types 구동) + service_domains 전송, 생활지원은 자격 선택사항.
+- member-web signup(member 6cf559c): 동일 반영 — 돌봄전문가 단계에 **활동 도메인 선택**(6종) + 자격종류 드롭다운(`DOMAIN_QUAL` 미러) + service_domains/license_type 전송, 도메인별 자격필수/선택 분기. SPECIALTIES 칩도 6도메인 셋으로 갱신.
 - 배포: backend(ed2201c)·admin·www. **e2e 8종 통과**: /service-domains qualification 노출, 무자격번호 거부(422), 오인정자격 거부(422), 임상심리사 등록→201 pending·license_verified=false(MOHW 미호출), 관리자 승인→verified=true·active, living_support 무자격 201, senior MOHW 경로 유지(verified=true). 테스트 데이터 정리.
 
 ### ✅ 산모·간병 자격 외부 진위조회 API 연동 — 완료 (2026-06-30)
