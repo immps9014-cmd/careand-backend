@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Caregiver\RegisterCaregiverRequest;
 use App\Http\Resources\CaregiverResource;
 use App\Models\Caregiver;
-use App\Services\External\MohwService;
+use App\Services\External\CredentialVerifier;
 use App\Services\GeocodingService;
-use App\Support\ServiceDomains;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 class CaregiverController extends Controller
 {
     public function __construct(
-        private MohwService $mohwService,
+        private CredentialVerifier $credentialVerifier,
         private GeocodingService $geocoder,
     ) {
     }
@@ -92,28 +91,28 @@ class CaregiverController extends Controller
                 'status' => 'pending',
             ]));
 
-            // 2단계: 보건복지부 자격증 진위확인.
-            // verify=mohw 도메인(요양보호)을 선택한 자격증 제출자만 자동조회한다.
-            // 상담(mental_care)·간병·산후 등 manual 도메인은 자격 종류가 달라 MOHW 요양보호사
-            // 시스템으로 조회하면 오탐 거부되므로, 자동조회를 건너뛰고 pending 유지 → 관리자 수동 검증.
-            $domainTokens = array_filter(explode(',', $caregiver->service_domains ?? ''));
-            $useMohw = ServiceDomains::hasMohwVerify($domainTokens);
-            if ($caregiver->license_no && $useMohw) {
+            // 2단계: 자격증 진위확인 — 자격종류(license_type)에 맞는 발급기관으로 라우팅.
+            //   요양보호사/간호조무사→보건복지부, 간호사→국시원, 산후관리사/간병사→민간자격정보.
+            //   자동조회 미지원 자격(상담심리사 등)은 null 반환 → pending 유지(관리자 수동 검증).
+            if ($caregiver->license_no) {
                 try {
-                    $verification = $this->mohwService->verifyLicense(
+                    $verification = $this->credentialVerifier->verify(
+                        licenseType: $caregiver->license_type,
                         licenseNo: $caregiver->license_no,
                         name: $user->name,
                         birthDate: $caregiver->birth_date->toDateString(),
                     );
 
-                    if ($verification['valid']) {
+                    if ($verification === null) {
+                        // 자동 진위조회 미지원 자격 → 관리자 수동 검증 (pending 유지)
+                    } elseif ($verification['valid']) {
                         $caregiver->update([
                             'license_verified_at' => now(),
                         ]);
                     } else {
                         $caregiver->update([
                             'status' => 'rejected',
-                            'rejection_reason' => '보건복지부 자격 진위확인 실패',
+                            'rejection_reason' => "{$verification['authority_label']} 자격 진위확인 실패",
                         ]);
                     }
                 } catch (\Throwable $e) {

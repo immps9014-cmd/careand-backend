@@ -83,23 +83,6 @@ class ServiceDomains
     }
 
     /**
-     * 선택한 활동 도메인 집합에 보건복지부 자동 진위확인(verify=mohw) 대상이 포함되는지.
-     * 등록 시 어떤 도메인은 MOHW 자동조회, 상담 등은 수동 검증으로 분기하기 위함.
-     *
-     * @param array<int,string> $tokens
-     */
-    public static function hasMohwVerify(array $tokens): bool
-    {
-        foreach ($tokens as $t) {
-            if (self::verifyMode($t) === 'mohw') {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * 역할(role)에게 노출 가능한 활성 도메인 + 각 도메인의 활성 카테고리.
      * 활성 카테고리가 없는 도메인은 자동 제외(잠복).
      *

@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Services\External\AiService;
+use App\Services\External\CredentialVerifier;
 use App\Services\External\FcmService;
 use App\Services\External\HometaxService;
+use App\Services\External\KuksiwonService;
 use App\Services\External\MohwService;
 use App\Services\External\NhisService;
 use App\Services\External\PgService;
+use App\Services\External\PrivateQualService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +22,31 @@ class AppServiceProvider extends ServiceProvider
             return new MohwService(
                 baseUrl: config('services.mohw.url'),
                 apiKey: config('services.mohw.api_key', ''),
+            );
+        });
+
+        // 한국보건의료인국가시험원(국시원) — 간호사 면허
+        $this->app->singleton(KuksiwonService::class, function ($app) {
+            return new KuksiwonService(
+                baseUrl: config('services.kuksiwon.url'),
+                apiKey: config('services.kuksiwon.api_key', ''),
+            );
+        });
+
+        // 민간자격정보서비스(직능원) — 산후관리사·간병사 등
+        $this->app->singleton(PrivateQualService::class, function ($app) {
+            return new PrivateQualService(
+                baseUrl: config('services.pqi.url'),
+                apiKey: config('services.pqi.api_key', ''),
+            );
+        });
+
+        // 자격 진위조회 디스패처 (자격종류 → 기관 라우팅)
+        $this->app->singleton(CredentialVerifier::class, function ($app) {
+            return new CredentialVerifier(
+                $app->make(MohwService::class),
+                $app->make(KuksiwonService::class),
+                $app->make(PrivateQualService::class),
             );
         });
 

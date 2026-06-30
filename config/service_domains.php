@@ -35,7 +35,7 @@ return [
         'qualification'    => [
             'license_required' => true,
             'license_label'    => '요양보호사 자격번호',
-            'verify'           => 'mohw', // 보건복지부 자격 진위확인 자동조회
+            'verify'           => 'auto', // 자격종류별 발급기관 자동 진위조회(요양보호사→보건복지부)
             'accepted_types'   => ['요양보호사'],
         ],
     ],
@@ -52,7 +52,7 @@ return [
         'qualification'    => [
             'license_required' => true,
             'license_label'    => '간병 관련 자격번호',
-            'verify'           => 'manual', // 간병사/간호조무사 등 — 관리자 수동 검증
+            'verify'           => 'auto', // 자격종류별 자동조회(요양보호사/간호조무사→복지부, 간호사→국시원, 간병사→민간자격)
             'accepted_types'   => ['요양보호사', '간호조무사', '간병사', '간호사'],
         ],
     ],
@@ -108,7 +108,7 @@ return [
         'qualification'    => [
             'license_required' => true,
             'license_label'    => '산후관리 관련 자격번호',
-            'verify'           => 'manual',
+            'verify'           => 'auto', // 자격종류별 자동조회(산후관리사→민간자격, 간호사→국시원, 간호조무사→복지부)
             'accepted_types'   => ['산후관리사', '간호사', '간호조무사'],
         ],
     ],
