@@ -268,7 +268,14 @@ SSOT 레지스트리 + API + FE/BE 리팩터. 기존 3도메인(senior/nursing/h
 - `/v1/matching/service-domains` 응답에 qualification 노출(공급자 FE 구동). 관리자 `caregivers()`에 license_type/license_verified 반환, caregiver-approval 화면에 자격종류 배지 + 도메인 인정자격 대비 검증보조.
 - www signup: `cg_mental_care`(상담 전문가) 직군 카드 + 자격종류 드롭다운(도메인 accepted_types 구동) + service_domains 전송, 생활지원은 자격 선택사항.
 - 배포: backend(ed2201c)·admin·www. **e2e 8종 통과**: /service-domains qualification 노출, 무자격번호 거부(422), 오인정자격 거부(422), 임상심리사 등록→201 pending·license_verified=false(MOHW 미호출), 관리자 승인→verified=true·active, living_support 무자격 201, senior MOHW 경로 유지(verified=true). 테스트 데이터 정리.
-- ⚠️ MOHW(보건복지부)는 현재 요양보호사 자격만 자동조회 — 상담/간병/산후 자격 자동 진위조회 API 연동은 후속(현재 관리자 수동 검증).
+
+### ✅ 산모·간병 자격 외부 진위조회 API 연동 — 완료 (2026-06-30)
+진위조회를 **자격종류(license_type) 기반 라우팅**으로 일반화. 도메인이 아닌 자격종류로 분기해 다중도메인·오탐 문제를 구조적으로 해소.
+- 신규 프로바이더(MohwService 패턴 계승, `services.external.stub` 폴백): `KuksiwonService`(한국보건의료인국가시험원 — 간호사 면허), `PrivateQualService`(민간자격정보서비스/직능원 pqi.or.kr — 산후관리사·간병사 등 민간자격). config `services.kuksiwon`/`services.pqi`(env 기본값 `''` 필수 — 미설정 시 생성자 string 타입 에러).
+- `CredentialVerifier` 디스패처: 자격종류→기관 매핑(요양보호사·간호조무사→`mohw`, 간호사→`kuksiwon`, 산후관리사·간병사→`pqi`, 그 외(상담심리사 등)→null=수동). AppServiceProvider 바인딩 3종.
+- `CaregiverController::register`: 도메인게이트(hasMohwVerify) 제거 → `CredentialVerifier::verify(license_type,...)` 라우팅. null=수동 pending, valid=verified, invalid=rejected(rejection_reason에 기관명). 레지스트리 verify 모드 senior/nursing/postpartum=`auto`로 갱신. `ServiceDomains::hasMohwVerify` 제거.
+- 배포: backend(b2948a9). **e2e 6종 통과**: 간호사→국시원 verified, 간병사→민간 verified, 간호조무사→복지부 verified, 산후관리사→민간 verified, 산후관리사 위조(stub 끝자리9)→rejected("민간자격정보서비스 자격 진위확인 실패"), 상담심리사→미지원·수동 pending. 테스트 정리.
+- ⚠️ 현재 EXTERNAL_STUB=true(스텁 모의응답: 끝자리9=실패) — 실제 기관 API URL/KEY는 협약 후 .env에 주입하면 동일 코드경로로 실연동. 상담 계열은 자동조회 API 부재로 수동 검증 유지.
 
 ## 7. 회귀·검증 체크리스트
 - [ ] 기존 senior/간병/(구)가사 요청 생성·매칭·정산 무변동 (Phase 0)
