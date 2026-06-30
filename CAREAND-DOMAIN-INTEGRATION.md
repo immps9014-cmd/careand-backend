@@ -307,7 +307,8 @@ careand는 도메인별로 앱/스키마를 분리하지 않고 **하나의 플�
 - 신규 프로바이더(MohwService 패턴 계승, `services.external.stub` 폴백): `KuksiwonService`(한국보건의료인국가시험원 — 간호사 면허), `PrivateQualService`(민간자격정보서비스/직능원 pqi.or.kr — 산후관리사·간병사 등 민간자격). config `services.kuksiwon`/`services.pqi`(env 기본값 `''` 필수 — 미설정 시 생성자 string 타입 에러).
 - `CredentialVerifier` 디스패처: 자격종류→기관 매핑(요양보호사·간호조무사→`mohw`, 간호사→`kuksiwon`, 산후관리사·간병사→`pqi`, 그 외(상담심리사 등)→null=수동). AppServiceProvider 바인딩 3종.
 - `CaregiverController::register`: 도메인게이트(hasMohwVerify) 제거 → `CredentialVerifier::verify(license_type,...)` 라우팅. null=수동 pending, valid=verified, invalid=rejected(rejection_reason에 기관명). 레지스트리 verify 모드 senior/nursing/postpartum=`auto`로 갱신. `ServiceDomains::hasMohwVerify` 제거.
-- 배포: backend(b2948a9). **e2e 6종 통과**: 간호사→국시원 verified, 간병사→민간 verified, 간호조무사→복지부 verified, 산후관리사→민간 verified, 산후관리사 위조(stub 끝자리9)→rejected("민간자격정보서비스 자격 진위확인 실패"), 상담심리사→미지원·수동 pending. 테스트 정리.
+- **관리자 caregiver-approval 검증보조 갱신**(admin a392183): 자격종류→기관 매핑(`TYPE_AUTHORITY`) 미러로 «{기관} 자동 진위조회 대상» + 진위확인 결과(완료/실패·반려/미완) 표시 → 산모·간병 자동조회 상태가 승인 화면에 노출. 상담 등 미지원 자격은 «수동 검증».
+- 배포: backend(b2948a9)·admin(a392183). **e2e 6종 통과**: 간호사→국시원 verified, 간병사→민간 verified, 간호조무사→복지부 verified, 산후관리사→민간 verified, 산후관리사 위조(stub 끝자리9)→rejected("민간자격정보서비스 자격 진위확인 실패"), 상담심리사→미지원·수동 pending. 관리자 화면 라이브 확인(간호사→verified 완료, 산후관리사 위조→실패·반려). 테스트 정리.
 - ⚠️ 현재 EXTERNAL_STUB=true(스텁 모의응답: 끝자리9=실패) — 실제 기관 API URL/KEY는 협약 후 .env에 주입하면 동일 코드경로로 실연동. 상담 계열은 자동조회 API 부재로 수동 검증 유지.
 
 ## 7. 회귀·검증 체크리스트
