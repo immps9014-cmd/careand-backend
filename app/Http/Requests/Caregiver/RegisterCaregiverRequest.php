@@ -36,34 +36,39 @@ class RegisterCaregiverRequest extends FormRequest
     public function withValidator($validator): void
     {
         // 자격 정책은 도메인 레지스트리(config/service_domains.php qualification)가 SSOT.
+        // 복수 도메인 선택 지원: 자격은 union 규칙(선택 도메인 중 하나라도 인정하면 통과)으로 검증.
         $validator->after(function ($v) {
             $domains = $this->input('service_domains') ?: ['senior'];
+            $type = $this->input('license_type');
 
-            // 1) 자격번호 필수 도메인을 선택했는데 license_no 미제출 → 거부
+            // 1) 선택 도메인 중 하나라도 자격번호 필수면 license_no 제출 요구
             $requiresLicense = array_filter($domains, fn ($d) => ServiceDomains::requiresLicense($d));
             if ($requiresLicense && !$this->filled('license_no')) {
                 $labels = implode('·', array_map(fn ($d) => ServiceDomains::label($d), $requiresLicense));
                 $v->errors()->add('license_no', "선택한 활동 도메인({$labels})에는 자격번호가 필요합니다.");
             }
 
-            // 2) 자격증 종류(license_type) 제한이 있는 도메인 — 제출한 종류가 허용 목록에 있어야 함.
-            //    상담(mental_care)처럼 자격이 다종인 도메인의 검증 보조. (license_no 제출 시에만 검사)
+            // 2) 자격증 종류: 선택 도메인들의 인정 자격(accepted_types) union 으로 검증.
+            //    - 자격 필수 도메인 중 종류 제한이 있는 게 있으면 license_type 필수.
+            //    - 제출한 종류는 union 중 하나면 통과(복수 직군 보유자 — 단일 자격으로 대표 등록).
             if ($this->filled('license_no')) {
+                $union = [];
+                $needsType = false;
                 foreach ($domains as $d) {
                     $accepted = ServiceDomains::acceptedTypes($d);
-                    if (empty($accepted)) {
-                        continue; // 종류 제한 없음
+                    if ($accepted) {
+                        $union = array_merge($union, $accepted);
+                        if (ServiceDomains::requiresLicense($d)) {
+                            $needsType = true;
+                        }
                     }
-                    $type = $this->input('license_type');
+                }
+                $union = array_values(array_unique($union));
 
-                    // 자격 필수 도메인은 종류도 필수, 그 외(권장)는 제출했을 때만 검사
-                    if (ServiceDomains::requiresLicense($d) && !$type) {
-                        $v->errors()->add('license_type', ServiceDomains::label($d).' 자격증 종류를 선택해 주세요.');
-                        continue;
-                    }
-                    if ($type && !in_array($type, $accepted, true)) {
-                        $v->errors()->add('license_type', ServiceDomains::label($d).' 인정 자격증이 아닙니다 (허용: '.implode(', ', $accepted).').');
-                    }
+                if ($needsType && !$type) {
+                    $v->errors()->add('license_type', '자격증 종류를 선택해 주세요.');
+                } elseif ($type && $union && !in_array($type, $union, true)) {
+                    $v->errors()->add('license_type', '선택한 활동 도메인의 인정 자격증이 아닙니다 (허용: '.implode(', ', $union).').');
                 }
             }
         });
