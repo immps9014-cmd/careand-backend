@@ -80,7 +80,7 @@ story.append(P("시스템 구조 · 서버 디렉토리 · 기능 정리", S_SUB
 story.append(Spacer(1, 4))
 story.append(HRFlowable(width="100%", thickness=1.5, color=NAVY))
 story.append(Spacer(1, 4))
-story.append(P("서버 103.55.191.157 (Rocky Linux 8.10) · vhost careand.aiclaude.kr · "
+story.append(P("서버 103.55.191.157 (Rocky Linux 8.10) · vhost caren.aiclaude.kr · "
                "작성일 2026-06-11 · APP_ENV=production", S_SMALL))
 story.append(Spacer(1, 10))
 
@@ -96,7 +96,7 @@ story.append(P("환경 제약: 아웃바운드 egress가 화이트리스트로 �
 story.append(P("2. 시스템 아키텍처", S_H1))
 story.append(box("인터넷 사용자 — inbound 443/80 정상", colors.HexColor("#8a93a3"), FULL))
 story.append(Spacer(1, 2))
-story.append(box("Apache httpd (:443 / :80) — vhost careand.aiclaude.kr · DocumentRoot=/var/www/careand-backend/public", NAVY, FULL))
+story.append(box("Apache httpd (:443 / :80) — vhost caren.aiclaude.kr · DocumentRoot=/var/www/careand-backend/public", NAVY, FULL))
 story.append(Spacer(1, 2))
 three = Table([[box("/api/v1/* →<br/>PHP-FPM · Laravel 11<br/>:9000", ACCENT, 54*mm),
                 box("/admin →<br/>관리자 웹 · Next.js<br/>:3105", ACCENT, 54*mm),
@@ -214,7 +214,7 @@ story.append(tbl(["항목", "상태"], [
 
 story.append(Spacer(1, 10))
 story.append(HRFlowable(width="100%", thickness=0.5, color=MGREY))
-story.append(P("© 2026 Care&amp; · 자동 생성(reportlab) · careand.aiclaude.kr", S_SMALL))
+story.append(P("© 2026 Care&amp; · 자동 생성(reportlab) · caren.aiclaude.kr", S_SMALL))
 
 def footer(canvas, doc):
     canvas.saveState()
