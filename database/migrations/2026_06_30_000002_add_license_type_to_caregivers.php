@@ -18,8 +18,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // license_no 바로 뒤에 INSTANT append (잠금 없음)
-        DB::statement("ALTER TABLE caregivers ADD COLUMN license_type VARCHAR(40) NULL AFTER license_no, ALGORITHM=INSTANT");
+        // license_no 바로 뒤에 append.
+        // ※ MariaDB 10.3은 AFTER(중간 위치) 컬럼 추가에 ALGORITHM=INSTANT 미지원 → 기본 알고리즘 사용.
+        //    caregivers는 소형 테이블이라 락 영향 무시 가능.
+        DB::statement("ALTER TABLE caregivers ADD COLUMN license_type VARCHAR(40) NULL AFTER license_no");
     }
 
     public function down(): void
