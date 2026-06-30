@@ -8,6 +8,7 @@ use App\Http\Resources\CaregiverResource;
 use App\Models\Caregiver;
 use App\Services\External\MohwService;
 use App\Services\GeocodingService;
+use App\Support\ServiceDomains;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,8 +92,13 @@ class CaregiverController extends Controller
                 'status' => 'pending',
             ]));
 
-            // 2단계: 보건복지부 자격증 진위확인 (자격증 제출자만 — 무자격 도메인은 관리자 수동 승인)
-            if ($caregiver->license_no) {
+            // 2단계: 보건복지부 자격증 진위확인.
+            // verify=mohw 도메인(요양보호)을 선택한 자격증 제출자만 자동조회한다.
+            // 상담(mental_care)·간병·산후 등 manual 도메인은 자격 종류가 달라 MOHW 요양보호사
+            // 시스템으로 조회하면 오탐 거부되므로, 자동조회를 건너뛰고 pending 유지 → 관리자 수동 검증.
+            $domainTokens = array_filter(explode(',', $caregiver->service_domains ?? ''));
+            $useMohw = ServiceDomains::hasMohwVerify($domainTokens);
+            if ($caregiver->license_no && $useMohw) {
                 try {
                     $verification = $this->mohwService->verifyLicense(
                         licenseNo: $caregiver->license_no,

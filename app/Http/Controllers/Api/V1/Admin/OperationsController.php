@@ -30,7 +30,8 @@ class OperationsController extends Controller
             ->select(
                 'c.id', 'c.user_id', 'u.name', 'u.phone', 'u.email',
                 'c.specialties', 'c.service_domains', 'c.status',
-                'c.license_no', 'c.career_track', 'c.rating_avg',
+                'c.license_no', 'c.license_type', 'c.license_verified_at',
+                'c.career_track', 'c.rating_avg',
                 'c.completed_sessions', 'c.rejection_reason', 'c.created_at'
             )
             ->whereNull('c.deleted_at');
@@ -53,6 +54,8 @@ class OperationsController extends Controller
                 'service_domains' => $r->service_domains,
                 'status' => $r->status,
                 'license_no' => $r->license_no,
+                'license_type' => $r->license_type,
+                'license_verified' => $r->license_verified_at !== null,
                 'career_track' => $r->career_track,
                 'rating_avg' => (float) $r->rating_avg,
                 'completed_sessions' => (int) $r->completed_sessions,

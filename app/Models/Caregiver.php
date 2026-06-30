@@ -17,6 +17,7 @@ class Caregiver extends Model
         'birth_date',
         'gender',
         'license_no',
+        'license_type',
         'license_issued_at',
         'license_verified_at',
         'service_domains',

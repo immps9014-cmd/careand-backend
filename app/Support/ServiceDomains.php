@@ -53,6 +53,52 @@ class ServiceDomains
         return self::SPECIALTY_LABELS[strtolower($code)] ?? $code;
     }
 
+    /** @return array<string,mixed> 도메인 자격 정책 (qualification 메타, 기본값 머지) */
+    public static function qualification(string $token): array
+    {
+        return array_merge([
+            'license_required' => false,
+            'license_label'    => '자격번호(선택)',
+            'verify'           => 'none',
+            'accepted_types'   => [],
+        ], config("service_domains.$token.qualification", []));
+    }
+
+    /** 해당 도메인이 자격번호 필수인지 */
+    public static function requiresLicense(string $token): bool
+    {
+        return (bool) self::qualification($token)['license_required'];
+    }
+
+    /** 진위확인 경로: 'mohw' | 'manual' | 'none' */
+    public static function verifyMode(string $token): string
+    {
+        return self::qualification($token)['verify'];
+    }
+
+    /** @return array<int,string> 허용 자격증 종류(라벨). 빈 배열이면 종류 제한 없음 */
+    public static function acceptedTypes(string $token): array
+    {
+        return self::qualification($token)['accepted_types'] ?? [];
+    }
+
+    /**
+     * 선택한 활동 도메인 집합에 보건복지부 자동 진위확인(verify=mohw) 대상이 포함되는지.
+     * 등록 시 어떤 도메인은 MOHW 자동조회, 상담 등은 수동 검증으로 분기하기 위함.
+     *
+     * @param array<int,string> $tokens
+     */
+    public static function hasMohwVerify(array $tokens): bool
+    {
+        foreach ($tokens as $t) {
+            if (self::verifyMode($t) === 'mohw') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * 역할(role)에게 노출 가능한 활성 도메인 + 각 도메인의 활성 카테고리.
      * 활성 카테고리가 없는 도메인은 자동 제외(잠복).
@@ -83,12 +129,14 @@ class ServiceDomains
             }
 
             $out[] = [
-                'token'      => $token,
-                'label'      => $m['label'],
-                'desc'       => $m['desc'] ?? '',
-                'icon'       => $m['icon'] ?? 'heart-pulse',
-                'picker'     => $m['picker']['type'] ?? null,
-                'categories' => $domainCats,
+                'token'         => $token,
+                'label'         => $m['label'],
+                'desc'          => $m['desc'] ?? '',
+                'icon'          => $m['icon'] ?? 'heart-pulse',
+                'picker'        => $m['picker']['type'] ?? null,
+                'categories'    => $domainCats,
+                // 돌봄전문가(공급자) 등록 FE가 도메인별 자격 요건/허용 자격종류를 렌더하는 데 사용.
+                'qualification' => self::qualification($token),
             ];
         }
 
