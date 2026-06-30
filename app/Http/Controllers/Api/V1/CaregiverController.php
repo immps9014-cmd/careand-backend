@@ -259,43 +259,119 @@ class CaregiverController extends Controller
         $rows = $q->orderByDesc('c.rating_avg')
             ->orderByDesc('c.completed_sessions')
             ->limit(60)
-            ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+            ->get(['c.id', 'u.name', 'c.gender', 'c.birth_date', 'c.base_address', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
 
-        $data = $rows->map(function ($c) use ($rates, $oLat, $oLng) {
-            $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
-            $primary = $domains[0] ?? 'senior';
-            $rate = isset($rates[$primary]) ? (int) $rates[$primary] : null;
+        // 찜한 돌봄전문가 id 집합 (현재 사용자)
+        $favSet = array_flip(
+            \Illuminate\Support\Facades\DB::table('caregiver_favorites')
+                ->where('user_id', $request->user()->id)
+                ->pluck('caregiver_id')->all()
+        );
 
-            $dist = null;
-            if ($oLat !== null && $c->base_lat !== null) {
-                $dist = round($this->haversineKm($oLat, $oLng, (float) $c->base_lat, (float) $c->base_lng), 1);
-            }
-
-            $tag = null;
-            if (in_array($c->career_track, ['premium', 'instructor'], true)) {
-                $tag = 'BEST';
-            } elseif ($c->career_track === 'excellent') {
-                $tag = '우수';
-            } elseif ($c->license_verified_at) {
-                $tag = '인증';
-            }
-
-            return [
-                'id' => (int) $c->id,
-                'name' => $c->name,
-                'rating' => number_format((float) $c->rating_avg, 1),
-                'rating_count' => (int) $c->rating_count,
-                'completed_sessions' => (int) $c->completed_sessions,
-                'spec' => $this->specLabel($c->specialties, $primary),
-                'base_rate' => $rate,
-                'distance_km' => $dist,
-                'tag' => $tag,
-            ];
-        })->values();
+        $data = $rows->map(fn ($c) => $this->browseRowToArray($c, $rates, $oLat, $oLng, isset($favSet[(int) $c->id])))->values();
 
         if ($oLat !== null) {
             $data = $data->sortBy(fn ($x) => $x['distance_km'] ?? 99999)->values();
         }
+
+        return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /** 활동지역 — base_address 에서 번지수(상세 번호)를 제거해 시·구·동/로 수준만 노출 */
+    private function regionOf(?string $address): ?string
+    {
+        if (!$address) {
+            return null;
+        }
+        $r = preg_replace('/\s+\d.*$/u', '', trim($address));
+
+        return ($r !== null && $r !== '') ? $r : null;
+    }
+
+    /** 브라우즈/찜 목록 공통 행 매핑 */
+    private function browseRowToArray($c, $rates, ?float $oLat, ?float $oLng, bool $favorited): array
+    {
+        $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
+        $primary = $domains[0] ?? 'senior';
+        $rate = isset($rates[$primary]) ? (int) $rates[$primary] : null;
+
+        $dist = null;
+        if ($oLat !== null && $c->base_lat !== null) {
+            $dist = round($this->haversineKm($oLat, $oLng, (float) $c->base_lat, (float) $c->base_lng), 1);
+        }
+
+        $tag = null;
+        if (in_array($c->career_track, ['premium', 'instructor'], true)) {
+            $tag = 'BEST';
+        } elseif ($c->career_track === 'excellent') {
+            $tag = '우수';
+        } elseif ($c->license_verified_at) {
+            $tag = '인증';
+        }
+
+        return [
+            'id' => (int) $c->id,
+            'name' => $c->name,
+            'gender' => $c->gender,
+            'age' => $c->birth_date ? \Carbon\Carbon::parse($c->birth_date)->age : null,
+            'region' => $this->regionOf($c->base_address),
+            'rating' => number_format((float) $c->rating_avg, 1),
+            'rating_count' => (int) $c->rating_count,
+            'completed_sessions' => (int) $c->completed_sessions,
+            'spec' => $this->specLabel($c->specialties, $primary),
+            'base_rate' => $rate,
+            'distance_km' => $dist,
+            'tag' => $tag,
+            'is_favorited' => $favorited,
+        ];
+    }
+
+    /**
+     * POST /v1/caregivers/{id}/favorite — 찜 토글
+     */
+    public function toggleFavorite(Request $request, int $id): JsonResponse
+    {
+        $exists = Caregiver::where('status', 'active')->whereKey($id)->exists();
+        if (!$exists) {
+            return response()->json(['success' => false, 'message' => '돌봄전문가를 찾을 수 없습니다.'], 404);
+        }
+        $uid = $request->user()->id;
+        $row = \Illuminate\Support\Facades\DB::table('caregiver_favorites')
+            ->where('user_id', $uid)->where('caregiver_id', $id)->first();
+
+        if ($row) {
+            \Illuminate\Support\Facades\DB::table('caregiver_favorites')->where('id', $row->id)->delete();
+            $favorited = false;
+        } else {
+            \Illuminate\Support\Facades\DB::table('caregiver_favorites')->insert([
+                'user_id' => $uid, 'caregiver_id' => $id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $favorited = true;
+        }
+
+        return response()->json(['success' => true, 'data' => ['favorited' => $favorited]]);
+    }
+
+    /**
+     * GET /v1/caregivers/favorites — 찜한 돌봄전문가 목록 (추후 신청에 반영)
+     */
+    public function favorites(Request $request): JsonResponse
+    {
+        $rates = \Illuminate\Support\Facades\DB::table('service_categories')
+            ->where('is_active', 1)
+            ->selectRaw('domain, MIN(base_rate) as rate')
+            ->groupBy('domain')
+            ->pluck('rate', 'domain');
+
+        $rows = \Illuminate\Support\Facades\DB::table('caregiver_favorites as f')
+            ->join('caregivers as c', 'c.id', '=', 'f.caregiver_id')
+            ->join('users as u', 'u.id', '=', 'c.user_id')
+            ->where('f.user_id', $request->user()->id)
+            ->whereNull('c.deleted_at')
+            ->orderByDesc('f.created_at')
+            ->get(['c.id', 'u.name', 'c.gender', 'c.birth_date', 'c.base_address', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+
+        $data = $rows->map(fn ($c) => $this->browseRowToArray($c, $rates, null, null, true))->values();
 
         return response()->json(['success' => true, 'data' => $data]);
     }

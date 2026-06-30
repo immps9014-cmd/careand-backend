@@ -82,6 +82,8 @@ Route::prefix('v1')->group(function () {
             Route::get('me/matches', [CaregiverController::class, 'myMatches']);
             Route::get('me/sessions', [CaregiverController::class, 'mySessions']);
             Route::get('recommended', [CaregiverController::class, 'recommended']);
+            Route::get('favorites', [CaregiverController::class, 'favorites']);
+            Route::post('{id}/favorite', [CaregiverController::class, 'toggleFavorite'])->whereNumber('id');
             Route::get('/', [CaregiverController::class, 'index']);
             Route::post('register', [CaregiverController::class, 'register']);
             Route::patch('me/profile', [CaregiverController::class, 'updateProfile']);
