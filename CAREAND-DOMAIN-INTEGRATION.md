@@ -258,7 +258,17 @@ SSOT 레지스트리 + API + FE/BE 리팩터. 기존 3도메인(senior/nursing/h
 
 **남은 과제(별도)**:
 - postpartum 고급 서브시스템(바우처·신생아·EPDS) generic 흐름과 미연동.
-- 상담(mental_care) 전문 자격 검증 고도화(현재 관리자 수동 승인).
+
+### ✅ 상담(mental_care) 자격 검증 고도화 — 완료 (2026-06-30)
+공급자(돌봄전문가) 등록 자격검증을 **레지스트리 구동(SSOT)**으로 일원화 + 상담 도메인 자격종류 검증.
+- 마이그레이션 `2026_06_30_000002_add_license_type_to_caregivers.php`: `caregivers.license_type` VARCHAR(40) NULL 추가(다종 자격 식별). ⚠️ **MariaDB 10.3은 AFTER 위치 컬럼 추가에 ALGORITHM=INSTANT 미지원** → INSTANT 절 제거(소형 테이블, 락 무시).
+- 레지스트리 `config/service_domains.php`에 도메인별 `qualification`(license_required/license_label/verify[`mohw`|`manual`|`none`]/accepted_types) 추가. `ServiceDomains` 헬퍼: qualification/requiresLicense/verifyMode/acceptedTypes/**hasMohwVerify**.
+- `RegisterCaregiverRequest`: `service_domains.*` enum을 레지스트리 키 구동(childcare/mental_care 등록 가능 — 기존 누락 버그 수정). license_required·accepted_types를 레지스트리에서 검증(상담은 license_no + license_type∈accepted 강제).
+- `CaregiverController::register`: **MOHW 진위확인을 verify=mohw 도메인(요양보호)에만 호출** — 상담/간병/산후 등 manual 도메인은 자동조회 스킵(요양보호사 시스템 오탐 거부 방지) → pending 유지 → 관리자 수동 검증. license_type 영속.
+- `/v1/matching/service-domains` 응답에 qualification 노출(공급자 FE 구동). 관리자 `caregivers()`에 license_type/license_verified 반환, caregiver-approval 화면에 자격종류 배지 + 도메인 인정자격 대비 검증보조.
+- www signup: `cg_mental_care`(상담 전문가) 직군 카드 + 자격종류 드롭다운(도메인 accepted_types 구동) + service_domains 전송, 생활지원은 자격 선택사항.
+- 배포: backend(ed2201c)·admin·www. **e2e 8종 통과**: /service-domains qualification 노출, 무자격번호 거부(422), 오인정자격 거부(422), 임상심리사 등록→201 pending·license_verified=false(MOHW 미호출), 관리자 승인→verified=true·active, living_support 무자격 201, senior MOHW 경로 유지(verified=true). 테스트 데이터 정리.
+- ⚠️ MOHW(보건복지부)는 현재 요양보호사 자격만 자동조회 — 상담/간병/산후 자격 자동 진위조회 API 연동은 후속(현재 관리자 수동 검증).
 
 ## 7. 회귀·검증 체크리스트
 - [ ] 기존 senior/간병/(구)가사 요청 생성·매칭·정산 무변동 (Phase 0)
