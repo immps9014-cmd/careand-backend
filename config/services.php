@@ -44,14 +44,14 @@ return [
 
     // 한국보건의료인국가시험원(국시원) — 간호사 면허 진위확인
     'kuksiwon' => [
-        'url' => env('KUKSIWON_API_URL'),
-        'api_key' => env('KUKSIWON_API_KEY'),
+        'url' => env('KUKSIWON_API_URL', ''),
+        'api_key' => env('KUKSIWON_API_KEY', ''),
     ],
 
     // 민간자격정보서비스(한국직업능력연구원, pqi.or.kr) — 산후관리사·간병사 등 민간자격 진위확인
     'pqi' => [
-        'url' => env('PQI_API_URL'),
-        'api_key' => env('PQI_API_KEY'),
+        'url' => env('PQI_API_URL', ''),
+        'api_key' => env('PQI_API_KEY', ''),
     ],
 
     // 국민건강보험공단 (장기요양 한도 조회)
