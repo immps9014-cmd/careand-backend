@@ -604,6 +604,7 @@ class CaregiverController extends Controller
             return [
                 'id' => (int) $c->id,
                 'name' => $c->name,
+                'domains' => $domains,
                 'rating' => number_format((float) $c->rating_avg, 1),
                 'rating_count' => (int) $c->rating_count,
                 'completed_sessions' => (int) $c->completed_sessions,
