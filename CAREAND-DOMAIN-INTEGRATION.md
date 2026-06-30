@@ -2,7 +2,7 @@
 
 > 작성 2026-06-29 · 대상: careand-backend / careand-member-web / careand-admin-web / careand-ai-service
 > 운영 런북: `/root/CAREAND-OPS.md` · 도메인: caren.aiclaude.kr
-> 상태: **설계 확정 대기 → 구현 전 단계** (Phase별 `is_active` 토글로 무중단 롤아웃)
+> 상태: **구현 완료 (2026-06-30)** — 6 도메인(소비자 5 + 기관 1) 단일 앱 통합 + 요율 확정 + 자격검증/외부 진위조회 연동. 통합 설계·단가·자격 레퍼런스는 **§9** 참조.
 
 ## 0. 목표 (요청 요약)
 1. 도메인별 서비스를 **하나의 앱**에서 처리하도록 통합.
@@ -234,27 +234,60 @@ SSOT 레지스트리 + API + FE/BE 리팩터. 기존 3도메인(senior/nursing/h
 
 ---
 
-## 9. 최종 상태 (2026-06-30)
+## 9. 통합 앱 최종 설계 (2026-06-30)
 
-**소비자 노출 도메인 5종**(보호자 기준): 요양보호 / 생활지원서비스 / 산모·산후관리 / 아이돌봄 / 마음돌봄. (간병=nursing은 기관 발주 전용, 보호자 숨김 — 총 6 도메인 레지스트리)
+> 본 장은 **하나의 앱으로 통합한 최종 설계**와, 각 도메인의 **직군별 단가·자격 리스트**를 한곳에 모은 권위 레퍼런스다. 이전 장(§1~§6.5)은 통합에 이른 진단·롤아웃 과정 기록.
 
-**아키텍처**: 도메인 메타데이터 SSOT(`config/service_domains.php` + `GET /v1/matching/service-domains`)가 BE/FE를 구동. 신규 도메인 = 레지스트리 1항목 + 카테고리 시드 + (필요시 subject 테이블/FK/picker). 모든 도메인이 단일 `match_requests` + generic 매칭/가격/정산 공유. subject별 nullable FK + `requirements` JSON + `recipient()` match 분기.
+### 9.1 하나의 앱 — 통합 아키텍처 (실현)
 
-**요율 확정 완료 (2026-06-30, 마이그레이션 `2026_06_30_000001_finalize_domain_rates.php`)**:
-| code | 카테고리 | 기준 시급 |
+careand는 도메인별로 앱/스키마를 분리하지 않고 **하나의 플랫폼**으로 6 도메인(소비자 노출 5 + 기관 전용 간병 1)을 처리한다.
+
+- **단일 앱·단일 스키마**: 회원앱(`/app`)·관리자(`/admin`)·공개사이트(`/www`) 한 벌이 모든 도메인을 담당. 요청은 도메인 무관하게 **단일 `match_requests`** 테이블 1곳에 적재.
+- **도메인 디스크리미네이터**: `match_requests.service_domain` enum 한 컬럼이 도메인을 구분. 대상(subject)은 도메인별 **nullable FK** + 가변 `requirements` JSON으로 한 테이블 안에서 공존.
+  - senior→`senior_id` / living_support→`service_address_id` / nursing→`nursing_patient_id` / postpartum→`postpartum_client_id` / childcare→`childcare_child_id` / mental_care→`mental_care_client_id`
+- **SSOT 도메인 레지스트리**: `config/service_domains.php`(+ `GET /v1/matching/service-domains`)가 **라벨·가시성(hidden_for_roles)·picker·활성 카테고리·자격정책(qualification)** 을 단일 정의. BE·FE·관리자 모두 이를 소비.
+  - **신규 도메인 = 레지스트리 1항목 + 카테고리/요율 시드 (+ 필요 시 subject 테이블·FK·picker)**. 코드 분기 추가 없이 도메인 확장.
+- **공유 파이프라인**: 매칭(rule-v1: 거리·역량·평점)·가격(category 기반 `pricing_rules`)·정산·돌봄일지·알림·교육(모의면접)이 **도메인 무관 동일 코드경로**. 도메인 분기는 `MatchRequest::recipient()` match 1곳 + 자격 진위조회 라우팅(`CredentialVerifier`) 1곳에만 격리.
+- **공급자(돌봄전문가) 단일 등록·복수 도메인**: `caregivers.service_domains`(SET)로 한 전문가가 여러 도메인에서 활동. 자격은 **license_type 기반**으로 도메인과 무관하게 검증·라우팅.
+- **공개사이트(`/www`)**: `lib/site.ts` SERVICES가 소비자 6 서비스(시니어돌봄·생활지원서비스·병원간병·산모산후관리·아이돌봄·마음돌봄)를 마케팅 노출, 동일 토큰으로 회원앱 신청 딥링크 연결.
+
+### 9.2 도메인 × 직군(카테고리) 단가 리스트 (확정, 2026-06-30)
+
+기준 시급(base_rate). 마이그레이션 `2026_06_30_000001_finalize_domain_rates.php`로 확정.
+
+| 도메인 | 발주 | 카테고리(코드) — 기준 시급 |
 |---|---|---|
-| LS_COMPANION | 동행 | 14,000 |
-| HK_CLEANING | 가사 청소(기존) | 20,000 → 18,000 |
-| HK_ORGANIZING | 정리수납(기존) | 25,000 → 22,000 |
-| HK_REPAIR | 가사 수리(기존) | 40,000 → 35,000 |
-| PP_CARE | 산후관리 | 13,000 |
-| PP_NIGHT | 산후 야간케어 | 16,000 |
-| CC_PICKUP | 등하원 동행 | 12,000 |
-| CC_PLAY | 놀이돌봄 | 13,000 |
-| CC_INFANT | 영아돌봄 | 15,000 |
-| MC_SUPPORT | 정서지원 | 15,000 |
-| MC_COMPANION | 심리상담 동행 | 16,000 |
-(앵커: 방문요양 18,000·병원간병 15,000·가사청소 20,000·야간케어 22,000·방문목욕 25,000. base_rate는 region_index·야간/휴일/긴급 배수와 결합, min_hourly 10,030 하한)
+| **요양보호** (senior) | 보호자·본인 | 방문요양 `VISIT_CARE` 18,000 · 야간케어 `NIGHT_CARE` 22,000 · 단기보호 `SHORT_STAY` 20,000 · 방문목욕 `BATH` 25,000 |
+| **생활지원서비스** (living_support) | 본인 | 가사청소 `HK_CLEANING` 18,000 · 정리수납 `HK_ORGANIZING` 22,000 · 가사수리 `HK_REPAIR` 35,000 · 동행 `LS_COMPANION` 14,000 |
+| **병원간병** (nursing) | 기관 전용 | 병원간병 `NURSING_HOSPITAL` 15,000 |
+| **산모·산후관리** (postpartum) | 본인 | 산후관리 `PP_CARE` 13,000 · 산후 야간케어 `PP_NIGHT` 16,000 |
+| **아이돌봄** (childcare) | 보호자 | 등하원동행 `CC_PICKUP` 12,000 · 놀이돌봄 `CC_PLAY` 13,000 · 영아돌봄 `CC_INFANT` 15,000 |
+| **마음돌봄** (mental_care) | 본인·가족 | 정서지원 `MC_SUPPORT` 15,000 · 심리상담동행 `MC_COMPANION` 16,000 |
+
+> 동행은 senior `COMPANION`(16,000)에서 **living_support `LS_COMPANION`(14,000)로 이전**(senior COMPANION은 `is_active=0` 잔존). 요율 변경 이력: HK_CLEANING 20,000→18,000 · HK_ORGANIZING 25,000→22,000 · HK_REPAIR 40,000→35,000.
+
+### 9.3 도메인 × 자격 리스트 (자격검증 정책, SSOT=`qualification`)
+
+| 도메인 | 자격번호 | 인정 자격증(license_type) | 진위조회 |
+|---|---|---|---|
+| **요양보호** | 필수 | 요양보호사 | **자동** — 보건복지부 |
+| **병원간병** | 필수 | 요양보호사 · 간호조무사 · 간병사 · 간호사 | **자동** — 복지부(요양보호사·간호조무사) / 국시원(간호사) / 민간자격정보(간병사) |
+| **산모·산후관리** | 필수 | 산후관리사 · 간호사 · 간호조무사 | **자동** — 민간자격정보(산후관리사) / 국시원(간호사) / 복지부(간호조무사) |
+| **생활지원서비스** | 선택(무자격 허용) | 제한 없음 | 없음 — 관리자 승인 |
+| **아이돌봄** | 선택(권장) | 아이돌보미 · 보육교사 · 유치원정교사 · 베이비시터 | 수동 — 관리자 검증 |
+| **마음돌봄** | 필수 | 상담심리사 · 임상심리사 · 정신건강임상심리사 · 청소년상담사 · 전문상담교사 · 정신건강사회복지사 · 사회복지사 | 수동 — 관리자 검증(자동 API 부재) |
+
+> 진위조회는 **자격종류(license_type) 기반 라우팅**(`CredentialVerifier`): 요양보호사·간호조무사→`MohwService`(복지부), 간호사→`KuksiwonService`(국시원), 산후관리사·간병사→`PrivateQualService`(민간자격정보). 자동 도메인은 valid→`license_verified_at` 세팅, invalid→status `rejected`(rejection_reason에 기관명), 미지원 자격(상담)→`pending` 후 관리자 수동. 현재 `EXTERNAL_STUB=true` 모의응답(실 기관 URL/KEY 협약 후 동일 코드경로 실연동).
+
+### 9.4 가격 산식 (도메인 공통)
+
+```
+시급 = base_rate × region_index × 시간대배수  + acuity_addons        (하한 min_hourly)
+       · 시간대배수: 야간 ×1.30 / 휴일 ×1.50 / 긴급 ×1.20
+       · acuity_addons(가산): 치매 +1,500 · 와상 +2,000 · 석션 +3,000 · 욕창 +1,500 · 거동불가 +1,500
+       · min_hourly(전 도메인 하한): 10,030원 (법정 최저시급 연동)
+```
+카테고리(`service_categories.id`) → `pricing_rules` 1:1. 도메인 무관 동일 산식이며, 신규 카테고리는 base_rate + pricing_rule 시드만 추가하면 자동 적용. 적정간병비 산출·역경매 입찰·가성비 재랭킹 3-Phase 가격 레이어와 결합.
 
 **남은 과제(별도)**:
 - postpartum 고급 서브시스템(바우처·신생아·EPDS) generic 흐름과 미연동.
