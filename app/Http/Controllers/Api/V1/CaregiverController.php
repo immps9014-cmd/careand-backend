@@ -312,6 +312,7 @@ class CaregiverController extends Controller
         return [
             'id' => (int) $c->id,
             'name' => $c->name,
+            'domains' => $domains,
             'gender' => $c->gender,
             'age' => $c->birth_date ? \Carbon\Carbon::parse($c->birth_date)->age : null,
             'region' => $this->regionOf($c->base_address),
