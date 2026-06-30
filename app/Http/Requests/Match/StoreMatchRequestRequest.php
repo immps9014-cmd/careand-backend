@@ -47,6 +47,8 @@ class StoreMatchRequestRequest extends FormRequest
             'requirements' => ['nullable', 'array'],
             // 선호 돌봄전문가 성별 (M/F). 미지정=무관 — 매칭에서 소프트 가산 신호로만 사용
             'requirements.preferred_gender' => ['nullable', 'in:M,F'],
+            // 직접 지정(찜한 전문가 등) — 해당 전문가를 최상단 직접 후보로 초대
+            'requirements.preferred_caregiver_id' => ['nullable', 'integer', 'exists:caregivers,id'],
             // 보호자 희망 상한 시급(선택). 가격 레이어 산출/역경매 가드레일에 사용
             'budget_hourly' => ['nullable', 'numeric', 'min:0'],
         ];

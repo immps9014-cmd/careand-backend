@@ -44,6 +44,10 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         $requiredSkill = $matchRequest->requiredSkillTag();
         $recipient = $matchRequest->recipient();
 
+        // 직접 지정(찜한 전문가 등) — 적격이면 AI 결과와 무관하게 최상단 직접 후보로 먼저 보장.
+        $preferredId = $matchRequest->requirements['preferred_caregiver_id'] ?? null;
+        $hasDirect = $preferredId ? $this->createDirectCandidate($matchRequest, (int) $preferredId) : false;
+
         // 동성 매칭 하드 조건(방문목욕 등): 반대 성별은 풀에서 제외. 폴백으로도 완화하지 않음.
         // 대상자 성별을 알 수 없으면 안전하게 동성 강제를 적용할 수 없으므로 경고만 남기고 미적용.
         $requiredGender = null;
@@ -81,7 +85,12 @@ class GenerateMatchCandidatesJob implements ShouldQueue
 
         if ($caregivers->isEmpty()) {
             Log::warning("매칭 요청 {$this->matchRequestId}: 활성 인력이 없습니다.");
-            $matchRequest->update(['status' => 'expired']);
+            // 직접 지정 후보가 있으면 만료시키지 않는다(직접 후보만으로 진행).
+            if ($hasDirect) {
+                app(\App\Services\Pricing\BiddingService::class)->applyAutoBids($matchRequest);
+            } else {
+                $matchRequest->update(['status' => 'expired']);
+            }
             return;
         }
 
@@ -131,11 +140,18 @@ class GenerateMatchCandidatesJob implements ShouldQueue
 
         if (empty($aiResult['candidates'])) {
             Log::warning("매칭 요청 {$this->matchRequestId}: AI 추천 결과 없음 (완화 후에도)");
+            if ($hasDirect) {
+                app(\App\Services\Pricing\BiddingService::class)->applyAutoBids($matchRequest);
+            }
             return;
         }
 
-        DB::transaction(function () use ($matchRequest, $aiResult) {
+        DB::transaction(function () use ($matchRequest, $aiResult, $preferredId) {
             foreach ($aiResult['candidates'] as $cand) {
+                // 직접 지정 전문가는 이미 direct 후보로 생성됨 → 중복 방지
+                if ($preferredId && (int) $cand['caregiver_id'] === (int) $preferredId) {
+                    continue;
+                }
                 MatchCandidate::create([
                     'request_id' => $matchRequest->id,
                     'caregiver_id' => $cand['caregiver_id'],
@@ -153,6 +169,37 @@ class GenerateMatchCandidatesJob implements ShouldQueue
 
         // TODO: 보호자에게 FCM 푸시 (CANDIDATES_READY)
         Log::info("매칭 요청 {$this->matchRequestId}: " . count($aiResult['candidates']) . "명 후보 산출 완료");
+    }
+
+    /**
+     * 직접 지정 전문가를 최상단(rank=0, source=direct) 후보로 보장한다.
+     * 적격(활성·자격검증·요청 도메인 서비스)일 때만. 부적격이면 무시(AI 후보만 진행).
+     */
+    private function createDirectCandidate(MatchRequest $req, int $caregiverId): bool
+    {
+        $eligible = Caregiver::active()
+            ->whereNotNull('license_verified_at')
+            ->whereRaw('FIND_IN_SET(?, service_domains)', [$req->service_domain])
+            ->whereKey($caregiverId)
+            ->exists();
+        if (!$eligible) {
+            Log::info("매칭 요청 {$req->id}: 직접 지정 전문가 {$caregiverId} 부적격 → 무시");
+            return false;
+        }
+
+        MatchCandidate::firstOrCreate(
+            ['request_id' => $req->id, 'caregiver_id' => $caregiverId],
+            [
+                'ai_score' => 1.0,
+                'ai_reasons' => ['보호자 직접 지정'],
+                'rank' => 0,
+                'response' => 'pending',
+                'bid_status' => 'invited',
+                'source' => 'direct',
+            ]
+        );
+
+        return true;
     }
 
     public function failed(\Throwable $exception): void
