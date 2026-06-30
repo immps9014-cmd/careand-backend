@@ -8,6 +8,7 @@
 careand-deploy backend   # Laravel: 스냅샷 커밋 → 캐시클리어 → 큐 재시작 → 헬스체크 (실패 시 git 자동 롤백)
 careand-deploy admin     # admin-web: 스냅샷 커밋 → next build → 재시작 → 헬스체크 (실패 시 .next.prev 롤백)
 careand-deploy member    # member-web: 〃
+careand-deploy www       # www 공개사이트(:3107, /www): 〃 (admin/member와 동일 흐름)
 careand-deploy ai        # FastAPI: 스냅샷 커밋 → 재시작 → :8001/health 체크
 ```
 
@@ -22,6 +23,7 @@ careand-deploy ai        # FastAPI: 스냅샷 커밋 → 재시작 → :8001/hea
 | careand-backend | /var/www/careand-backend |
 | careand-admin-web | /root/careand-admin-web |
 | careand-member-web | /root/careand-member-web |
+| careand-www | /root/careand-www |
 | careand-ai-service | /root/careand-ai-service |
 
 `.env`/`node_modules`/`vendor`/`.next`/`venv`는 git 제외 (시크릿은 백업 tar가 담당).
@@ -53,7 +55,7 @@ careand-deploy ai        # FastAPI: 스냅샷 커밋 → 재시작 → :8001/hea
 ## 로그
 
 - logrotate: `/etc/logrotate.d/careand` (운영 로그 주간 8회전, laravel 로그 일간 14회전·copytruncate)
-- 라이브 확인은 헤어핀 NAT 때문에: `curl -sk --resolve careand.aiclaude.kr:443:127.0.0.1 https://careand.aiclaude.kr/...`
+- 라이브 확인은 헤어핀 NAT 때문에: `curl -sk --resolve caren.aiclaude.kr:443:127.0.0.1 https://caren.aiclaude.kr/...`
 
 ## 남은 항목 (선택)
 
