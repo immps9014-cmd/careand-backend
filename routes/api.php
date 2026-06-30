@@ -95,6 +95,8 @@ Route::prefix('v1')->group(function () {
         // 보호자
         Route::prefix('guardians')->group(function () {
             Route::get('me/sessions', [GuardianController::class, 'mySessions']);
+            Route::get('reviewable', [GuardianController::class, 'reviewableCares']);
+            Route::post('reviews', [GuardianController::class, 'submitReview']);
         });
 
         // 기관 (에이전시) — 간병인을 구하는 매칭요청 발주. 요청자 프로필은 guardian 재사용.
