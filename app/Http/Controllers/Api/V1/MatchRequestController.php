@@ -1083,6 +1083,16 @@ class MatchRequestController extends Controller
             default => $recipient->home_address ?? null, // senior·childcare
         };
 
+        // 동행(LS_COMPANION) 동선 요약 — 방문 장소·이동수단·복귀 방식·경유지 수만 노출.
+        // 만남/복귀 정확 주소·경유지 주소는 매칭 확정 전 미노출(프라이버시).
+        $route = data_get($r->requirements, 'companion_route');
+        $companionRoute = is_array($route) ? [
+            'destination' => $route['destination'] ?? null,
+            'return_to_origin' => (bool) ($route['return_to_origin'] ?? true),
+            'waypoint_count' => is_array($route['waypoints'] ?? null) ? count($route['waypoints']) : 0,
+            'transport' => in_array($route['transport'] ?? null, ['taxi', 'transit'], true) ? $route['transport'] : null,
+        ] : null;
+
         return [
             'request_id' => $r->id,
             'service_domain' => $r->service_domain,
@@ -1097,6 +1107,7 @@ class MatchRequestController extends Controller
             'duration_min' => $r->duration_min,
             'mode' => $r->mode,
             'special_request' => $r->special_request,
+            'companion_route' => $companionRoute,
             'created_at' => optional($r->created_at)->toIso8601String(),
         ];
     }
