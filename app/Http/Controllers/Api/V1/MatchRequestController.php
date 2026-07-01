@@ -13,6 +13,7 @@ use App\Models\Caregiver;
 use App\Models\CaregiverBlock;
 use App\Models\MatchCandidate;
 use App\Models\MatchRequest;
+use App\Models\Payment;
 use App\Models\Senior;
 use App\Domains\Nursing\Models\NursingPatient;
 use App\Domains\Housekeeping\Models\ServiceAddress;
@@ -198,10 +199,25 @@ class MatchRequestController extends Controller
         // 추천순을 보정한다(소프트). AI 실패 시 기존 rank 순서 유지(graceful).
         $candidates = $this->applyValueRank($matchRequest, $candidates);
 
+        // 매칭 확정(인력 수락) 시 결제 진입에 필요한 match_id + 결제 상태를 노출한다.
+        // 보호자 프론트가 확정 매칭을 결제(/payments/{matchId})로 연결할 수 있게 함.
+        $matchId = null;
+        $paymentStatus = null;
+        if ($matchRequest->status === 'matched') {
+            $match = CareMatch::where('request_id', $id)->first();
+            if ($match) {
+                $matchId = (int) $match->id;
+                // 결제 레코드가 없으면 미결제(null)
+                $paymentStatus = Payment::where('match_id', $match->id)->value('status');
+            }
+        }
+
         return response()->json([
             'success' => true,
             'request_status' => $matchRequest->status,
             'price_estimate' => $matchRequest->price_estimate,
+            'match_id' => $matchId,
+            'payment_status' => $paymentStatus,
             'data' => MatchCandidateResource::collection($candidates),
             'message' => $candidates->isEmpty()
                 ? 'AI가 추천 후보를 산출 중입니다. 잠시 후 다시 확인해주세요.'
