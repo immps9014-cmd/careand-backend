@@ -9,6 +9,25 @@ class CareSessionResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // 동행 전체 경로(정확 주소 포함) — 확정 매칭 세션을 보는 당사자에게만 노출.
+        // 만남=서비스 주소 정확값, 방문/복귀/경유지/이동수단.
+        $companionRoute = null;
+        if ($this->relationLoaded('match') && $this->match && $this->match->request) {
+            $req = $this->match->request;
+            $route = is_array($req->requirements ?? null) ? ($req->requirements['companion_route'] ?? null) : null;
+            if (is_array($route)) {
+                $returnToOrigin = (bool) ($route['return_to_origin'] ?? true);
+                $companionRoute = [
+                    'meeting' => $req->serviceAddress->address ?? null,
+                    'destination' => $route['destination'] ?? null,
+                    'return_to_origin' => $returnToOrigin,
+                    'return_address' => $returnToOrigin ? ($req->serviceAddress->address ?? null) : ($route['return_address'] ?? null),
+                    'waypoints' => array_values(array_filter((array) ($route['waypoints'] ?? []))),
+                    'transport' => in_array($route['transport'] ?? null, ['taxi', 'transit'], true) ? $route['transport'] : null,
+                ];
+            }
+        }
+
         return [
             'id' => $this->id,
             'status' => $this->status,
@@ -26,6 +45,7 @@ class CareSessionResource extends JsonResource
                     'id' => $this->match->caregiver->id ?? null,
                     'name' => $this->match->caregiver->user->name ?? null,
                 ],
+                'companion_route' => $companionRoute,
                 'senior' => [
                     'id' => $this->match->request->senior->id ?? null,
                     'name' => $this->match->request->senior->name ?? null,

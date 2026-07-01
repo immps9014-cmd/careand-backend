@@ -34,6 +34,7 @@ class CareSessionController extends Controller
         $session = CareSession::with([
             'match.caregiver.user:id,name',
             'match.request.senior:id,name',
+            'match.request.serviceAddress:id,address',
             'attendanceLogs',
             'activities',
             'voiceLogs',
