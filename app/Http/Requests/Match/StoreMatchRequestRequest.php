@@ -49,6 +49,14 @@ class StoreMatchRequestRequest extends FormRequest
             'recurrence_rule.weeks' => ['nullable', 'integer', 'between:1,12'],
             'special_request' => ['nullable', 'string', 'max:1000'],
             'requirements' => ['nullable', 'array'],
+            // 동행(LS_COMPANION) 경로 — 만남=service_address, 방문/복귀/경유지 + 이동수단. (P2-2)
+            'requirements.companion_route' => ['nullable', 'array'],
+            'requirements.companion_route.destination' => ['nullable', 'string', 'max:255'],
+            'requirements.companion_route.return_to_origin' => ['nullable', 'boolean'],
+            'requirements.companion_route.return_address' => ['nullable', 'string', 'max:255'],
+            'requirements.companion_route.waypoints' => ['nullable', 'array', 'max:5'],
+            'requirements.companion_route.waypoints.*' => ['string', 'max:255'],
+            'requirements.companion_route.transport' => ['nullable', 'in:taxi,transit'],
             // 선호 돌봄전문가 성별 (M/F). 미지정=무관 — 매칭에서 소프트 가산 신호로만 사용
             'requirements.preferred_gender' => ['nullable', 'in:M,F'],
             // 직접 지정(찜한 전문가 등) — 해당 전문가를 최상단 직접 후보로 초대
@@ -72,12 +80,29 @@ class StoreMatchRequestRequest extends FormRequest
             }
 
             // 카테고리-도메인 정합
+            $catCode = null;
             if ($this->filled('category_id')) {
-                $catDomain = DB::table('service_categories')
+                $cat = DB::table('service_categories')
                     ->where('id', $this->input('category_id'))
-                    ->value('domain');
-                if ($catDomain !== null && $catDomain !== $this->input('service_domain')) {
+                    ->first(['domain', 'code']);
+                if ($cat && $cat->domain !== null && $cat->domain !== $this->input('service_domain')) {
                     $v->errors()->add('category_id', '선택한 카테고리가 서비스 도메인과 일치하지 않습니다.');
+                }
+                $catCode = $cat->code ?? null;
+            }
+
+            // 동행(LS_COMPANION)은 방문 장소·이동수단 필수, 복귀 미동일 시 복귀 장소 필수. (P2-2)
+            if ($catCode === 'LS_COMPANION') {
+                $route = (array) data_get($this->input('requirements'), 'companion_route', []);
+                if (empty($route['destination'])) {
+                    $v->errors()->add('requirements.companion_route.destination', '동행 방문 장소를 입력해 주세요.');
+                }
+                if (empty($route['transport'])) {
+                    $v->errors()->add('requirements.companion_route.transport', '이동 수단을 선택해 주세요.');
+                }
+                $returnToOrigin = filter_var($route['return_to_origin'] ?? true, FILTER_VALIDATE_BOOLEAN);
+                if (!$returnToOrigin && empty($route['return_address'])) {
+                    $v->errors()->add('requirements.companion_route.return_address', '복귀 장소를 입력해 주세요.');
                 }
             }
 
