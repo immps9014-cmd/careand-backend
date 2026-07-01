@@ -43,6 +43,10 @@ class StoreMatchRequestRequest extends FormRequest
             'duration_min' => ['required', 'integer', $domain === 'nursing' ? 'between:60,1440' : 'between:60,720'],
             'recurrence_rule' => ['nullable', 'array', 'required_if:mode,recurring'],
             'recurrence_rule.days' => ['nullable', 'integer', 'between:1,30'],
+            // 요일 반복(ISO 1=월..7=일) + 반복 주수. weekdays 지정 시 해당 요일마다 회차 생성.
+            'recurrence_rule.weekdays' => ['nullable', 'array'],
+            'recurrence_rule.weekdays.*' => ['integer', 'between:1,7'],
+            'recurrence_rule.weeks' => ['nullable', 'integer', 'between:1,12'],
             'special_request' => ['nullable', 'string', 'max:1000'],
             'requirements' => ['nullable', 'array'],
             // 선호 돌봄전문가 성별 (M/F). 미지정=무관 — 매칭에서 소프트 가산 신호로만 사용
@@ -57,6 +61,16 @@ class StoreMatchRequestRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($v) {
+            // 정기 요청은 연속 일수(days) 또는 반복 요일(weekdays) 중 하나는 지정돼야 함
+            if ($this->input('mode') === 'recurring') {
+                $rule = (array) $this->input('recurrence_rule', []);
+                $hasDays = (int) ($rule['days'] ?? 0) >= 1;
+                $hasWeekdays = !empty(array_filter((array) ($rule['weekdays'] ?? [])));
+                if (!$hasDays && !$hasWeekdays) {
+                    $v->errors()->add('recurrence_rule', '정기 요청은 연속 일수 또는 반복 요일을 지정해야 합니다.');
+                }
+            }
+
             // 카테고리-도메인 정합
             if ($this->filled('category_id')) {
                 $catDomain = DB::table('service_categories')

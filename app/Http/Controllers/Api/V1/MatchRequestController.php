@@ -380,35 +380,81 @@ class MatchRequestController extends Controller
                 ->where('response', 'pending')
                 ->update(['response' => 'expired', 'responded_at' => now()]);
 
-            // 정기(recurring) 요청은 recurrence_rule.days 만큼 일 단위 세션 — 간병 교대/상주
-            $days = 1;
-            if ($request->mode === 'recurring') {
-                $days = max(1, min((int) ($request->recurrence_rule['days'] ?? 1), 30));
-            }
+            // 정기(recurring) 요청의 세션 시작 일시 목록 — 연속일 또는 요일 반복
+            $starts = $this->sessionStarts($request);
+            $sessionCount = count($starts);
+            $lastStart = end($starts);
 
             // matches 테이블 생성 (합의 시급 반영)
             $match = CareMatch::create([
                 'request_id' => $request->id,
                 'caregiver_id' => $candidate->caregiver_id,
                 'scheduled_start' => $request->scheduled_start,
-                'scheduled_end' => $request->scheduled_start->copy()->addDays($days - 1)->addMinutes($request->duration_min),
+                'scheduled_end' => $lastStart->copy()->addMinutes($request->duration_min),
                 'hourly_rate' => $hourlyRate,
-                'estimated_amount' => round($hourlyRate * $request->duration_min / 60) * $days,
+                'estimated_amount' => round($hourlyRate * $request->duration_min / 60) * $sessionCount,
                 'status' => 'confirmed',
             ]);
 
-            // 일별 케어 세션 생성 (체크인/아웃 단위)
-            for ($i = 0; $i < $days; $i++) {
+            // 회차별 케어 세션 생성 (체크인/아웃 단위)
+            foreach ($starts as $sessionStart) {
                 CareSession::create([
                     'match_id' => $match->id,
-                    'scheduled_start' => $request->scheduled_start->copy()->addDays($i),
-                    'scheduled_end' => $request->scheduled_start->copy()->addDays($i)->addMinutes($request->duration_min),
+                    'scheduled_start' => $sessionStart->copy(),
+                    'scheduled_end' => $sessionStart->copy()->addMinutes($request->duration_min),
                     'status' => 'scheduled',
                 ]);
             }
 
             return $match;
         });
+    }
+
+    /**
+     * 정기 요청의 회차별 세션 시작 일시 목록을 계산한다.
+     * - mode!=recurring → 단일 회차([scheduled_start]).
+     * - recurrence_rule.weekdays(ISO 1=월..7=일) 존재 → 시작일부터 weeks 주 동안 해당 요일마다 세션.
+     * - 아니면 recurrence_rule.days(연속 일수) 만큼 연속 세션(기존 동작).
+     * 회차 상한 60으로 안전 제한. 요일 판정은 KST 기준(저장값은 UTC 인스턴트 유지).
+     *
+     * @return array<int, \Illuminate\Support\Carbon>
+     */
+    private function sessionStarts(MatchRequest $request): array
+    {
+        $start = $request->scheduled_start->copy();
+        if ($request->mode !== 'recurring' || !is_array($request->recurrence_rule)) {
+            return [$start];
+        }
+        $rule = $request->recurrence_rule;
+
+        $weekdays = array_values(array_filter(
+            array_unique(array_map('intval', (array) ($rule['weekdays'] ?? []))),
+            fn ($d) => $d >= 1 && $d <= 7,
+        ));
+
+        if (!empty($weekdays)) {
+            $weeks = max(1, min((int) ($rule['weeks'] ?? 1), 12));
+            $windowEnd = $start->copy()->addDays($weeks * 7 - 1);
+            $dates = [];
+            $cursor = $start->copy();
+            while ($cursor->lte($windowEnd) && count($dates) < 60) {
+                if (in_array($cursor->copy()->setTimezone('Asia/Seoul')->isoWeekday(), $weekdays, true)) {
+                    $dates[] = $cursor->copy();
+                }
+                $cursor->addDay();
+            }
+
+            return empty($dates) ? [$start] : $dates;
+        }
+
+        // 연속 일수 (기존 동작)
+        $days = max(1, min((int) ($rule['days'] ?? 1), 30));
+        $dates = [];
+        for ($i = 0; $i < $days; $i++) {
+            $dates[] = $start->copy()->addDays($i);
+        }
+
+        return $dates;
     }
 
     /** 후보의 합의 시급: 입찰가 → 적정가 suggested → 카테고리 base_rate 순 폴백. */
