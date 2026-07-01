@@ -27,6 +27,15 @@ class PricingService
     /** 블렌딩 최대 비중 — 표본이 많아도 룰값 절반은 항상 유지(이상치·과적합 방지). */
     private const BLEND_MAX = 0.5;
 
+    /** 세부 서비스 항목(requirements.service_items) 기본 포함 개수 — 이 이하는 가산 없음. */
+    private const ITEMS_FREE_COUNT = 3;
+
+    /** 기본 포함을 초과한 항목 1개당 시급 가산액(원). */
+    private const ITEMS_ADDON_PER = 500.0;
+
+    /** 세부 항목 가산 상한(원) — 과도한 가산 방지. */
+    private const ITEMS_ADDON_CAP = 2000.0;
+
     public function estimate(MatchRequest $req): array
     {
         $category = $req->category;
@@ -40,9 +49,11 @@ class PricingService
         $holidayMult = $this->isHoliday($req) ? (float) $rule->holiday_mult : 1.0;
         $emergencyMult = $req->mode === 'emergency' ? (float) $rule->emergency_mult : 1.0;
         $acuityAddon = $this->acuityAddon($req, $rule);
+        // 세부 서비스 항목이 많을수록 작업 범위가 넓어지므로 소폭 가산(요청 정확도 반영).
+        $itemsAddon = $this->serviceItemsAddon($req);
 
         $ruleSuggested = $this->round100(
-            $base * $regionIndex * $nightMult * $holidayMult * $emergencyMult + $acuityAddon
+            $base * $regionIndex * $nightMult * $holidayMult * $emergencyMult + $acuityAddon + $itemsAddon
         );
 
         [$p25, $p50, $p75, $n] = $this->history((int) $req->category_id);
@@ -80,6 +91,7 @@ class PricingService
                 'holiday_mult' => $holidayMult,
                 'emergency_mult' => $emergencyMult,
                 'acuity_addon' => $acuityAddon,
+                'items_addon' => $itemsAddon,
                 'rule_suggested' => $ruleSuggested,
                 'blend' => round($blend, 3),
             ],
@@ -177,6 +189,22 @@ class PricingService
             }
         }
         return $sum;
+    }
+
+    /**
+     * 세부 서비스 항목(requirements.service_items) 개수 기반 가산.
+     * 기본 포함 개수(ITEMS_FREE_COUNT) 초과분에 대해 항목당 정액 가산하되 상한을 둔다.
+     * 항목이 없거나 배열이 아니면 가산 0.
+     */
+    private function serviceItemsAddon(MatchRequest $req): float
+    {
+        $items = ((array) ($req->requirements ?? []))['service_items'] ?? null;
+        if (!is_array($items) || count($items) === 0) {
+            return 0.0;
+        }
+        $extra = max(0, count($items) - self::ITEMS_FREE_COUNT);
+
+        return min($extra * self::ITEMS_ADDON_PER, self::ITEMS_ADDON_CAP);
     }
 
     /** 동일 카테고리의 최근 합의시급 백분위(p25,p50,p75)와 표본수. */
