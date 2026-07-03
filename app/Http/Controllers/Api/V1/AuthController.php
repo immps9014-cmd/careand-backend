@@ -103,8 +103,8 @@ class AuthController extends Controller
                 Guardian::create([
                     'user_id' => $user->id,
                     'relation' => $data['relation'] ?? null,
-                    // 가입 의도 보존: 가사(housekeeping)·산모(postpartum) 본인 요청자 구분. 그 외는 care.
-                    'intent' => in_array($data['intent'] ?? null, ['housekeeping', 'postpartum'], true) ? $data['intent'] : 'care',
+                    // 가입 의도 보존: 가사·산모·아이돌봄·마음돌봄 요청자 구분. 그 외는 care.
+                    'intent' => in_array($data['intent'] ?? null, ['housekeeping', 'postpartum', 'childcare', 'mental_care'], true) ? $data['intent'] : 'care',
                 ]);
             }
             // caregiver/organization은 별도 register 단계에서 추가 정보 수집
@@ -113,6 +113,10 @@ class AuthController extends Controller
         });
 
         $token = JWTAuth::fromUser($user);
+
+        // login/me와 동일하게 역할 프로필을 eager-load — UserResource가 whenLoaded라
+        // 미로드 시 guardian.intent가 응답에서 누락되어 가입 직후 홈 개인화가 불발됨.
+        $user->load(['guardian', 'caregiver', 'organization', 'admin']);
 
         return response()->json([
             'success' => true,
