@@ -24,11 +24,11 @@ class SignupRequest extends FormRequest
             'name' => ['required', 'string', 'max:50'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'role' => ['required', 'in:guardian,caregiver,organization'],
-            // 가입 의도(보호자/가사요청자/산모요청자). guardian일 때만 의미. 미지정 시 care.
-            'intent' => ['nullable', 'in:care,housekeeping,postpartum'],
-            // 어르신과의 관계는 '보호자(care)' 가입에만 필수. 가사(housekeeping)·산모(postpartum) 본인 요청은 불필요.
+            // 가입 의도(보호자/가사·산모·아이돌봄·마음돌봄 요청자). guardian일 때만 의미. 미지정 시 care.
+            'intent' => ['nullable', 'in:care,housekeeping,postpartum,childcare,mental_care'],
+            // 어르신과의 관계는 '보호자(care)' 가입에만 필수. 그 외 도메인 요청(가사·산모·아이돌봄·마음돌봄)은 불필요.
             'relation' => [
-                Rule::requiredIf(fn () => $this->input('role') === 'guardian' && ! in_array($this->input('intent'), ['housekeeping', 'postpartum'], true)),
+                Rule::requiredIf(fn () => $this->input('role') === 'guardian' && ! in_array($this->input('intent'), ['housekeeping', 'postpartum', 'childcare', 'mental_care'], true)),
                 'nullable',
                 'string',
                 'max:20',
