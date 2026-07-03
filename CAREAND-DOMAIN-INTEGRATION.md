@@ -2,7 +2,7 @@
 
 > 작성 2026-06-29 · 대상: careand-backend / careand-member-web / careand-admin-web / careand-ai-service
 > 운영 런북: `/root/CAREAND-OPS.md` · 도메인: caren.aiclaude.kr
-> 상태: **구현 완료 (2026-06-30)** — 6 도메인(소비자 5 + 기관 1) 단일 앱 통합 + 요율 확정 + 자격검증/외부 진위조회 연동. 통합 설계·단가·자격 레퍼런스는 **§9** 참조.
+> 상태: **구현 완료 (2026-06-30, 홈 개인화 2026-07-03)** — 6 도메인(소비자 5 + 기관 1) 단일 앱 통합 + 요율 확정 + 자격검증/외부 진위조회 연동 + 가입 의도 기반 홈 도메인 카드 최상단 개인화. 통합 설계·단가·자격 레퍼런스는 **§9**(홈 개인화 **§9.5**) 참조.
 
 ## 0. 목표 (요청 요약)
 1. 도메인별 서비스를 **하나의 앱**에서 처리하도록 통합.
@@ -291,6 +291,32 @@ careand는 도메인별로 앱/스키마를 분리하지 않고 **하나의 플�
 
 **남은 과제(별도)**:
 - postpartum 고급 서브시스템(바우처·신생아·EPDS) generic 흐름과 미연동.
+
+### 9.5 가입 의도 기반 홈 개인화 — 도메인 카드 최상단 (2026-07-03)
+
+각 도메인 요청자로 가입하면 회원앱 홈(`/app/home`)의 서비스 허브에서 **해당 도메인 카드가 최상단 featured(큰 카드)** 로 승격된다. "가입한 목적의 서비스를 즉시 신청"하도록 유도하는 개인화.
+
+- **가입 신호(intent)**: 가입 화면의 요청자 종류(kind)가 `role=guardian` + `intent`로 파생돼 `guardians.intent`에 영속. 대리형 아이돌봄·마음돌봄도 요청자 카드(kind=`childcare`/`mental_care`)로 추가하되 role은 guardian.
+  - kind→intent: 어르신=`care`(기본) · 가사=`housekeeping` · 산모=`postpartum` · 아이돌봄=`childcare` · 마음돌봄=`mental_care`.
+  - 백엔드 `SignupRequest.intent` in-리스트 5값 허용, `AuthController::signup`이 미허용값을 `care`로 정규화.
+- **홈 featured 우선순위**(member-web `home/page.tsx` GServices): **① 최근 요청 도메인(recentToken) → ② 가입 intent(intentToken) → ③ 대상정보 보유 폴백(ownsFallback) → ④ 기본(레지스트리 첫 도메인=요양보호)**. 선택 토큰의 카드를 배열 맨 앞으로 이동해 featured 타일로 렌더.
+  - intent→도메인 토큰 매핑: `housekeeping`→`living_support`(명칭 상이), 그 외(`postpartum`/`childcare`/`mental_care`)는 동명 도메인. `care`/미지정은 개인화 없음(요양보호 유지).
+  - 폴백은 intent 신호 없는 보호자만 대상 목록 조회(각 60s 캐시): 산모정보→산모, 서비스주소→생활지원, 아이→아이돌봄, 마음돌봄대상→마음돌봄.
+- **핵심 의존성·수정(backend `9c80578`)**: 홈은 저장된 `user.guardian.intent`를 읽는데, `UserResource`가 `whenLoaded('guardian')`이라 **auth 응답이 guardian을 eager-load 해야만** intent가 실린다. login/me는 `$user->load([...])`가 있었으나 **signup만 누락** → 프론트가 signup 응답 user(guardian 없음)를 저장하고 `authApi.me()` 재조회도 없어(정의만 존재) **가입 직후 홈에서 intent=null → 카드 미승격**(재로그인해야 동작)이던 버그. `AuthController::signup`도 응답 직전 `$user->load(['guardian','caregiver','organization','admin'])` 추가로 login/me와 형태 통일.
+- **지속성**: login 응답도 guardian.intent 포함 + 토큰/유저가 localStorage `careand-member-auth`에 persist → **재로그인·앱 재실행(재수화) 후에도** 카드 최상단 유지.
+- 커밋: member-web `302145b`(가입 카드 childcare/mental_care + featured 매핑 + role 파생 TS 수정), backend `9c80578`(signup eager-load).
+
+**E2E 검증(라이브 caren.aiclaude.kr — 가입 직후 + 재로그인 + 앱 재실행 전부 PASS)**:
+
+| 가입 종류 | intent | 홈 최상단 카드 |
+|---|---|---|
+| 어르신 돌봄 | care | 요양보호(기본) |
+| 아이돌봄 | childcare | 아이돌봄 |
+| 마음돌봄 | mental_care | 마음돌봄 |
+| 산모·산후관리 | postpartum | 산모·산후관리 |
+| 가사 | housekeeping→living_support | 생활지원서비스 |
+
+> 검증 방식: 실제 백엔드 가입(OTP 스텁)→signup 응답 user 그대로 앱 저장상태 주입→헤드리스 홈 렌더로 featured 타일 라벨 확인. 재로그인은 실제 `login` 응답, 앱 재실행은 재주입 없이 페이지 reload(persist 재수화)로 확인.
 
 ### ✅ 상담(mental_care) 자격 검증 고도화 — 완료 (2026-06-30)
 공급자(돌봄전문가) 등록 자격검증을 **레지스트리 구동(SSOT)**으로 일원화 + 상담 도메인 자격종류 검증.
