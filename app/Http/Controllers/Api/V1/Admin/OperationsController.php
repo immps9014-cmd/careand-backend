@@ -460,7 +460,9 @@ class OperationsController extends Controller
                 'body',
                 DB::raw('COUNT(*) as recipients'),
                 DB::raw('SUM(is_read) as read_count'),
-                DB::raw('MAX(created_at) as sent_at')
+                DB::raw('MAX(created_at) as sent_at'),
+                // 개인 지정 발송(data.target=direct) 여부 — 이력에서 "개인" 뱃지 구분용
+                DB::raw('MAX(CASE WHEN data LIKE \'%"target":"direct"%\' THEN 1 ELSE 0 END) as has_direct')
             )
             ->groupBy('title', 'body')
             ->orderByDesc('sent_at')
@@ -473,6 +475,8 @@ class OperationsController extends Controller
             'read_count' => (int) $r->read_count,
             'read_rate' => $r->recipients > 0 ? round($r->read_count / $r->recipients * 100, 1) : 0,
             'sent_at' => $r->sent_at,
+            // 개인 지정(1인) 발송이면 true — 프론트 이력 표에서 "개인" 뱃지 표시
+            'is_direct' => (bool) $r->has_direct,
         ]);
 
         return response()->json([
@@ -522,6 +526,119 @@ class OperationsController extends Controller
             'success' => true,
             'message' => "{$userIds->count()}명에게 공지를 발송했습니다.",
             'data' => ['recipients' => $userIds->count()],
+        ]);
+    }
+
+    /**
+     * GET /v1/admin/announcements/recipients — 개인 발송 대상 검색
+     * 보호자·돌봄전문가를 이름/이메일/연락처로 검색해 개인 푸시 대상 후보를 반환한다.
+     */
+    public function recipients(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => 'required|string|max:100',
+            'role' => 'nullable|in:guardian,caregiver',
+        ]);
+
+        $kw = trim($validated['q']);
+
+        $query = DB::table('users')
+            ->leftJoin('caregivers as cg', function ($j) {
+                $j->on('cg.user_id', '=', 'users.id')->whereNull('cg.deleted_at');
+            })
+            ->leftJoin('guardians as g', 'g.user_id', '=', 'users.id')
+            ->whereNull('users.deleted_at')
+            ->where('users.status', 'active')
+            ->whereIn('users.role', ['guardian', 'caregiver'])
+            ->when(!empty($validated['role']), fn ($q) => $q->where('users.role', $validated['role']))
+            ->where(function ($w) use ($kw) {
+                $w->where('users.name', 'like', "%{$kw}%")
+                    ->orWhere('users.email', 'like', "%{$kw}%")
+                    ->orWhere('users.phone', 'like', "%{$kw}%");
+            })
+            ->select(
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.phone',
+                'users.role',
+                'cg.service_domains',
+                'g.intent as guardian_intent'
+            )
+            ->orderBy('users.name')
+            ->limit(20);
+
+        $items = collect($query->get())->map(fn ($u) => [
+            'id' => (int) $u->id,
+            'name' => $u->name,
+            'email' => $u->email,
+            'phone' => $u->phone,
+            'role' => $u->role,
+            // 가사요청자는 role=guardian이지만 intent로 구분
+            'intent' => $u->role === 'guardian' ? ($u->guardian_intent ?? 'care') : null,
+            'service_domains' => $u->role === 'caregiver' ? $u->service_domains : null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $items,
+        ]);
+    }
+
+    /**
+     * POST /v1/admin/announcements/direct — 개인 지정 푸시 발송
+     * 검색으로 지정한 보호자/돌봄전문가 1명에게만 공지 알림을 발송한다.
+     * (DB notifications 기록 + FCM 토큰 보유 시 푸시)
+     */
+    public function directMessage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+            'title' => 'required|string|max:200',
+            'body' => 'required|string|max:2000',
+        ]);
+
+        $user = DB::table('users')
+            ->where('id', $validated['user_id'])
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->whereIn('role', ['guardian', 'caregiver'])
+            ->first(['id', 'name', 'fcm_token']);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => '발송 대상을 찾을 수 없습니다. (탈퇴·정지되었거나 발송 불가 대상)',
+            ], 422);
+        }
+
+        $now = now();
+        $notificationId = DB::table('notifications')->insertGetId([
+            'user_id' => $user->id,
+            'type' => 'announcement',
+            'title' => $validated['title'],
+            'body' => $validated['body'],
+            'data' => json_encode(['target' => 'direct', 'user_id' => $user->id]),
+            'is_read' => 0,
+            'sent_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        // FCM 푸시 (토큰 보유 시) — 외부연동 스텁 환경에서도 안전
+        if ($user->fcm_token) {
+            app(\App\Services\External\FcmService::class)->send(
+                fcmToken: $user->fcm_token,
+                title: $validated['title'],
+                body: $validated['body'],
+                data: ['notification_id' => (string) $notificationId, 'type' => 'announcement'],
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$user->name} 님에게 메시지를 발송했습니다.",
+            'data' => ['recipients' => 1, 'user_id' => $user->id],
         ]);
     }
 

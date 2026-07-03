@@ -256,6 +256,9 @@ Route::prefix('v1')->group(function () {
             Route::prefix('announcements')->group(function () {
                 Route::get('/', [OperationsController::class, 'announcements']);
                 Route::post('/', [OperationsController::class, 'broadcast']);
+                // 개인 지정 발송 — 보호자/돌봄전문가 검색 후 1인 푸시
+                Route::get('recipients', [OperationsController::class, 'recipients']);
+                Route::post('direct', [OperationsController::class, 'directMessage']);
             });
 
             // 매칭 모니터링 + 수동매칭 (#18)
