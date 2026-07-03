@@ -103,7 +103,8 @@ class AuthController extends Controller
                 Guardian::create([
                     'user_id' => $user->id,
                     'relation' => $data['relation'] ?? null,
-                    'intent' => ($data['intent'] ?? null) === 'housekeeping' ? 'housekeeping' : 'care',
+                    // 가입 의도 보존: 가사(housekeeping)·산모(postpartum) 본인 요청자 구분. 그 외는 care.
+                    'intent' => in_array($data['intent'] ?? null, ['housekeeping', 'postpartum'], true) ? $data['intent'] : 'care',
                 ]);
             }
             // caregiver/organization은 별도 register 단계에서 추가 정보 수집
