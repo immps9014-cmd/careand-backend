@@ -1371,14 +1371,16 @@ class OperationsController extends Controller
 
         if ($request->filled('role')) {
             $role = $request->input('role');
-            // 가상 역할: housekeeping=가사요청자(role=guardian + intent=housekeeping),
+            // 가상 역할: housekeeping=가사요청자, postpartum=산모요청자(role=guardian + intent),
             // guardian=순수 보호자(intent=care 또는 미지정)
             if ($role === 'housekeeping') {
                 $query->where('users.role', 'guardian')->where('g.intent', 'housekeeping');
+            } elseif ($role === 'postpartum') {
+                $query->where('users.role', 'guardian')->where('g.intent', 'postpartum');
             } elseif ($role === 'guardian') {
                 $query->where('users.role', 'guardian')
                     ->where(function ($w) {
-                        $w->where('g.intent', '<>', 'housekeeping')->orWhereNull('g.intent');
+                        $w->whereNotIn('g.intent', ['housekeeping', 'postpartum'])->orWhereNull('g.intent');
                     });
             } else {
                 $query->where('users.role', $role);
@@ -1426,22 +1428,27 @@ class OperationsController extends Controller
         $counts = DB::table('users')->whereNull('deleted_at')
             ->select('role', DB::raw('COUNT(*) as cnt'))->groupBy('role')->pluck('cnt', 'role');
 
-        // 보호자(guardian) 내에서 가사요청자(housekeeping) 분리 집계
-        $housekeeping = (int) DB::table('users')
+        // 보호자(guardian) 내에서 가사요청자(housekeeping)·산모요청자(postpartum) intent별 분리 집계
+        $intentCounts = DB::table('users')
             ->join('guardians as g', 'g.user_id', '=', 'users.id')
             ->whereNull('users.deleted_at')
             ->where('users.role', 'guardian')
-            ->where('g.intent', 'housekeeping')
-            ->count();
+            ->whereIn('g.intent', ['housekeeping', 'postpartum'])
+            ->select('g.intent', DB::raw('COUNT(*) as cnt'))
+            ->groupBy('g.intent')
+            ->pluck('cnt', 'intent');
+        $housekeeping = (int) ($intentCounts['housekeeping'] ?? 0);
+        $postpartum = (int) ($intentCounts['postpartum'] ?? 0);
         $guardianTotal = (int) ($counts['guardian'] ?? 0);
 
         return response()->json([
             'success' => true,
             'data' => $items,
             'summary' => [
-                // 순수 보호자 = 전체 guardian - 가사요청자 (intent 미지정 레거시는 보호자로 집계)
-                'guardian' => $guardianTotal - $housekeeping,
+                // 순수 보호자 = 전체 guardian - 가사요청자 - 산모요청자 (intent 미지정 레거시는 보호자로 집계)
+                'guardian' => $guardianTotal - $housekeeping - $postpartum,
                 'housekeeping' => $housekeeping,
+                'postpartum' => $postpartum,
                 'caregiver' => (int) ($counts['caregiver'] ?? 0),
                 'organization' => (int) ($counts['organization'] ?? 0),
                 'admin' => (int) ($counts['admin'] ?? 0),
