@@ -224,9 +224,10 @@ class CaregiverController extends Controller
         $domain = $request->query('domain');
         $guardian = $request->user()->guardian;
 
-        // 거리 기준점: 보호자 최근 요청의 대상자 위치(없으면 거리 null) — recommended 와 동일
+        // 거리·지역 기준점: 보호자 최근 요청의 대상자 위치/주소(없으면 null) — recommended 와 동일
         $oLat = null;
         $oLng = null;
+        $oSigungu = null; // 보호자 기준 지역(시·군·구) — '지역 우선' 정렬용
         if ($guardian) {
             $origin = \Illuminate\Support\Facades\DB::table('match_requests as r')
                 ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
@@ -234,11 +235,12 @@ class CaregiverController extends Controller
                 ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
                 ->where('r.guardian_id', $guardian->id)
                 ->orderByDesc('r.id')
-                ->selectRaw('COALESCE(s.home_lat, np.hospital_lat, sa.lat) as lat, COALESCE(s.home_lng, np.hospital_lng, sa.lng) as lng')
+                ->selectRaw('COALESCE(s.home_lat, np.hospital_lat, sa.lat) as lat, COALESCE(s.home_lng, np.hospital_lng, sa.lng) as lng, COALESCE(s.home_address, np.hospital_address, sa.address) as addr')
                 ->first();
             if ($origin) {
                 $oLat = $origin->lat !== null ? (float) $origin->lat : null;
                 $oLng = $origin->lng !== null ? (float) $origin->lng : null;
+                $oSigungu = $this->sigunguOf($origin->addr ?? null);
             }
         }
 
@@ -270,11 +272,40 @@ class CaregiverController extends Controller
 
         $data = $rows->map(fn ($c) => $this->browseRowToArray($c, $rates, $oLat, $oLng, isset($favSet[(int) $c->id])))->values();
 
-        if ($oLat !== null) {
+        // 정렬: ①보호자 기준 지역(시·군·구) 일치 우선 → ②거리(가까운 순) → ③기존(평점) 순.
+        //      기준 지역이 없으면 거리순, 거리도 없으면 전문가 지역명 순으로 폴백.
+        if ($oSigungu !== null) {
+            $data = $data->sortBy(function ($x) use ($oSigungu) {
+                $same = ($this->sigunguOf($x['region']) === $oSigungu) ? 0 : 1;
+                $dist = $x['distance_km'] ?? 99999;
+
+                return $same * 1000000 + $dist; // 같은 시·군·구 먼저, 그 안에서 거리순
+            })->values();
+        } elseif ($oLat !== null) {
             $data = $data->sortBy(fn ($x) => $x['distance_km'] ?? 99999)->values();
+        } else {
+            $data = $data->sortBy(fn ($x) => $x['region'] ?? 'zzz')->values();
         }
 
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    /** 주소 문자열에서 시·군·구 토큰 추출(특별시/광역시/특별자치시/도 는 상위라 제외). 예: "경기 화성시 동탄동 12-3" → "화성시" */
+    private function sigunguOf(?string $address): ?string
+    {
+        if (!$address) {
+            return null;
+        }
+        foreach (preg_split('/\s+/u', trim($address)) as $tok) {
+            if (preg_match('/(특별시|광역시|특별자치시|특별자치도)$/u', $tok)) {
+                continue;
+            }
+            if (preg_match('/(시|군|구)$/u', $tok)) {
+                return $tok;
+            }
+        }
+
+        return null;
     }
 
     /** 활동지역 — base_address 에서 번지수(상세 번호)를 제거해 시·구·동/로 수준만 노출 */
@@ -551,6 +582,10 @@ class CaregiverController extends Controller
     {
         $guardian = $request->user()->guardian;
 
+        // 도메인 개인화: 홈 featured(매칭 시작하기) 카드와 동일한 도메인만 추천(요청 시).
+        // 프론트가 최근요청/가입intent/대상정보로 산출한 도메인을 넘긴다. 미지정 시 전체.
+        $domain = $request->query('domain');
+
         // 거리 기준점: 보호자 최근 요청의 대상자 위치(없으면 거리 null)
         $origin = null;
         if ($guardian) {
@@ -573,11 +608,15 @@ class CaregiverController extends Controller
             ->groupBy('domain')
             ->pluck('rate', 'domain');
 
-        $rows = \Illuminate\Support\Facades\DB::table('caregivers as c')
+        $q = \Illuminate\Support\Facades\DB::table('caregivers as c')
             ->join('users as u', 'u.id', '=', 'c.user_id')
             ->where('c.status', 'active')
-            ->whereNull('c.deleted_at')
-            ->orderByDesc('c.rating_avg')
+            ->whereNull('c.deleted_at');
+        if ($domain) {
+            // service_domains 는 "senior,living_support" 형태의 콤마 목록 → 정확 매칭
+            $q->whereRaw('FIND_IN_SET(?, c.service_domains)', [$domain]);
+        }
+        $rows = $q->orderByDesc('c.rating_avg')
             ->orderByDesc('c.completed_sessions')
             ->limit(20)
             ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
