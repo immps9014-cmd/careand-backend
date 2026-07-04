@@ -265,6 +265,59 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * DELETE /v1/auth/me — 회원 탈퇴(자가). 현재 비밀번호 확인 필수.
+     * 진행 중 매칭요청 취소, 돌봄전문가 계정 비활성 후 status=withdrawn + 소프트삭제, 토큰 무효화.
+     */
+    public function withdraw(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = auth('api')->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password:api'],
+            'reason' => ['nullable', 'string', 'max:500'],
+        ], [
+            'current_password.required' => '현재 비밀번호를 입력해주세요.',
+            'current_password.current_password' => '현재 비밀번호가 일치하지 않습니다.',
+        ]);
+
+        $user->loadMissing(['guardian', 'caregiver']);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
+            // 보호자: 진행 중(open/matching) 매칭요청 취소
+            if ($user->guardian) {
+                \Illuminate\Support\Facades\DB::table('match_requests')
+                    ->where('guardian_id', $user->guardian->id)
+                    ->whereIn('status', ['open', 'matching'])
+                    ->update(['status' => 'cancelled', 'updated_at' => now()]);
+            }
+            // 돌봄전문가: 활성 목록에서 제외(정지 처리)
+            if ($user->caregiver) {
+                \Illuminate\Support\Facades\DB::table('caregivers')
+                    ->where('id', $user->caregiver->id)
+                    ->update(['status' => 'suspended', 'updated_at' => now()]);
+            }
+            $user->status = 'withdrawn';
+            $user->save();
+            $user->delete(); // 소프트 삭제(deleted_at)
+        });
+
+        logger()->info('member.withdraw', [
+            'user_id' => $user->id,
+            'role' => $user->role,
+            'reason' => $validated['reason'] ?? null,
+        ]);
+
+        // 현재 토큰 무효화
+        auth('api')->logout();
+
+        return response()->json([
+            'success' => true,
+            'message' => '회원 탈퇴가 완료되었습니다.',
+        ]);
+    }
+
     private function generateRefreshToken(User $user): string
     {
         return JWTAuth::customClaims([
