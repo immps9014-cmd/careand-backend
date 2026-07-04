@@ -1268,8 +1268,9 @@ class OperationsController extends Controller
 
     public function memberDetail(Request $request, int $id): JsonResponse
     {
-        $u = DB::table('users')->whereNull('deleted_at')
-            ->select('id', 'name', 'email', 'phone', 'role', 'status', 'created_at')
+        // 탈퇴 회원(소프트삭제)도 상세 조회 허용 — deleted_at 필터 없이 조회.
+        $u = DB::table('users')
+            ->select('id', 'name', 'email', 'phone', 'role', 'status', 'created_at', 'deleted_at as withdrawn_at')
             ->where('id', $id)->first();
 
         if (!$u) {
@@ -1288,6 +1289,7 @@ class OperationsController extends Controller
             'role' => $u->role,
             'status' => $u->status,
             'created_at' => $u->created_at,
+            'withdrawn_at' => $u->withdrawn_at,
             'caregiver' => null,
             'guardian' => null,
             'organization' => null,
@@ -1366,8 +1368,13 @@ class OperationsController extends Controller
                 $j->on('cg.user_id', '=', 'users.id')->whereNull('cg.deleted_at');
             })
             ->leftJoin('guardians as g', 'g.user_id', '=', 'users.id')
-            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.status', 'users.created_at', 'cg.status as caregiver_status', 'cg.service_domains', 'g.intent as guardian_intent')
-            ->whereNull('users.deleted_at');
+            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.status', 'users.created_at', 'users.deleted_at as withdrawn_at', 'cg.status as caregiver_status', 'cg.service_domains', 'g.intent as guardian_intent');
+
+        // 탈퇴 회원은 소프트삭제(deleted_at) 상태 → status=withdrawn 필터일 때만 포함, 그 외에는 제외.
+        $onlyWithdrawn = $request->input('status') === 'withdrawn';
+        if (!$onlyWithdrawn) {
+            $query->whereNull('users.deleted_at');
+        }
 
         if ($request->filled('role')) {
             $role = $request->input('role');
@@ -1422,6 +1429,7 @@ class OperationsController extends Controller
             'caregiver_status' => $u->role === 'caregiver' ? ($cgStatus[$u->id] ?? null) : null,
             'service_domains' => $u->role === 'caregiver' ? $u->service_domains : null,
             'created_at' => $u->created_at,
+            'withdrawn_at' => $u->withdrawn_at,
         ]);
 
         $counts = DB::table('users')->whereNull('deleted_at')
@@ -1443,6 +1451,12 @@ class OperationsController extends Controller
         $mentalCare = (int) ($intentCounts['mental_care'] ?? 0);
         $guardianTotal = (int) ($counts['guardian'] ?? 0);
 
+        // 탈퇴 회원 수(소프트삭제 + status=withdrawn)
+        $withdrawnCount = (int) DB::table('users')
+            ->whereNotNull('deleted_at')
+            ->where('status', 'withdrawn')
+            ->count();
+
         return response()->json([
             'success' => true,
             'data' => $items,
@@ -1456,6 +1470,7 @@ class OperationsController extends Controller
                 'caregiver' => (int) ($counts['caregiver'] ?? 0),
                 'organization' => (int) ($counts['organization'] ?? 0),
                 'admin' => (int) ($counts['admin'] ?? 0),
+                'withdrawn' => $withdrawnCount,
             ],
             'meta' => $this->meta($paginated),
         ]);
