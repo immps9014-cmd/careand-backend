@@ -119,8 +119,10 @@ class NotificationService
             self::TYPE_MATCH_REQUEST_ASSIGNED => [
                 'title' => '새 매칭 요청',
                 'body' => sprintf(
-                    '%s 어르신 케어 요청이 도착했어요. (%s)',
-                    $payload['senior_name'] ?? '어르신',
+                    '%s %s 요청이 도착했어요. (%s)',
+                    // 도메인 무관 대상자명. 구 페이로드(senior_name)도 하위호환.
+                    $payload['recipient_name'] ?? $payload['senior_name'] ?? '대상자',
+                    $payload['service_label'] ?? '케어',
                     $payload['scheduled_at'] ?? ''
                 ),
             ],

@@ -143,6 +143,10 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             Log::warning("매칭 요청 {$this->matchRequestId}: AI 추천 결과 없음 (완화 후에도)");
             if ($hasDirect) {
                 app(\App\Services\Pricing\BiddingService::class)->applyAutoBids($matchRequest);
+                // AI 후보가 0이어도 직접 지정 전문가는 후보로 존재 → 알림 발송(누락 방지).
+                if ($preferredId) {
+                    $this->notifyInvitedCaregivers($matchRequest, $recipient, [(int) $preferredId]);
+                }
             }
             return;
         }
@@ -231,8 +235,21 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         $scheduledKst = $matchRequest->scheduled_start
             ? $matchRequest->scheduled_start->copy()->setTimezone('Asia/Seoul')->format('n월 j일 H:i')
             : '';
+        // 도메인별 서비스명(알림 문구용). 미정의 도메인은 일반 '케어'로 폴백.
+        $serviceLabels = [
+            'senior' => '시니어돌봄',
+            'nursing' => '병원간병',
+            'living_support' => '생활지원',
+            'postpartum' => '산후관리',
+            'childcare' => '아이돌봄',
+            'mental_care' => '마음돌봄',
+        ];
+        // 대상자 표기: senior/nursing 등은 name, 가사(living_support)는 주소 label.
+        $recipientName = $recipient->name ?? $recipient->label ?? '대상자';
         $payload = [
-            'senior_name' => $recipient->name ?? '어르신',
+            'recipient_name' => $recipientName,
+            'senior_name' => $recipientName, // 하위호환
+            'service_label' => $serviceLabels[$matchRequest->service_domain] ?? '케어',
             'scheduled_at' => $scheduledKst,
             'request_id' => $matchRequest->id,
             'service_domain' => $matchRequest->service_domain,
