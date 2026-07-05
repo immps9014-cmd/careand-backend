@@ -38,19 +38,32 @@ class InsightsController extends Controller
     {
         $q = trim((string) $request->input('q', ''));
         $intent = $this->parse($q);
-        [$start, $end, $label] = $this->resolvePeriod($intent['period']);
+
+        $now = Carbon::now(self::TZ);
+        [$start, $end, $label] = $this->resolvePeriod($intent['period'], $now);
+
+        // 비교(증감) 요청 시 직전 동등 기간을 함께 집계
+        $cmp = null;
+        if ($intent['compare']) {
+            $cmp = $this->comparisonWindow($intent['period'], $now);
+        }
 
         $cards = [];
         foreach ($intent['metrics'] as $metric) {
-            $card = match ($metric) {
-                'signups'  => $this->signupsCard($start, $end),
-                'matching' => $this->matchingCard($start, $end),
-                'revenue'  => $this->revenueCard($start, $end),
-                default    => null,
-            };
-            if ($card) {
-                $cards[] = $card;
+            $card = $this->buildCard($metric, $start, $end);
+            if (! $card) {
+                continue;
             }
+            if ($cmp) {
+                $prev = $this->buildCard($metric, $cmp[0], $cmp[1]);
+                $card['compare'] = $this->deltaOf(
+                    (float) $card['primary']['value'],
+                    (float) ($prev['primary']['value'] ?? 0),
+                    $cmp[2],
+                    $card['primary']['unit'],
+                );
+            }
+            $cards[] = $card;
         }
 
         return response()->json([
@@ -63,12 +76,95 @@ class InsightsController extends Controller
                     'label' => $label,
                     'start' => $start->toIso8601String(),
                     'end' => $end->toIso8601String(),
+                    'compare_label' => $cmp[2] ?? null,
                 ],
                 'generated_at' => now()->toIso8601String(),
                 'cards' => $cards,
                 'summary' => $this->summary($cards, $label),
             ],
         ]);
+    }
+
+    private function buildCard(string $metric, Carbon $start, Carbon $end): ?array
+    {
+        return match ($metric) {
+            'signups'  => $this->signupsCard($start, $end),
+            'matching' => $this->matchingCard($start, $end),
+            'revenue'  => $this->revenueCard($start, $end),
+            default    => null,
+        };
+    }
+
+    /**
+     * 현재값 vs 이전값 증감 계산
+     *
+     * @return array{period_label: string, value: float, delta: float, delta_pct: float|null, direction: string}
+     */
+    private function deltaOf(float $cur, float $prev, string $prevLabel, string $unit): array
+    {
+        $delta = $cur - $prev;
+
+        return [
+            'period_label' => $prevLabel,
+            'value' => $prev,
+            'unit' => $unit,
+            'delta' => $delta,
+            'delta_pct' => $prev > 0 ? round($delta / $prev * 100, 1) : null,
+            'direction' => $delta > 0 ? 'up' : ($delta < 0 ? 'down' : 'flat'),
+        ];
+    }
+
+    /**
+     * 기준 기간의 직전 동등 기간 [시작(UTC), 종료(UTC), 라벨]. 경계는 KST.
+     *
+     * @return array{0: Carbon, 1: Carbon, 2: string}
+     */
+    private function comparisonWindow(string $key, Carbon $now): array
+    {
+        [$start, $end, $label] = match ($key) {
+            'yesterday' => [
+                $now->copy()->subDays(2)->startOfDay(),
+                $now->copy()->subDays(2)->endOfDay(),
+                '그저께',
+            ],
+            'this_week' => [
+                $now->copy()->subWeek()->startOfWeek(),
+                $now->copy()->subWeek(),
+                '지난주 같은 구간',
+            ],
+            'last_week' => [
+                $now->copy()->subWeeks(2)->startOfWeek(),
+                $now->copy()->subWeeks(2)->endOfWeek(),
+                '2주 전',
+            ],
+            'this_month' => [
+                $now->copy()->subMonthNoOverflow()->startOfMonth(),
+                $now->copy()->subMonthNoOverflow(),
+                '지난달 같은 구간',
+            ],
+            'last_month' => [
+                $now->copy()->subMonthsNoOverflow(2)->startOfMonth(),
+                $now->copy()->subMonthsNoOverflow(2)->endOfMonth(),
+                '2개월 전',
+            ],
+            '7d' => [
+                $now->copy()->subDays(14)->startOfDay(),
+                $now->copy()->subDays(7)->startOfDay(),
+                '직전 7일',
+            ],
+            '30d' => [
+                $now->copy()->subDays(60)->startOfDay(),
+                $now->copy()->subDays(30)->startOfDay(),
+                '직전 30일',
+            ],
+            default => [ // today
+                $now->copy()->subDay()->startOfDay(),
+                $now->copy()->subDay(),
+                '어제 같은 시각까지',
+            ],
+        };
+
+        return [$start->copy()->utc(), $end->copy()->utc(), $label];
     }
 
     /**
@@ -118,10 +214,24 @@ class InsightsController extends Controller
             $period = 'today';
         }
 
+        // ---- 비교(증감) 의도 ----
+        $compare = (bool) preg_match('/증감|대비|비교|추이|변화|증가|감소|늘었|줄었|성장/u', $t);
+        // "지난달 대비"류: 기준기간은 현재(이번달), 비교대상이 지난달이 되도록 보정
+        if ($compare) {
+            if (preg_match('/지난달대비|전월대비|전달대비/u', $t)) {
+                $period = 'this_month';
+            } elseif (preg_match('/지난주대비|전주대비/u', $t)) {
+                $period = 'this_week';
+            } elseif (preg_match('/어제대비|전일대비|작일대비/u', $t)) {
+                $period = 'today';
+            }
+        }
+
         return [
             'metrics' => $metrics,
             'period' => $period,
             'matched' => $metricsMatched,
+            'compare' => $compare,
         ];
     }
 
@@ -130,10 +240,8 @@ class InsightsController extends Controller
      *
      * @return array{0: Carbon, 1: Carbon, 2: string}
      */
-    private function resolvePeriod(string $key): array
+    private function resolvePeriod(string $key, Carbon $now): array
     {
-        $now = Carbon::now(self::TZ);
-
         [$start, $end, $label] = match ($key) {
             'yesterday' => [
                 $now->copy()->subDay()->startOfDay(),
@@ -299,12 +407,16 @@ class InsightsController extends Controller
         $parts = [];
         foreach ($cards as $c) {
             $p = $c['primary'];
-            $parts[] = match ($c['key']) {
+            $text = match ($c['key']) {
                 'signups' => "신규가입 {$p['value']}명",
                 'matching' => "매칭요청 {$p['value']}건(성사 {$c['stats'][0]['value']}건)",
                 'revenue' => '결제매출 ' . number_format((int) $p['value']) . '원',
                 default => '',
             };
+            if ($text !== '' && ! empty($c['compare'])) {
+                $text .= $this->deltaText($c['compare']);
+            }
+            $parts[] = $text;
         }
         $parts = array_filter($parts);
 
@@ -313,5 +425,18 @@ class InsightsController extends Controller
         }
 
         return $label . ' 기준 ' . implode(', ', $parts) . ' 입니다.';
+    }
+
+    /** 증감 문구: "(지난달 같은 구간 대비 +12,000원, +43%)" */
+    private function deltaText(array $cmp): string
+    {
+        $sign = $cmp['delta'] > 0 ? '+' : ($cmp['delta'] < 0 ? '−' : '±');
+        $abs = number_format(abs((int) $cmp['delta']));
+        $unit = $cmp['unit'] ?? '';
+        $pct = $cmp['delta_pct'] !== null
+            ? ', ' . ($cmp['delta_pct'] > 0 ? '+' : ($cmp['delta_pct'] < 0 ? '−' : '±')) . abs($cmp['delta_pct']) . '%'
+            : '';
+
+        return " ({$cmp['period_label']} 대비 {$sign}{$abs}{$unit}{$pct})";
     }
 }
