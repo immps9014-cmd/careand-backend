@@ -98,12 +98,21 @@ class PaymentController extends Controller
             ->where('period_month', now()->startOfMonth()->toDateString())
             ->first();
 
-        if (!$voucher) {
+        // 장기요양 등급이 없거나(등급외·미신청) 바우처가 없는 어르신은
+        // 공단 부담분이 없으므로 100% 본인부담으로 결제를 진행한다.
+        if (!$voucher || !$senior->care_grade) {
             return response()->json([
-                'success' => false,
-                'error_code' => 'NO_VOUCHER',
-                'message' => '이번 달 장기요양 바우처가 없습니다. 어르신 정보를 갱신해주세요.',
-            ], 422);
+                'success' => true,
+                'data' => [
+                    'match_id' => $match->id,
+                    'total_amount' => $totalAmount,
+                    'self_pay' => $totalAmount,
+                    'ltc_pay' => 0,
+                    'copay_rate' => null,
+                    'voucher_remaining' => null,
+                    'voucher_after_payment' => null,
+                ],
+            ]);
         }
 
         // 2. 자동 분리 계산
@@ -128,7 +137,8 @@ class PaymentController extends Controller
                 'total_amount' => $totalAmount,
                 'self_pay' => $split['self_pay'],
                 'ltc_pay' => $split['ltc_pay'],
-                'copay_rate' => $voucher->copay_rate,
+                // copay_rate 는 % 정수(15)로 저장 → 프론트가 소수로 다루므로 비율로 변환
+                'copay_rate' => $voucher->copay_rate / 100,
                 'voucher_remaining' => $voucher->remaining_amount,
                 'voucher_after_payment' => max(0, $voucher->remaining_amount - $split['ltc_pay']),
             ],
@@ -170,19 +180,24 @@ class PaymentController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$voucher) {
-                return response()->json([
-                    'success' => false,
-                    'error_code' => 'NO_VOUCHER',
-                    'message' => '장기요양 바우처가 없습니다.',
-                ], 422);
-            }
-
-            $split = $this->nhisService->calculateSplit($totalAmount, $senior->care_grade, $voucher->copay_rate);
-            if ($split['ltc_pay'] > $voucher->remaining_amount) {
-                $exceeded = $split['ltc_pay'] - $voucher->remaining_amount;
-                $split['self_pay'] += $exceeded;
-                $split['ltc_pay'] = $voucher->remaining_amount;
+            // 등급/바우처가 없으면 공단 부담 없이 100% 본인부담 (calculate 와 동일 정책)
+            if (!$voucher || !$senior->care_grade) {
+                if (($data['method'] ?? null) === 'voucher_only') {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'INVALID_METHOD',
+                        'message' => '장기요양 바우처를 사용할 수 없습니다.',
+                    ], 422);
+                }
+                $voucher = null;
+                $split = ['self_pay' => $totalAmount, 'ltc_pay' => 0];
+            } else {
+                $split = $this->nhisService->calculateSplit($totalAmount, $senior->care_grade, $voucher->copay_rate);
+                if ($split['ltc_pay'] > $voucher->remaining_amount) {
+                    $exceeded = $split['ltc_pay'] - $voucher->remaining_amount;
+                    $split['self_pay'] += $exceeded;
+                    $split['ltc_pay'] = $voucher->remaining_amount;
+                }
             }
         } else {
             // 비급여 도메인(간병·가사 등): 100% 본인부담, 바우처 결제 불가
