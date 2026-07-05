@@ -472,6 +472,9 @@ class CaregiverController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->where('mc.caregiver_id', $caregiver->id)
             // 매칭이 안 된 채 지나간 제안은 숨긴다(요양보호사 홈 '새 매칭 제안').
             // 이미 응답한 건(수락/거절 등)은 이력으로 보존하고, '대기중(pending)' 제안만
@@ -493,7 +496,7 @@ class CaregiverController extends Controller
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
                 'r.price_estimate',
-                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
+                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name')
             )
             ->orderByDesc('mc.created_at')
             ->get()
