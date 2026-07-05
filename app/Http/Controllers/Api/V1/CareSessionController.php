@@ -107,6 +107,10 @@ class CareSessionController extends Controller
                     'actual_start' => now(),
                     'status' => 'in_progress',
                 ]);
+                // 케어 시작 → 매칭도 진행중으로 전이(진행 파이프라인 '케어시작' 단계).
+                if ($session->match->status === 'confirmed') {
+                    $session->match->update(['status' => 'in_progress']);
+                }
             }
         });
 
@@ -183,8 +187,16 @@ class CareSessionController extends Controller
                 'status' => 'completed',
             ]);
 
+            // 케어 완료 → 매칭 상태 전이. 반복(recurring) 요청은 모든 세션이 끝나야 완료,
+            // 남은 세션이 있으면 진행중 유지(진행 파이프라인 '케어완료'/'케어시작' 판정).
+            $match = $session->match;
+            $hasRemaining = CareSession::where('match_id', $match->id)
+                ->where('status', '!=', 'completed')
+                ->exists();
+            $match->update(['status' => $hasRemaining ? 'in_progress' : 'completed']);
+
             // 인력 통계 업데이트
-            $session->match->caregiver->increment('completed_sessions');
+            $match->caregiver->increment('completed_sessions');
         });
 
         // C:Writer AI 일지 자동 생성 (비동기)
