@@ -156,10 +156,13 @@ class OperationsController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->select(
                 'm.id', 'm.request_id', 'm.caregiver_id',
                 'cu.name as caregiver_name',
-                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'),
+                DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name'),
                 'r.service_domain', 'r.mode',
                 'm.scheduled_start', 'm.scheduled_end',
                 'm.estimated_amount', 'm.status', 'm.created_at'
@@ -233,6 +236,9 @@ class OperationsController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id');
 
@@ -255,7 +261,7 @@ class OperationsController extends Controller
                 'cs.scheduled_start', 'cs.scheduled_end', 'cs.actual_start', 'cs.actual_end',
                 'r.service_domain', 'm.is_manual',
                 DB::raw('cu.name as caregiver_name'),
-                DB::raw('COALESCE(s.name, np.name, sa.label) as recipient_name'),
+                DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 DB::raw('gu.name as guardian_name'),
                 DB::raw('EXISTS(SELECT 1 FROM ai_log_summaries als WHERE als.session_id = cs.id) as has_summary')
             )
@@ -306,6 +312,9 @@ class OperationsController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id')
             ->select(
@@ -313,7 +322,7 @@ class OperationsController extends Controller
                 'cs.review_note', 'cs.duration_min',
                 'cs.actual_start', 'cs.actual_end', 'cs.reviewed_at',
                 'cu.name as caregiver_name',
-                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'),
+                DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name'),
                 DB::raw('gu.name as guardian_name'),
                 'r.service_domain'
             );
@@ -421,8 +430,11 @@ class OperationsController extends Controller
                 ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
                 ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
                 ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+                ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+                ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+                ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
                 ->where('cs.id', $sessionId)
-                ->selectRaw('g.user_id as guardian_user_id, COALESCE(s.name, np.name, sa.label) as recipient_name')
+                ->selectRaw('g.user_id as guardian_user_id, COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name')
                 ->first();
 
             if (! $ctx || ! $ctx->guardian_user_id) {
@@ -655,12 +667,15 @@ class OperationsController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id')
             ->select(
                 'r.id', 'r.mode', 'r.service_domain', 'r.scheduled_start', 'r.duration_min',
                 'r.status', 'r.special_request', 'r.matched_at', 'r.created_at',
-                DB::raw('COALESCE(s.name, np.name, sa.label) as recipient_name'),
+                DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 DB::raw('gu.name as guardian_name'),
                 's.gender as senior_gender', 's.care_grade', 's.special_notes', 's.home_address',
                 'sa.label as addr_label', 'sa.address as addr_full', 'sa.entry_note'
@@ -748,6 +763,9 @@ class OperationsController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->leftJoinSub($candidateCount, 'mc', 'mc.request_id', '=', 'r.id')
             ->leftJoinSub($latestMatch, 'lm', 'lm.request_id', '=', 'r.id')
             ->leftJoin('matches as m', 'm.id', '=', 'lm.mid')
@@ -757,7 +775,7 @@ class OperationsController extends Controller
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id')
             ->select(
                 'r.id', 'r.senior_id',
-                DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'),
+                DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name'),
                 DB::raw('gu.name as guardian_name'),
                 'r.mode', 'r.service_domain', 'r.scheduled_start',
                 'r.status', 'r.created_at',
