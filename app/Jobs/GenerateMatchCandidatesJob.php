@@ -6,6 +6,7 @@ use App\Models\Caregiver;
 use App\Models\MatchCandidate;
 use App\Models\MatchRequest;
 use App\Services\External\AiService;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -146,7 +147,10 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($matchRequest, $aiResult, $preferredId) {
+        // 후보로 지정된 돌봄전문가 목록(알림 대상). 직접 지정 전문가도 포함.
+        $notifiedCaregiverIds = $hasDirect && $preferredId ? [(int) $preferredId] : [];
+
+        DB::transaction(function () use ($matchRequest, $aiResult, $preferredId, &$notifiedCaregiverIds) {
             foreach ($aiResult['candidates'] as $cand) {
                 // 직접 지정 전문가는 이미 direct 후보로 생성됨 → 중복 방지
                 if ($preferredId && (int) $cand['caregiver_id'] === (int) $preferredId) {
@@ -161,11 +165,16 @@ class GenerateMatchCandidatesJob implements ShouldQueue
                     'response' => 'pending',
                     'bid_status' => 'invited',
                 ]);
+                $notifiedCaregiverIds[] = (int) $cand['caregiver_id'];
             }
         });
 
         // 자동입찰 설정 돌봄전문가는 즉시 입찰 채움(입찰 공백 방지)
         app(\App\Services\Pricing\BiddingService::class)->applyAutoBids($matchRequest);
+
+        // 후보로 지정된 돌봄전문가에게 '새 매칭 요청' 알림(DB+FCM). 커밋 후 발송하며,
+        // 알림 실패가 후보 생성을 되돌리지 않도록 방어적으로 처리.
+        $this->notifyInvitedCaregivers($matchRequest, $recipient, array_unique($notifiedCaregiverIds));
 
         // TODO: 보호자에게 FCM 푸시 (CANDIDATES_READY)
         Log::info("매칭 요청 {$this->matchRequestId}: " . count($aiResult['candidates']) . "명 후보 산출 완료");
@@ -200,6 +209,51 @@ class GenerateMatchCandidatesJob implements ShouldQueue
         );
 
         return true;
+    }
+
+    /**
+     * 후보로 지정된 돌봄전문가들에게 '새 매칭 요청' 알림을 발송한다.
+     * caregiver_id → user_id 매핑 후 NotificationService(DB 기록 + FCM)로 개별 발송.
+     * 개별 실패는 로깅만 하고 나머지 발송을 계속한다(후보 생성은 이미 커밋됨).
+     *
+     * @param  array<int,int>  $caregiverIds
+     */
+    private function notifyInvitedCaregivers(MatchRequest $matchRequest, $recipient, array $caregiverIds): void
+    {
+        if (empty($caregiverIds)) {
+            return;
+        }
+
+        $userIds = Caregiver::whereIn('id', $caregiverIds)
+            ->pluck('user_id', 'id');
+
+        // 저장값은 UTC 인스턴트. 표시는 KST로 변환(코드베이스 관례: setTimezone('Asia/Seoul')).
+        $scheduledKst = $matchRequest->scheduled_start
+            ? $matchRequest->scheduled_start->copy()->setTimezone('Asia/Seoul')->format('n월 j일 H:i')
+            : '';
+        $payload = [
+            'senior_name' => $recipient->name ?? '어르신',
+            'scheduled_at' => $scheduledKst,
+            'request_id' => $matchRequest->id,
+            'service_domain' => $matchRequest->service_domain,
+        ];
+
+        $notifier = app(NotificationService::class);
+        $sent = 0;
+        foreach ($caregiverIds as $caregiverId) {
+            $userId = $userIds[$caregiverId] ?? null;
+            if (!$userId) {
+                Log::warning("매칭 요청 {$matchRequest->id}: 돌봄전문가 {$caregiverId} user_id 없음 → 알림 생략");
+                continue;
+            }
+            try {
+                $notifier->notify((int) $userId, NotificationService::TYPE_MATCH_REQUEST_ASSIGNED, $payload);
+                $sent++;
+            } catch (\Throwable $e) {
+                Log::warning("매칭 요청 {$matchRequest->id}: 돌봄전문가 {$caregiverId} 알림 실패 — {$e->getMessage()}");
+            }
+        }
+        Log::info("매칭 요청 {$matchRequest->id}: 돌봄전문가 {$sent}명에게 매칭 요청 알림 발송");
     }
 
     public function failed(\Throwable $exception): void

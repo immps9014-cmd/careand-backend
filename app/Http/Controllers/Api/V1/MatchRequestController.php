@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\MatchAlreadyTakenException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Match\StoreMatchRequestRequest;
 use App\Http\Resources\MatchCandidateResource;
@@ -292,7 +293,15 @@ class MatchRequestController extends Controller
         // 역경매: 입찰가 있는 후보 선택은 즉시 확정(입찰=확약). 입찰 없으면 기존 2단계(인력 수락 대기).
         $auctionEnabled = (bool) config('services.pricing.auction_enabled', true);
         if ($auctionEnabled && $candidate->bid_hourly !== null) {
-            $match = $this->confirmMatch($candidate, (float) $candidate->bid_hourly);
+            try {
+                $match = $this->confirmMatch($candidate, (float) $candidate->bid_hourly);
+            } catch (MatchAlreadyTakenException $e) {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'MATCH_ALREADY_TAKEN',
+                    'message' => $e->getMessage(),
+                ], 409);
+            }
 
             return response()->json([
                 'success' => true,
@@ -336,11 +345,36 @@ class MatchRequestController extends Controller
 
         $candidate = MatchCandidate::where('id', $candidateId)
             ->where('caregiver_id', $caregiver->id)
-            ->where('response', 'pending')
-            ->firstOrFail();
+            ->first();
+
+        if (!$candidate) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'CANDIDATE_NOT_FOUND',
+                'message' => '해당 매칭 제안을 찾을 수 없습니다.',
+            ], 404);
+        }
+
+        // 이미 처리된 제안(다른 전문가 선정으로 만료 등) — 선착순 탈락 안내.
+        if ($candidate->response !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'MATCH_ALREADY_TAKEN',
+                'message' => '이미 다른 돌봄전문가에게 매칭되었거나 마감된 요청입니다.',
+            ], 409);
+        }
 
         // 합의 시급: 입찰가 우선 → 적정가 산출(suggested) → 카테고리 정액 폴백
-        $match = $this->confirmMatch($candidate, $this->agreedHourlyRate($candidate));
+        try {
+            $match = $this->confirmMatch($candidate, $this->agreedHourlyRate($candidate));
+        } catch (MatchAlreadyTakenException $e) {
+            // 동시 수락 경합에서 밀림 — 선착순으로 다른 전문가가 이미 확정.
+            return response()->json([
+                'success' => false,
+                'error_code' => 'MATCH_ALREADY_TAKEN',
+                'message' => $e->getMessage(),
+            ], 409);
+        }
 
         // TODO: 양측에 FCM 푸시 (MATCH_CONFIRMED)
 
@@ -363,12 +397,27 @@ class MatchRequestController extends Controller
     private function confirmMatch(MatchCandidate $candidate, float $hourlyRate): CareMatch
     {
         return DB::transaction(function () use ($candidate, $hourlyRate) {
-            $candidate->update([
+            // 선착순 보장: 요청 행을 먼저 잠근다(FOR UPDATE). 동시에 여러 돌봄전문가가
+            // 수락/선택하면 두 번째 트랜잭션은 여기서 대기 → 첫 트랜잭션 커밋 후
+            // status='matched'를 읽고 아래 가드에서 탈락한다(이중 배정 방지).
+            $request = MatchRequest::whereKey($candidate->request_id)->lockForUpdate()->firstOrFail();
+
+            if (in_array($request->status, ['matched', 'cancelled', 'expired'], true)) {
+                throw new MatchAlreadyTakenException();
+            }
+
+            // 후보 행도 잠그고 여전히 pending인지 재확인(잠금 획득 후 최신 상태 기준).
+            $locked = MatchCandidate::whereKey($candidate->id)->lockForUpdate()->first();
+            if (!$locked || $locked->response !== 'pending') {
+                throw new MatchAlreadyTakenException();
+            }
+
+            $locked->update([
                 'response' => 'accepted',
                 'responded_at' => now(),
             ]);
+            $candidate = $locked;
 
-            $request = $candidate->request;
             $request->update([
                 'status' => 'matched',
                 'matched_at' => now(),
