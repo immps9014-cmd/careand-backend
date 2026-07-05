@@ -450,6 +450,7 @@ class InsightsController extends Controller
             ->selectRaw("SUBSTRING_INDEX(home_address, ' ', 2) as region")
             ->selectRaw('COUNT(*) as senior_count')
             ->whereNotNull('home_address')
+            ->whereNull('deleted_at')
             ->groupBy('region')
             ->orderByDesc('senior_count')
             ->limit(12)
