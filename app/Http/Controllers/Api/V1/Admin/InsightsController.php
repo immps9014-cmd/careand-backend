@@ -54,7 +54,8 @@ class InsightsController extends Controller
             if (! $card) {
                 continue;
             }
-            if ($cmp) {
+            // 공급률은 스냅샷 지표라 기간 증감 비교 대상에서 제외
+            if ($cmp && $metric !== 'supply') {
                 $prev = $this->buildCard($metric, $cmp[0], $cmp[1]);
                 $card['compare'] = $this->deltaOf(
                     (float) $card['primary']['value'],
@@ -88,10 +89,12 @@ class InsightsController extends Controller
     private function buildCard(string $metric, Carbon $start, Carbon $end): ?array
     {
         return match ($metric) {
-            'signups'  => $this->signupsCard($start, $end),
-            'matching' => $this->matchingCard($start, $end),
-            'revenue'  => $this->revenueCard($start, $end),
-            default    => null,
+            'signups'          => $this->signupsCard($start, $end),
+            'matching'         => $this->matchingCard($start, $end),
+            'revenue'          => $this->revenueCard($start, $end),
+            'regional_revenue' => $this->regionalRevenueCard($start, $end),
+            'supply'           => $this->supplyCard(),
+            default            => null,
         };
     }
 
@@ -177,6 +180,9 @@ class InsightsController extends Controller
         $t = str_replace(' ', '', $q);
 
         // ---- 지표 추출 ----
+        $hasRegion = (bool) preg_match('/지역|시군구|시도|권역|시·군·구/u', $t);
+        $hasSupply = (bool) preg_match('/공급|수급|공급률|수급률|인력부족|부족지역/u', $t);
+
         $metrics = [];
         if (preg_match('/회원가입|가입|신규회원|신규가입|회원현황|회원수/u', $t)) {
             $metrics[] = 'signups';
@@ -185,7 +191,15 @@ class InsightsController extends Controller
             $metrics[] = 'matching';
         }
         if (preg_match('/매출|결제|수익|거래액|정산/u', $t)) {
-            $metrics[] = 'revenue';
+            // 지역 언급이 있으면 지역별 매출로 집계
+            $metrics[] = $hasRegion ? 'regional_revenue' : 'revenue';
+        }
+        if ($hasSupply) {
+            $metrics[] = 'supply';
+        }
+        // 지역만 언급하고 매출·공급 지정이 없으면 지역별 매출로 해석
+        if ($hasRegion && ! in_array('regional_revenue', $metrics, true) && ! $hasSupply) {
+            $metrics[] = 'regional_revenue';
         }
         $metricsMatched = ! empty($metrics);
         // 전체/요약/현황 만 있거나 지표 미검출 → 3종 종합
@@ -382,6 +396,107 @@ class InsightsController extends Controller
     }
 
     /**
+     * 지역별 매출 — 결제를 어르신 주소(없으면 서비스 주소) 앞 2어절 기준으로 그룹핑
+     */
+    private function regionalRevenueCard(Carbon $start, Carbon $end): array
+    {
+        $rows = DB::table('payments as p')
+            ->join('matches as m', 'm.id', '=', 'p.match_id')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->where('p.status', 'paid')
+            ->whereBetween('p.paid_at', [$start, $end])
+            ->selectRaw("SUBSTRING_INDEX(COALESCE(NULLIF(s.home_address,''), sa.address, '미지정'), ' ', 2) as region")
+            ->selectRaw('SUM(p.total_amount) as amt, COUNT(*) as cnt')
+            ->groupBy('region')
+            ->orderByDesc('amt')
+            ->get();
+
+        $total = (int) $rows->sum('amt');
+        $cnt = (int) $rows->sum('cnt');
+        $top = $rows->first();
+
+        $breakdownRows = $rows
+            ->filter(fn ($r) => (int) $r->amt > 0)
+            ->map(fn ($r) => ['label' => $r->region ?: '미지정', 'value' => (int) $r->amt])
+            ->values()
+            ->all();
+
+        return [
+            'key' => 'regional_revenue',
+            'title' => '지역별 매출',
+            'icon' => 'region',
+            'primary' => ['label' => '총 매출', 'value' => $total, 'unit' => '원'],
+            'stats' => [
+                ['label' => '집계 지역', 'value' => count($breakdownRows), 'unit' => '곳'],
+                ['label' => '최다 지역 매출', 'value' => (int) ($top->amt ?? 0), 'unit' => '원'],
+                ['label' => '결제 건수', 'value' => $cnt, 'unit' => '건'],
+            ],
+            'breakdown' => [
+                'title' => '지역별 매출',
+                'unit' => '원',
+                'rows' => $breakdownRows,
+            ],
+        ];
+    }
+
+    /**
+     * 지역별 공급률 — 활성 돌봄전문가 수 / 어르신 수 (스냅샷, 기간 무관)
+     */
+    private function supplyCard(): array
+    {
+        $regions = DB::table('seniors')
+            ->selectRaw("SUBSTRING_INDEX(home_address, ' ', 2) as region")
+            ->selectRaw('COUNT(*) as senior_count')
+            ->whereNotNull('home_address')
+            ->groupBy('region')
+            ->orderByDesc('senior_count')
+            ->limit(12)
+            ->get();
+
+        $rows = [];
+        $totalSenior = 0;
+        $totalCg = 0;
+        $shortage = 0;
+        foreach ($regions as $r) {
+            $region = $r->region ?: '미지정';
+            $cg = (int) DB::table('caregivers')
+                ->where('status', 'active')
+                ->where('base_address', 'like', $region . '%')
+                ->count();
+            $seniorCount = (int) $r->senior_count;
+            $rate = $seniorCount > 0 ? round($cg / $seniorCount * 100, 1) : 0.0;
+            $rows[] = ['label' => $region, 'value' => $rate];
+            $totalSenior += $seniorCount;
+            $totalCg += $cg;
+            if ($rate < 60) {
+                $shortage++;
+            }
+        }
+        usort($rows, fn ($a, $b) => $b['value'] <=> $a['value']);
+
+        $overall = $totalSenior > 0 ? round($totalCg / $totalSenior * 100, 1) : 0.0;
+
+        return [
+            'key' => 'supply',
+            'title' => '지역별 공급률',
+            'icon' => 'supply',
+            'primary' => ['label' => '전체 공급률', 'value' => $overall, 'unit' => '%'],
+            'stats' => [
+                ['label' => '활성 돌봄전문가', 'value' => $totalCg, 'unit' => '명'],
+                ['label' => '어르신', 'value' => $totalSenior, 'unit' => '명'],
+                ['label' => '부족 지역(60%↓)', 'value' => $shortage, 'unit' => '곳'],
+            ],
+            'breakdown' => [
+                'title' => '지역별 공급률 (돌봄전문가/어르신)',
+                'unit' => '%',
+                'rows' => $rows,
+            ],
+        ];
+    }
+
+    /**
      * 도메인별 집계 → 라벨 붙인 정렬된 행 목록(값 내림차순, 0 제외)
      */
     private function domainRows($pluck): array
@@ -411,6 +526,9 @@ class InsightsController extends Controller
                 'signups' => "신규가입 {$p['value']}명",
                 'matching' => "매칭요청 {$p['value']}건(성사 {$c['stats'][0]['value']}건)",
                 'revenue' => '결제매출 ' . number_format((int) $p['value']) . '원',
+                'regional_revenue' => '지역별 매출 합계 ' . number_format((int) $p['value']) . '원'
+                    . (! empty($c['breakdown']['rows']) ? "(최다 {$c['breakdown']['rows'][0]['label']})" : ''),
+                'supply' => "전체 공급률 {$p['value']}%",
                 default => '',
             };
             if ($text !== '' && ! empty($c['compare'])) {
