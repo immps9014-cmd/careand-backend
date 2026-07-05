@@ -47,6 +47,15 @@ class MatchRequestResource extends JsonResource
                 'name' => $this->category->name,
                 'base_rate' => (float) $this->category->base_rate,
             ]),
+
+            // 확정 매칭 정보 — 매칭완료 카드에 케어자 이름·케어 일정·결제 상태 노출
+            'match' => $this->whenLoaded('match', fn () => $this->match ? [
+                'id' => $this->match->id,
+                'scheduled_start' => $this->match->scheduled_start?->toIso8601String(),
+                'scheduled_end' => $this->match->scheduled_end?->toIso8601String(),
+                'caregiver_name' => $this->match->caregiver?->user?->name,
+                'payment_status' => $this->match->payment?->status,
+            ] : null),
         ];
     }
 }

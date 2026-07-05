@@ -166,7 +166,14 @@ class MatchRequestController extends Controller
         }
 
         $requests = MatchRequest::where('guardian_id', $guardian->id)
-            ->with(['senior:id,name,care_grade', 'nursingPatient:id,name,hospital_name', 'serviceAddress:id,label,address', 'category:id,name'])
+            ->with([
+                'senior:id,name,care_grade',
+                'nursingPatient:id,name,hospital_name',
+                'serviceAddress:id,label,address',
+                'category:id,name',
+                // 확정 매칭의 케어자·케어 일정·결제 상태(매칭완료 카드에 노출)
+                'match' => fn ($q) => $q->with(['caregiver.user:id,name', 'payment:id,match_id,status']),
+            ])
             ->when($request->input('status'), fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('created_at')
             ->paginate(20);
