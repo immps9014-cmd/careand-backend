@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Admin\AiModelController;
 use App\Http\Controllers\Api\V1\Admin\CsController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
+use App\Http\Controllers\Api\V1\Admin\InsightsController;
 use App\Http\Controllers\Api\V1\Admin\OperationsController;
 use App\Http\Controllers\Api\V1\AnomalyAlertController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -212,6 +213,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('regional-demand', [DashboardController::class, 'regionalDemand']);
                 Route::get('recent-alerts', [DashboardController::class, 'recentAlerts']);
             });
+
+            // 자연어 인사이트 검색 (회원가입/매칭/매출 현황)
+            Route::get('insights/query', [InsightsController::class, 'query']);
 
             // Phase 2: AI 모델 운영
             Route::prefix('ai-models')->group(function () {
