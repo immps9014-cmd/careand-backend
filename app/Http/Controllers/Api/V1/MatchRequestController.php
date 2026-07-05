@@ -211,10 +211,12 @@ class MatchRequestController extends Controller
         // 보호자 프론트가 확정 매칭을 결제(/payments/{matchId})로 연결할 수 있게 함.
         $matchId = null;
         $paymentStatus = null;
+        $matchStatus = null;
         if ($matchRequest->status === 'matched') {
             $match = CareMatch::where('request_id', $id)->first();
             if ($match) {
                 $matchId = (int) $match->id;
+                $matchStatus = $match->status; // 케어 진행: confirmed|in_progress|completed
                 // 결제 레코드가 없으면 미결제(null)
                 $paymentStatus = Payment::where('match_id', $match->id)->value('status');
             }
@@ -225,6 +227,7 @@ class MatchRequestController extends Controller
             'request_status' => $matchRequest->status,
             'price_estimate' => $matchRequest->price_estimate,
             'match_id' => $matchId,
+            'match_status' => $matchStatus,
             'payment_status' => $paymentStatus,
             'data' => MatchCandidateResource::collection($candidates),
             'message' => $candidates->isEmpty()

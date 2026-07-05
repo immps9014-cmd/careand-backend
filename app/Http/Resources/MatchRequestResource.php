@@ -51,6 +51,7 @@ class MatchRequestResource extends JsonResource
             // 확정 매칭 정보 — 매칭완료 카드에 케어자 이름·케어 일정·결제 상태 노출
             'match' => $this->whenLoaded('match', fn () => $this->match ? [
                 'id' => $this->match->id,
+                'status' => $this->match->status, // 케어 진행: confirmed|in_progress|completed|cancelled|no_show
                 'scheduled_start' => $this->match->scheduled_start?->toIso8601String(),
                 'scheduled_end' => $this->match->scheduled_end?->toIso8601String(),
                 'caregiver_name' => $this->match->caregiver?->user?->name,

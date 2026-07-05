@@ -475,6 +475,11 @@ class CaregiverController extends Controller
             ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
             ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
             ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
+            // 본인이 확정된 매칭에 한해 결제·케어 진행상태를 실어 진행 파이프라인에 사용.
+            ->leftJoin('matches as mt', function ($j) {
+                $j->on('mt.request_id', '=', 'r.id')->on('mt.caregiver_id', '=', 'mc.caregiver_id');
+            })
+            ->leftJoin('payments as pmt', 'pmt.match_id', '=', 'mt.id')
             ->where('mc.caregiver_id', $caregiver->id)
             // 매칭이 안 된 채 지나간 제안은 숨긴다(요양보호사 홈 '새 매칭 제안').
             // 이미 응답한 건(수락/거절 등)은 이력으로 보존하고, '대기중(pending)' 제안만
@@ -496,6 +501,7 @@ class CaregiverController extends Controller
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
                 'r.price_estimate',
+                'mt.status as match_status', 'pmt.status as payment_status',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name')
             )
             ->orderByDesc('mc.created_at')
@@ -515,6 +521,8 @@ class CaregiverController extends Controller
                     'scheduled_start' => $r->scheduled_start,
                     'duration_min' => $r->duration_min,
                     'request_status' => $r->request_status,
+                    'match_status' => $r->match_status,       // confirmed|in_progress|completed (본인 확정 시)
+                    'payment_status' => $r->payment_status,   // 보호자 결제 상태
                     'senior_name' => $r->senior_name ?? '(미상)',
                     // 역경매 입찰 (입찰 화면용)
                     'bid_hourly' => $r->bid_hourly !== null ? (float) $r->bid_hourly : null,
