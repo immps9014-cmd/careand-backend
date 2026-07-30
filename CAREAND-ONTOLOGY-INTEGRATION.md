@@ -27,14 +27,14 @@
 `MentalStatus`/`LifeStatus` 하위).
 
 **관계(ObjectProperty)**:
-| 관계 | 도메인→레인지 | 용도 |
+| 관계 | 도메인 → 레인지 | 용도 |
 |---|---|---|
-| `hasRequestMode` | ServiceDomain→RequestMode | 대리형/본인형 구분 |
-| `requiresSpecialty` | Disease→Specialty | 질병-특기 매핑(매칭 feature) |
-| `broaderSpecialty` | Specialty→Specialty(전이) | 특기 상하위(예: 인지자극 ⊂ 치매케어) |
-| `aliasOf` | Role→Role | 역할 별칭(postpartum_client→guardian) |
-| `hasIntent` | Guardian→GuardianIntent | 가사요청자 구분(별도 Role 아님) |
-| `associatedTerm` | Disease→CareTerm | 질병별 연관 관찰 용어(STT 개인화용) |
+| `hasRequestMode` | ServiceDomain → RequestMode | 대리형/본인형 구분 |
+| `requiresSpecialty` | Disease → Specialty | 질병-특기 매핑(매칭 feature) |
+| `broaderSpecialty` | Specialty → Specialty(전이) | 특기 상하위(예: 인지자극 ⊂ 치매케어) |
+| `aliasOf` | Role → Role | 역할 별칭(postpartum_client → guardian) |
+| `hasIntent` | Guardian → GuardianIntent | 가사요청자 구분(별도 Role 아님) |
+| `associatedTerm` | Disease → CareTerm | 질병별 연관 관찰 용어(STT 개인화용) |
 
 **개체 규모**: 서비스 도메인 6개(senior/nursing/housekeeping·living_support alias/postpartum/
 childcare/mental_care), 케어일지 활동분류 7개(`_CATEGORY_LABEL`과 1:1), 특기 7개, 질병 4개
@@ -64,9 +64,7 @@ TTL은 Fuseki 내장 Jena riot 파서로 매 변경마다 문법 검증(`riotcmd
 2건을 테스트 도중 발견·수정:
 
 **버그 1 — Fuseki 장애 후 캐시 고착 (케이스4에서 발견)**
-`moai-fuseki`를 실제로 중지시켜 장애를 재현한 결과, 최초 구현(`functools.lru_cache`)이
-다운타임 중 조회 실패(빈 결과)까지 캐시해버려서 **Fuseki가 복구된 뒤에도 프로세스가
-재시작되기 전까진 계속 폴백 상태로 굳어있는 버그**를 발견(`뇌졸중`으로 재현). `ontology.py`를
+`moai-fuseki`를 실제로 중지시켜 장애를 재현한 결과, 최초 구현(`functools.lru_cache`)이 다운타임 중 조회 실패(빈 결과)까지 캐시해버려서 **Fuseki가 복구된 뒤에도 프로세스가 재시작되기 전까진 계속 폴백 상태로 굳어있는 버그**를 발견(`뇌졸중`으로 재현). `ontology.py`를
 수동 dict 캐시로 바꿔 성공한 조회(빈 결과 포함)만 캐시하고 실패는 캐시하지 않도록 수정 →
 복구 즉시 정상화 확인. 커밋 `c973946`.
 
@@ -139,9 +137,7 @@ recipientFeatures()`/`recipientName()`(이미 `GenerateMatchCandidatesJob`이 �
 id=24(status `matched`, 실제 확정된 매칭 존재)가 계속 그걸 참조하는 고아 데이터를 발견.
 조사 결과 앱 코드엔 이 삭제를 유발하는 경로가 없어(컨트롤러 destroy 메서드 자체가 없음)
 수동 테스트 데이터 정리 흔적으로 판단, 데이터는 그대로 두기로 함. 대신 같은 문제가
-시니어 도메인에서도 날 수 있는지 확인했더니, **`NursingPatientController`/
-`ServiceAddressController`엔 이미 있는 "진행 중인 매칭 있으면 삭제 차단" 가드가
-`SeniorController::destroy()`에만 빠져있었음** — 기존 두 컨트롤러와 동일한 패턴
+시니어 도메인에서도 날 수 있는지 확인했더니, **`NursingPatientController`/`ServiceAddressController`엔 이미 있는 "진행 중인 매칭 있으면 삭제 차단" 가드가 `SeniorController::destroy()`에만 빠져있었음** — 기존 두 컨트롤러와 동일한 패턴
 (`whereIn('status',['open','matching','matched'])->exists()` → `422 HAS_ACTIVE_REQUEST`)으로
 통일. backend 커밋 `3e518fd`.
 (postpartum/child/mental_care 도메인은 애초에 삭제 API 자체가 없어 지금 막을 대상이 없음 —
