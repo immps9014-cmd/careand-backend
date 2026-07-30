@@ -61,13 +61,15 @@ class AiService
     /**
      * 2. STT - 음성 → 텍스트 (Whisper-ko)
      *
+     * @param  array<int, string>  $diseases  대상자 질병/특이사항(옵션) — 온톨로지 기반 STT 어휘 개인화
      * @return array{stt_text: string, confidence: float, duration_sec: int, language: string}
      */
-    public function transcribe(string $audioUrl): array
+    public function transcribe(string $audioUrl, array $diseases = []): array
     {
         return $this->call('/ai/voice/transcribe', [
             'audio_url' => $audioUrl,
             'language' => 'ko',
+            'diseases' => $diseases,
         ], timeout: 60);
     }
 

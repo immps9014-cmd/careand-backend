@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * 음성 일지 STT + LLM 요약 비동기 처리.
  * 케어 세션에 업로드된 음성을 ai-service로 보내 전사(STT)하고,
- * 어르신 컨텍스트와 함께 보호자/의료 버전 요약을 생성·저장한다.
+ * 대상자(어르신/간병환자 등, 도메인별 MatchRequest::recipient() 참조) 컨텍스트와 함께
+ * 보호자/의료 버전 요약을 생성·저장한다.
  * (이전에는 CareSessionController::processVoiceLogSync 로 동기 처리 — STT가
  *  CPU에서 수 초 블로킹되어 운영 부적합. 큐 워커로 이관.)
  */
@@ -38,7 +39,7 @@ class ProcessVoiceLogJob implements ShouldQueue
             return;
         }
 
-        $session = $voiceLog->session()->with('match.request.senior')->first();
+        $session = $voiceLog->session()->with('match.request')->first();
         if (! $session) {
             Log::warning("음성 처리: 세션 없음 (VoiceLog {$this->voiceLogId})");
             $voiceLog->update(['status' => 'failed', 'error_message' => '세션 없음']);
@@ -48,8 +49,18 @@ class ProcessVoiceLogJob implements ShouldQueue
         $voiceLog->update(['status' => 'transcribing']);
 
         try {
-            // 1. STT
-            $sttResult = $aiService->transcribe($voiceLog->audio_url);
+            // 대상자(수혜자) 추상화 — senior 하드코딩 시 nursing/postpartum 등 도메인은
+            // recipient가 null이라 아래서 속성 접근 시 예외로 죽었음(recipientFeatures()가
+            // 도메인별 분기를 이미 갖고 있어 재사용, MatchRequest.php 참조).
+            $request = $session->match->request;
+            $features = $request->recipientFeatures();
+            if (! $features) {
+                Log::warning("음성 처리: 대상자 정보 없음 (VoiceLog {$this->voiceLogId}, domain={$request->service_domain})");
+            }
+            $diseases = $features['diseases'] ?? [];
+
+            // 1. STT (대상자 질병 연관 어휘로 개인화)
+            $sttResult = $aiService->transcribe($voiceLog->audio_url, diseases: $diseases);
             $voiceLog->update([
                 'stt_text' => $sttResult['stt_text'],
                 'stt_confidence' => $sttResult['confidence'],
@@ -57,14 +68,12 @@ class ProcessVoiceLogJob implements ShouldQueue
             ]);
 
             // 2. LLM 요약
-            $senior = $session->match->request->senior;
-
             $summary = $aiService->summarizeCareLog(
                 sttText: $sttResult['stt_text'],
                 seniorContext: [
-                    'name' => $senior->name,
-                    'care_grade' => $senior->care_grade,
-                    'diseases' => $senior->diseases ?? [],
+                    'name' => $request->recipientName() ?? '대상자',
+                    'care_grade' => $features['care_grade'] ?? null,
+                    'diseases' => $diseases,
                 ]
             );
 
