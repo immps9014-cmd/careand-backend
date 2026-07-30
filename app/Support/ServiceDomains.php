@@ -82,6 +82,21 @@ class ServiceDomains
         return self::qualification($token)['accepted_types'] ?? [];
     }
 
+    /** @return array<string,mixed> 도메인 관계 메타 (hasSubject 테이블/FK, requestedBy 역할). 문서화 목적 */
+    public static function relations(string $token): array
+    {
+        return array_merge([
+            'hasSubject'  => null,
+            'requestedBy' => [],
+        ], config("service_domains.$token.relations", []));
+    }
+
+    /** hasSubject 관계의 대상 테이블/FK (없으면 null) */
+    public static function subject(string $token): ?array
+    {
+        return self::relations($token)['hasSubject'];
+    }
+
     /**
      * 역할(role)에게 노출 가능한 활성 도메인 + 각 도메인의 활성 카테고리.
      * 활성 카테고리가 없는 도메인은 자동 제외(잠복).

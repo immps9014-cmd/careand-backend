@@ -15,6 +15,10 @@
  *      - verify: 진위확인 경로 — 'mohw'(보건복지부 요양보호사 자동조회) | 'manual'(관리자 수동) | 'none'.
  *      - accepted_types:   허용 자격증 종류(라벨). license_type 검증/FE 드롭다운에 사용.
  *                          비어 있으면 종류 제한 없음(자유 입력).
+ *  - relations: 온톨로지 관계 정의 (문서화 목적, /root/CAREAND-DOMAIN-INTEGRATION.md §2 "발주 역할" 열 근거).
+ *      - hasSubject:  이 도메인 요청의 피대상자(subject) 테이블/FK. picker.fk와 동일 값(중복 명시 — relations만 보고도 파악 가능하도록).
+ *      - requestedBy: 발주 가능 주체 종류. 'guardian'(대리 발주) | 'self'(본인) | 'family'(가족) | 'organization'(기관).
+ *                     실제 접근 제어는 hidden_for_roles + guardians.intent가 담당 — 이 값은 문서화용이며 별도 강제 로직 없음.
  *
  * 설계서: /root/CAREAND-DOMAIN-INTEGRATION.md
  *
@@ -31,6 +35,10 @@ return [
         'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'senior', 'fk' => 'senior_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'seniors', 'fk' => 'senior_id'],
+            'requestedBy' => ['guardian', 'self'],
+        ],
         'domain_label'     => '시니어 돌봄',
         'qualification'    => [
             'license_required' => true,
@@ -48,6 +56,10 @@ return [
         'is_active'        => true,
         'hidden_for_roles' => ['guardian'], // 기관 발주 전용 — 보호자에게 도메인 숨김
         'picker'           => ['type' => 'patient', 'fk' => 'nursing_patient_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'nursing_patients', 'fk' => 'nursing_patient_id'],
+            'requestedBy' => ['organization'],
+        ],
         'domain_label'     => '간병',
         'qualification'    => [
             'license_required' => true,
@@ -66,6 +78,10 @@ return [
         'is_active'        => false,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'address', 'fk' => 'service_address_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'service_addresses', 'fk' => 'service_address_id'],
+            'requestedBy' => ['self'],
+        ],
         'domain_label'     => '가사',
         'qualification'    => [
             'license_required' => false,
@@ -84,6 +100,10 @@ return [
         'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'address', 'fk' => 'service_address_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'service_addresses', 'fk' => 'service_address_id'],
+            'requestedBy' => ['self'],
+        ],
         'domain_label'     => '생활지원',
         'qualification'    => [
             'license_required' => false, // 무자격 등록 허용 → 관리자 수동 승인
@@ -104,6 +124,10 @@ return [
         'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'postpartum', 'fk' => 'postpartum_client_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'postpartum_clients', 'fk' => 'postpartum_client_id'],
+            'requestedBy' => ['self'],
+        ],
         'domain_label'     => '산후 케어',
         'qualification'    => [
             'license_required' => true,
@@ -122,6 +146,10 @@ return [
         'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'child', 'fk' => 'childcare_child_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'children', 'fk' => 'childcare_child_id'],
+            'requestedBy' => ['guardian'],
+        ],
         'domain_label'     => '아이돌봄',
         'qualification'    => [
             'license_required' => false, // 권장(필수 아님) — 자격 제출 시 종류 검증
@@ -140,6 +168,10 @@ return [
         'is_active'        => true,
         'hidden_for_roles' => [],
         'picker'           => ['type' => 'mental_client', 'fk' => 'mental_care_client_id'],
+        'relations'        => [
+            'hasSubject'  => ['table' => 'mental_care_clients', 'fk' => 'mental_care_client_id'],
+            'requestedBy' => ['self', 'family'],
+        ],
         'domain_label'     => '마음돌봄',
         'qualification'    => [
             // 상담 도메인 — 자격 필수 + 종류 검증 + 관리자 수동 검증(보건복지부 자동조회 미적용).
