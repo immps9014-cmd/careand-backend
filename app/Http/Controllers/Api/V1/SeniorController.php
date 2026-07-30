@@ -178,6 +178,17 @@ class SeniorController extends Controller
 
         $this->authorize('delete', $senior);
 
+        $hasOpenRequest = $senior->matchRequests()
+            ->whereIn('status', ['open', 'matching', 'matched'])
+            ->exists();
+        if ($hasOpenRequest) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'HAS_ACTIVE_REQUEST',
+                'message' => '진행 중인 매칭 요청이 있어 삭제할 수 없습니다.',
+            ], 422);
+        }
+
         $senior->delete();
 
         return response()->json([
