@@ -6,13 +6,19 @@
   <title>AI 통합돌봄 서비스 Care& 시스템</title>
   <meta name="description" content="Care& AI 통합돌봄 서비스 — 시니어돌봄·병원간병·가사서비스가 필요한 분께 검증된 돌봄전문가를 연결합니다. AI 스마트 매칭·실시간 돌봄 모니터링·자동 정산 통합 포털" />
   <link rel="icon" href="/app/icons/icon-192.png" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" as="style" crossorigin
-        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <style>
+    /* 폰트 self-host (외부 CDN 의존 제거 — 서버 아웃바운드 화이트리스트 차단 리스크 회피, admin/member/www와 동일 관례) */
+    @font-face{
+      font-family:"Pretendard";
+      font-weight:45 920;
+      font-style:normal;
+      font-display:swap;
+      src:url("/fonts/PretendardVariable.woff2") format("woff2-variations");
+    }
     :root{
-      --coral:#10B981; --coral-d:#0E9F6E; --coral-soft:#E6F7EF;
-      --blue:#3D5AFE; --blue-soft:#EEF1FF;
+      /* Care& 브랜드 SSOT(lib/theme.ts의 brand/warm)와 동일 — 코랄/테라코타. 구버전 emerald(#10B981)는 폐기된 값. */
+      --coral:#D5603E; --coral-d:#B94C2E; --coral-soft:#FAE3DB;
+      --blue:#3B82F6; --blue-soft:#EFF6FF;
       --ink:#1C2030; --ink-2:#5B6172; --ink-3:#9AA0AD;
       --line:#EFF1F4; --bg:#F5F8F6; --card:#FFFFFF;
     }
@@ -20,7 +26,7 @@
     html,body{margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{
-      font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,
+      font-family:"Pretendard",-apple-system,BlinkMacSystemFont,
         "Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,Roboto,sans-serif;
       color:var(--ink);
       background:var(--bg);
@@ -41,6 +47,11 @@
     @keyframes float1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(60px,40px) scale(1.08);}}
     @keyframes float2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-50px,60px) scale(1.05);}}
     @keyframes float3{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-40px,-50px) scale(1.1);}}
+
+    /* 이모지 대신 인라인 SVG 아이콘 사용 — 각 아이콘 컨테이너의 font-size를 그대로 1em 크기로 상속 */
+    .ic svg,.emo svg,.badge svg,.ico svg,.pic svg,.pacts a svg{
+      width:1em;height:1em;stroke:currentColor;fill:none;display:block;
+    }
 
     .wrap{max-width:1120px;margin:0 auto;padding:40px 24px 64px;}
 
@@ -311,13 +322,13 @@
 
       <div class="cta-row reveal in d3">
         <a class="cta primary" href="/app/login">
-          <span class="ic">💚</span> 회원 앱 로그인 <span class="arr">→</span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span> 회원 앱 로그인 <span class="arr">→</span>
         </a>
         <a class="cta signup" href="/app/signup">
-          <span class="ic">📝</span> 신규회원 등록 <span class="arr">→</span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span> 신규회원 등록 <span class="arr">→</span>
         </a>
         <a class="cta secondary" href="/admin/login">
-          <span class="ic">🛡️</span> 관리자 콘솔 로그인 <span class="arr">→</span>
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg></span> 관리자 콘솔 로그인 <span class="arr">→</span>
         </a>
       </div>
       <div class="cta-note reveal in d4">보호자·요양보호사는 회원 앱으로, 운영 담당자는 관리자 콘솔로 로그인하세요.</div>
@@ -334,7 +345,7 @@
         <article class="svc s1 reveal d1">
           <div class="wash"></div>
           <div class="num">01</div>
-          <div class="emo">🧓</div>
+          <div class="emo" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></div>
           <h3>시니어돌봄</h3>
           <p>어르신의 건강 상태와 생활을 세심하게 살피는 방문 돌봄. 일상 지원부터 정서 케어까지 곁에서 함께합니다.</p>
           <span class="vchip">✓ 검증된 요양보호사</span>
@@ -342,7 +353,7 @@
         <article class="svc s2 reveal d2">
           <div class="wash"></div>
           <div class="num">02</div>
-          <div class="emo">🏥</div>
+          <div class="emo" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path stroke-linecap="round" d="M12 8v8M8 12h8"/></svg></div>
           <h3>병원간병</h3>
           <p>입원·수술 전후 환자를 24시간 돌보는 전문 간병. 보호자를 대신해 안전하고 든든하게 곁을 지킵니다.</p>
           <span class="vchip">✓ 검증된 간병인</span>
@@ -350,7 +361,7 @@
         <article class="svc s3 reveal d3">
           <div class="wash"></div>
           <div class="num">03</div>
-          <div class="emo">🧹</div>
+          <div class="emo" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 12l.8 2.2L20 15l-2.2.8L17 18l-.8-2.2L14 15l2.2-.8.8-2.2z"/></svg></div>
           <h3>가사서비스</h3>
           <p>청소·정리·세탁 등 생활에 꼭 필요한 집안일을 깔끔하게. 바쁜 일상에 여유를 더해 드립니다.</p>
           <span class="vchip">✓ 검증된 가사도우미</span>
@@ -368,32 +379,32 @@
 
       <div class="features">
         <article class="feat reveal d1">
-          <div class="badge">🤝</div>
+          <div class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.69a4.5 4.5 0 011.24 7.24l-4.5 4.5a4.5 4.5 0 01-6.36-6.36l1.75-1.75M10.81 15.31a4.5 4.5 0 01-1.24-7.24l4.5-4.5a4.5 4.5 0 016.36 6.36l-1.75 1.75"/></svg></div>
           <h3>AI 스마트 매칭</h3>
           <p>어르신의 상태·생활 패턴과 돌봄전문가의 역량·동선을 분석해 가장 잘 맞는 돌봄전문가를 자동으로 연결합니다.</p>
         </article>
         <article class="feat reveal d2">
-          <div class="badge">📡</div>
+          <div class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><path d="M12 18.5h.01"/><path d="M8.5 15a5 5 0 017 0"/><path d="M5.5 12a9 9 0 0113 0"/></svg></div>
           <h3>실시간 돌봄 모니터링</h3>
           <p>방문 일정과 돌봄 활동을 실시간으로 추적하고, 이상 징후를 즉시 감지해 빠르게 대응합니다.</p>
         </article>
         <article class="feat reveal d3">
-          <div class="badge">🗣️</div>
+          <div class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path stroke-linecap="round" d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>
           <h3>음성 AI 돌봄 기록</h3>
           <p>말하면 기록이 됩니다. 음성으로 간편하게 돌봄 일지를 남기고, AI가 핵심 내용을 자동 요약합니다.</p>
         </article>
         <article class="feat reveal d1">
-          <div class="badge">💳</div>
+          <div class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg></div>
           <h3>투명한 자동 정산</h3>
           <p>방문·서비스 내역을 기반으로 정산을 자동 산정하고, 누구나 확인할 수 있는 명확한 내역을 제공합니다.</p>
         </article>
         <article class="feat reveal d2">
-          <div class="badge">👪</div>
+          <div class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path stroke-linecap="round" d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path stroke-linecap="round" d="M15.5 14.3c2.5.4 4.5 2.2 4.5 5.2"/></svg></div>
           <h3>보호자 안심 앱</h3>
           <p>가족이 어디에 있든 어르신의 돌봄 현황과 일정을 바로 확인하고 소통할 수 있습니다.</p>
         </article>
         <article class="feat reveal d3">
-          <div class="badge">📊</div>
+          <div class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M4 20h16"/></svg></div>
           <h3>데이터 기반 운영</h3>
           <p>AI 수요 예측과 리포트로 돌봄 자원을 미리 배치하고, 운영 효율을 한눈에 관리합니다.</p>
         </article>
@@ -412,7 +423,7 @@
         <!-- 보호자 -->
         <article class="enr guardian reveal d1">
           <div class="enr-top">
-            <div class="ico">👪</div>
+            <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path stroke-linecap="round" d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.4"/><path stroke-linecap="round" d="M15.5 14.3c2.5.4 4.5 2.2 4.5 5.2"/></svg></div>
             <div>
               <div class="r1">보호자 등록</div>
               <div class="r2">돌봄이 필요한 가족을 위해</div>
@@ -441,7 +452,7 @@
         <!-- 돌봄전문가 -->
         <article class="enr worker reveal d2">
           <div class="enr-top">
-            <div class="ico">🩺</div>
+            <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l2.2 1.3 2.5-.2 1 2.3 2.3 1-.2 2.5L21 12l-1.3 2.2.2 2.5-2.3 1-1 2.3-2.5-.2L12 21l-2.2-1.3-2.5.2-1-2.3-2.3-1 .2-2.5L3 12l1.3-2.2-.2-2.5 2.3-1 1-2.3 2.5.2L12 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg></div>
             <div>
               <div class="r1">돌봄전문가 등록</div>
               <div class="r2">요양보호사 · 간병인 · 가사도우미</div>
@@ -480,7 +491,7 @@
       <div class="roles">
         <a class="role-card member reveal d1" href="/app/login">
           <div class="role-top">
-            <div class="ico">💚</div>
+            <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></div>
             <div class="rt">
               <div class="r1">회원 로그인</div>
               <div class="r2">보호자 · 요양보호사(케어플로우) 앱</div>
@@ -494,7 +505,7 @@
 
         <a class="role-card admin reveal d2" href="/admin/login">
           <div class="role-top">
-            <div class="ico">🛡️</div>
+            <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/></svg></div>
             <div class="rt">
               <div class="r1">관리자 로그인</div>
               <div class="r2">운영 콘솔 · 매칭/정산/회원 관리</div>
@@ -510,14 +521,14 @@
 
     <!-- ===== 기관·제휴 도입 문의 (B2B) ===== -->
     <section class="partner reveal">
-      <div class="pic">🏢</div>
+      <div class="pic" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-width="1.6"><rect x="4" y="3" width="10" height="18" rx="1"/><path stroke-linecap="round" d="M8 7h2M8 11h2M8 15h2"/><path d="M14 10h6v11h-6"/><path stroke-linecap="round" d="M17 14h.01M17 17h.01"/></svg></div>
       <div class="ptxt">
         <div class="pt1">요양기관 · 간병업체 제휴/도입 문의</div>
         <div class="pt2">소속 돌봄전문가 관리부터 매칭·정산 배분까지, 기관 회원으로 함께하세요. 사업자 확인 후 전용 계정을 개설해 드립니다.</div>
       </div>
       <div class="pacts">
-        <a class="call" href="tel:16002580">☎ 1600-2580</a>
-        <a class="mail" href="mailto:partner@careand.co.kr">✉ partner@careand.co.kr</a>
+        <a class="call" href="tel:16002580"><svg viewBox="0 0 24 24" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 4h3.5l1.5 4-2 1.5a11 11 0 006 6l1.5-2 4 1.5V19a2 2 0 01-2 2C10.6 21 3 13.4 3 6a2 2 0 012-2z"/></svg> 1600-2580</a>
+        <a class="mail" href="mailto:partner@careand.co.kr"><svg viewBox="0 0 24 24" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 7l8 6 8-6"/></svg> partner@careand.co.kr</a>
       </div>
     </section>
 
