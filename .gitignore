@@ -40,3 +40,14 @@
 
 # caren/.claude/{agents,skills} — 플랫폼 공용 에이전트/스킬 정의(4개 레포가 상속). 순수 텍스트 md만 있음.
 !/caren/.claude/
+
+# --- 텔롬엑스 MES 온톨로지 설계서 (2026-09-19) ---
+# HTML 이 원본이고 PDF 는 make_pdf.js 로 재생성되는 배포본이다.
+# (제출·공유본이라 재생성 가능해도 함께 추적한다. 나머지 산출물·임시파일은 계속 제외)
+!/telomx-mes-ontology/
+/telomx-mes-ontology/*
+!/telomx-mes-ontology/ONTOLOGY-DESIGN.html
+!/telomx-mes-ontology/make_pdf.js
+!/telomx-mes-ontology/pdf/
+/telomx-mes-ontology/pdf/*
+!/telomx-mes-ontology/pdf/*.pdf

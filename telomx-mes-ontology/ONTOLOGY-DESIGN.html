@@ -1,0 +1,1143 @@
+<title>텔롬엑스 MES 온톨로지 설계</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #F2F4F1;
+    --surface: #FFFFFF;
+    --surface-2: #E9ECE7;
+    --ink: #15191A;
+    --ink-2: #39423F;
+    --muted: #64706C;
+    --line: #D4D9D2;
+    --line-2: #BFC6BD;
+    --accent: #1C5871;
+    --accent-soft: #DCE8EC;
+    --signal: #9C5A06;
+    --signal-soft: #F4E7D3;
+    --good: #2A6349;
+    --shadow: 0 1px 2px rgba(21, 25, 26, .05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1213;
+      --surface: #171C1D;
+      --surface-2: #1E2425;
+      --ink: #E7EAE6;
+      --ink-2: #C3CAC6;
+      --muted: #8D9894;
+      --line: #2B3233;
+      --line-2: #3B4344;
+      --accent: #7CB6CE;
+      --accent-soft: #17313B;
+      --signal: #DDA35A;
+      --signal-soft: #33260F;
+      --good: #6FB392;
+      --shadow: none;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1213;
+    --surface: #171C1D;
+    --surface-2: #1E2425;
+    --ink: #E7EAE6;
+    --ink-2: #C3CAC6;
+    --muted: #8D9894;
+    --line: #2B3233;
+    --line-2: #3B4344;
+    --accent: #7CB6CE;
+    --accent-soft: #17313B;
+    --signal: #DDA35A;
+    --signal-soft: #33260F;
+    --good: #6FB392;
+    --shadow: none;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  /* ── 표제 ───────────────────────────────── */
+  .mast { padding-block: 56px 36px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); margin: 0 0 18px;
+  }
+  h1 {
+    font-family: "Noto Serif KR", Georgia, serif;
+    font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.22;
+    letter-spacing: -.02em; margin: 0; text-wrap: balance;
+  }
+  .lede {
+    font-size: clamp(16px, 2.2vw, 18.5px); color: var(--ink-2);
+    max-width: 62ch; margin: 20px 0 0;
+  }
+  .docmeta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 2px 28px; margin-top: 32px;
+    border-top: 1px solid var(--line); padding-top: 20px;
+  }
+  .docmeta div { display: flex; flex-direction: column; gap: 3px; }
+  .docmeta dt, .docmeta .k {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  }
+  .docmeta .v { font-size: 14px; font-weight: 500; }
+
+  /* ── 목차 ───────────────────────────────── */
+  .toc { margin-block: 40px 0; }
+  .toc h2 {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0 0 14px;
+  }
+  .toc ol {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr)); gap: 1px 24px;
+    counter-reset: toc;
+  }
+  .toc li { counter-increment: toc; border-top: 1px solid var(--line); }
+  .toc a {
+    display: flex; gap: 12px; align-items: baseline;
+    padding-block: 9px; color: var(--ink-2); text-decoration: none; font-size: 14.5px;
+  }
+  .toc a::before {
+    content: "§" counter(toc); font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px; color: var(--accent); flex: none; min-width: 22px;
+  }
+  .toc a:hover { color: var(--accent); }
+
+  /* ── 섹션 ───────────────────────────────── */
+  section { margin-top: 68px; counter-increment: sec; }
+  .wrap { counter-reset: sec; }
+  .sec-head { border-top: 1px solid var(--line-2); padding-top: 14px; margin-bottom: 26px; }
+  .sec-no {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .1em;
+    color: var(--accent); display: block; margin-bottom: 8px;
+  }
+  h2.sec-title {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: clamp(22px, 3.4vw, 29px); line-height: 1.3; letter-spacing: -.015em;
+    margin: 0; text-wrap: balance;
+  }
+  h3 {
+    font-size: 17px; font-weight: 600; margin: 38px 0 12px;
+    letter-spacing: -.005em;
+  }
+  h3 .h3num { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--accent); margin-right: 9px; }
+  h4 { font-size: 14.5px; font-weight: 600; margin: 24px 0 8px; color: var(--ink-2); }
+  p { margin: 0 0 15px; max-width: 68ch; }
+  p.wide { max-width: none; }
+  ul, ol.body { max-width: 68ch; padding-left: 22px; margin: 0 0 16px; }
+  li { margin-bottom: 7px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .875em;
+    background: var(--surface-2); padding: .1em .36em; border-radius: 3px;
+    border: 1px solid var(--line); white-space: nowrap; max-width: 100%;
+  }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible, .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  /* ── 표 ───────────────────────────────── */
+  .scroll { overflow-x: auto; margin: 20px 0 24px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.mono, th.mono { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.tight td, table.tight th { padding: 8px 12px; }
+
+  /* ── 강조 블록 ───────────────────────────── */
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    padding: 16px 18px; margin: 22px 0; box-shadow: var(--shadow);
+  }
+  .callout.warn { border-left-color: var(--signal); background: var(--signal-soft); }
+  .callout.rule { border-left-color: var(--good); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 7px;
+  }
+  .iri {
+    font-size: 13px; line-height: 1.9; margin: 0;
+    white-space: normal; overflow-wrap: anywhere; word-break: break-word;
+  }
+  .callout code, p code { overflow-wrap: anywhere; }
+  .pull {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 500;
+    font-size: clamp(17px, 2.6vw, 21px); line-height: 1.6; color: var(--ink);
+    border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2);
+    padding-block: 22px; margin: 32px 0; max-width: 54ch;
+  }
+
+  /* ── 원칙 카드 ───────────────────────────── */
+  .principles { list-style: none; padding: 0; margin: 24px 0 8px; max-width: none; display: grid; gap: 1px; }
+  .principles li {
+    display: grid; grid-template-columns: 30px 1fr; gap: 0 16px;
+    border-top: 1px solid var(--line); padding-block: 16px; margin: 0;
+  }
+  .principles .pn {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent); padding-top: 3px;
+  }
+  .principles b { display: block; font-weight: 600; margin-bottom: 4px; }
+  .principles span.d { color: var(--ink-2); font-size: 14.5px; }
+
+  /* ── 도면 ───────────────────────────────── */
+  figure { margin: 28px 0; }
+  figure .fbox {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+    padding: 20px 18px; overflow-x: auto;
+  }
+  figure svg { display: block; max-width: 100%; height: auto; color: var(--ink); }
+  figcaption {
+    font-size: 13px; color: var(--muted); margin-top: 11px; max-width: 68ch;
+    padding-left: 2px;
+  }
+  figcaption b { color: var(--ink-2); font-weight: 600; }
+  .svg-lab { font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+  .svg-ttl { font-family: "IBM Plex Sans KR", sans-serif; font-size: 12.5px; font-weight: 600; }
+  .svg-edge { font-family: "IBM Plex Mono", monospace; font-size: 10px; }
+
+  /* ── 로드맵 ───────────────────────────────── */
+  .phases { display: grid; gap: 14px; margin: 24px 0; }
+  .phase {
+    display: grid; grid-template-columns: 96px 1fr; gap: 0 20px;
+    border: 1px solid var(--line); border-radius: 4px; background: var(--surface);
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .phase .pid {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--accent);
+    letter-spacing: .06em; border-right: 1px solid var(--line); padding-right: 16px;
+  }
+  .phase .pid b { display: block; font-size: 15px; color: var(--ink); letter-spacing: 0; margin-bottom: 3px; }
+  .phase h4 { margin: 0 0 8px; font-size: 15.5px; color: var(--ink); }
+  .phase ul { margin: 0; padding-left: 19px; font-size: 14px; }
+  .phase .out {
+    font-size: 12.5px; color: var(--muted); margin-top: 10px;
+    border-top: 1px dashed var(--line); padding-top: 9px;
+  }
+  .phase .out b { color: var(--ink-2); font-weight: 600; }
+
+  @media (max-width: 560px) {
+    .phase { grid-template-columns: 1fr; gap: 10px; }
+    .phase .pid { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 10px; }
+    .principles li { grid-template-columns: 1fr; gap: 4px; }
+  }
+
+  footer {
+    margin-top: 76px; border-top: 2px solid var(--ink); padding-top: 18px;
+    font-size: 12.5px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between;
+  }
+  @media (prefers-reduced-motion: no-preference) { a { transition: color .15s ease; } }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">TelomX · MES Ontology · 적용 설계서</p>
+    <h1>텔롬엑스 MES 온톨로지 적용 설계</h1>
+    <p class="lede">
+      infurs·hisense·naturefood 세 MES가 지금 각자 다르게 부르고 있는 <em>같은 현실</em>을
+      하나의 객체 모델로 묶고, 그 위에 판단(Logic)·실행(Action)·권한(Security)을 얹는다.
+      데이터를 옮기는 작업이 아니라, <strong>세 공장의 업무 세계를 같은 언어로 합의하는 작업</strong>이다.
+    </p>
+    <div class="docmeta">
+      <div><span class="k">문서</span><span class="v">TX-ONT-DESIGN r1.0</span></div>
+      <div><span class="k">작성일</span><span class="v">2026-09-19</span></div>
+      <div><span class="k">대상 시스템</span><span class="v">infurs_db · hisense_db · naturefood</span></div>
+      <div><span class="k">근거</span><span class="v">운영 DB 실측 + Palantir Ontology 설계원칙</span></div>
+      <div><span class="k">상태</span><span class="v">설계안 — 미착수</span></div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="목차">
+    <h2>목차</h2>
+    <ol>
+      <li><a href="#s1">지금 왜 — 3사 실측 진단</a></li>
+      <li><a href="#s2">설계 원칙 7개</a></li>
+      <li><a href="#s3">공통 코어 온톨로지</a></li>
+      <li><a href="#s4">사이트별 매핑과 IRI 규칙</a></li>
+      <li><a href="#s5">Logic — 판단 규칙 등록부</a></li>
+      <li><a href="#s6">Action — 실행은 MES가 한다</a></li>
+      <li><a href="#s7">Security — 사람과 AI를 같은 체계로</a></li>
+      <li><a href="#s8">Decision Lineage</a></li>
+      <li><a href="#s9">배치 아키텍처와 동기화</a></li>
+      <li><a href="#s10">단계별 로드맵</a></li>
+      <li><a href="#s11">금지 목록과 성공 판정</a></li>
+      <li><a href="#s12">미결 사항</a></li>
+    </ol>
+  </nav>
+
+  <!-- ══════════════ 1 ══════════════ -->
+  <section id="s1">
+    <div class="sec-head">
+      <span class="sec-no">§ 01</span>
+      <h2 class="sec-title">지금 왜 — 3사 실측 진단</h2>
+    </div>
+
+    <p>
+      온톨로지를 "안 해도 되지만 있으면 좋은 것"으로 보면 이 문서는 필요 없다. 이 설계가 필요한 근거는
+      이미 발생한 장애와 재작업이다. Palantir가 온톨로지 안티패턴으로 열거한 네 가지
+      — System Silos, Department Silos, God Object, Kitchen Sink — 가 세 MES에 각각 실물로 존재하며,
+      그중 하나는 2026-08-07에 실제 회귀 장애를 냈다.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>안티패턴</th><th>우리 시스템의 실물</th><th>이미 치른 비용</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>System Silos</b><br><span style="color:var(--muted);font-size:12.5px">같은 실체를 시스템마다 따로</span></td>
+            <td>infurs에 품목 마스터가 둘. <code>t_item</code> <span class="num">687</span>행(수주·재고가 참조)과
+                <code>t_product</code> <span class="num">661</span>행(사진·도면이 참조)이 서로 FK 없이 독립.
+                유일한 연결 수단이 <code>t_product.memo</code> 안의 <q>모델명:</q> 문자열.</td>
+            <td>제품사진 366건 중 품목에 붙은 것은 362건, <span class="num">312</span>품목은 끝내 미연결.
+                도면관리 561품목 중 335개만 사진 표시.</td>
+          </tr>
+          <tr>
+            <td><b>Department Silos</b><br><span style="color:var(--muted);font-size:12.5px">부서마다 별도 Customer</span></td>
+            <td>infurs 거래처 마스터도 둘. <code>t_customer</code> <span class="num">18,543</span>행,
+                <code>t_partner</code> <span class="num">9,513</span>행. 스키마도 다름(<code>customer_type</code> vs <code>partner_type</code>·여신·결제조건).</td>
+            <td>같은 거래처의 여신·미수·납품이력이 한 화면에 모이지 않음.</td>
+          </tr>
+          <tr>
+            <td><b>God Object</b><br><span style="color:var(--muted);font-size:12.5px">한 객체에 여러 실체</span></td>
+            <td>hisense <code>t_order</code>는 <span class="num">28</span>컬럼 중 9개가 거래처 실체
+                (<code>ordering_org</code>, <code>customer_org</code>, <code>customer_phone</code>,
+                <code>customer_fax</code>, <code>customer_address</code>, <code>customer_contact</code> …).
+                정작 <code>t_customer</code>는 <span class="num">0</span>행.</td>
+            <td>발주기관·수요기관이 문자열로만 존재 → 기관 단위 집계·명부 대조 불가.</td>
+          </tr>
+          <tr>
+            <td><b>Kitchen Sink</b><br><span style="color:var(--muted);font-size:12.5px">의미 없는 범용 슬롯</span></td>
+            <td>naturefood <code>mes_item</code> <span class="num">48</span>컬럼에
+                <code>item_param1~4</code>, <code>envolop_name1~3</code>/<code>qty</code>/<code>unit</code>,
+                <code>clt_ctgr1~4</code> 같은 이름만 있고 의미는 코드에만 있는 필드가 절반 가까이.</td>
+            <td>필드 의미가 화면 코드에 흩어져 신규 화면마다 재해석.</td>
+          </tr>
+          <tr>
+            <td><b>Join Key를 관계로 착각</b><br><span style="color:var(--muted);font-size:12.5px">테이블을 그대로 객체로</span></td>
+            <td><code>t_order_item</code>의 PK 이름이 <code>item_id</code>인데, 이것은 <em>주문 라인</em>의 PK이고
+                <code>t_item.item_id</code>는 <em>품목 마스터</em>의 PK다. 이름만 같은 두 ID 공간.</td>
+            <td>hisense는 16개 생성지점 의미통일로 해결했다가 <b>읽기측 12개 파일에서 회귀 장애</b>(2026-08-07).
+                infurs는 같은 문제를 <code>master_item_id</code> 컬럼 추가로 회피 — <b>같은 문제, 다른 해법</b>.</td>
+          </tr>
+          <tr>
+            <td><b>공통 언어 부재</b></td>
+            <td>같은 "품목"이 <code>item_id</code>(infurs·hisense) / <code>it_id</code>·<code>it_no</code>(naturefood),
+                "수주"가 <code>t_order</code> / <code>mes_sale_order</code>,
+                "작업지시"가 <code>t_work_order</code> / <code>mes_production_work</code>.</td>
+            <td>한 사이트에서 만든 화면·규칙·점검 스크립트를 다른 사이트에 재사용 못 함.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="pull">
+      세 MES는 데이터가 부족한 게 아니라, <em>같은 현실을 가리키는 이름이 세 벌</em>인 상태다.
+      온톨로지가 해결하는 것은 저장이 아니라 이 이름 문제다.
+    </p>
+
+    <h3><span class="h3num">1.1</span>이미 온톨로지가 도는 선례</h3>
+    <p>
+      맨땅이 아니다. 케어앤(caren)에서 이미 Apache Jena Fuseki를 도입해 운영 중이다
+      — <code>moai-fuseki</code> 컨테이너(7주 연속 가동) 안에 <code>/moai</code>와 <code>/caren</code> 두 데이터셋이
+      공존하고, <code>care-domain.ttl</code> 271 트리플로 질병→특기 추론(<code>requiresSpecialty</code> +
+      <code>broaderSpecialty</code> 양방향 폐쇄)과 STT 어휘 개인화를 서비스하고 있다.
+      SPARQL 클라이언트는 표준 라이브러리만 쓴 140행(<code>ontology.py</code>)이며,
+      Fuseki가 죽어도 매칭·STT는 기존 경로로 조용히 폴백한다.
+    </p>
+    <p>
+      이 설계는 그 선례의 <b>운영 방식</b>을 그대로 물려받는다. 새 인프라를 세우는 제안이 아니라,
+      검증된 배치 위에 <code>tx-mes</code> 데이터셋 하나를 더하는 제안이다.
+    </p>
+  </section>
+
+  <!-- ══════════════ 2 ══════════════ -->
+  <section id="s2">
+    <div class="sec-head">
+      <span class="sec-no">§ 02</span>
+      <h2 class="sec-title">설계 원칙 7개</h2>
+    </div>
+    <p>이후 모든 설계 판단은 이 7개에서 파생된다. 원칙과 충돌하는 구현은 구현이 틀린 것으로 본다.</p>
+
+    <ul class="principles">
+      <li><span class="pn">P1</span><span>
+        <b>시스템이 아니라 현실을 모델링한다</b>
+        <span class="d"><code>t_order_item</code>을 <code>OrderLine</code>으로 옮기는 게 목적이 아니다.
+        현장 사람이 쓰는 말 — 수주, 품목, 작업지시, 로트, 포장, 출하 — 를 먼저 정의하고 테이블을 거기에 붙인다.
+        테이블이 없으면 객체를 만들지 않고, 테이블이 둘이어도 객체는 하나다.</span>
+      </span></li>
+      <li><span class="pn">P2</span><span>
+        <b>MES DB가 단일 진실원천(SSOT)이다</b>
+        <span class="d">온톨로지는 <b>읽기 투영(read model)</b>이다. 트리플스토어에 원본만 있는 데이터는 만들지 않는다.
+        온톨로지를 지우고 다시 만들어도 업무는 멈추지 않아야 한다.</span>
+      </span></li>
+      <li><span class="pn">P3</span><span>
+        <b>IRI로 ID 공간을 물리적으로 분리한다</b>
+        <span class="d">hisense가 치른 <code>item_id</code> 회귀는 두 ID 공간이 같은 <em>이름</em>을 썼기 때문에 생겼다.
+        IRI는 클래스를 이름에 포함하므로 같은 실수가 구조적으로 불가능하다(§4.2).</span>
+      </span></li>
+      <li><span class="pn">P4</span><span>
+        <b>시계열은 온톨로지에 넣지 않는다</b>
+        <span class="d">naturefood <code>mes_gathering_sensor</code>는 <span class="num">85,610</span>행이고 계속 늘어난다.
+        온톨로지에는 <code>SensorChannel</code> 정의·임계값·설비 연결만 두고, 측정값은 SQL에 남긴다.
+        판단에 쓰는 것은 "가동/비가동" 같은 <em>해석된 상태</em>다.</span>
+      </span></li>
+      <li><span class="pn">P5</span><span>
+        <b>Action은 온톨로지가 실행하지 않는다</b>
+        <span class="d">쓰기는 전부 기존 MES 엔드포인트(Command)를 거친다. 이미 검증된 불변식
+        — 3경로 이중차감 방지, 출고 상한, 포장 내역서=실제출고 — 을 우회하는 쓰기 경로를 새로 만들지 않는다(§6).</span>
+      </span></li>
+      <li><span class="pn">P6</span><span>
+        <b>자연어는 조건만 파싱하고, 실행은 화이트리스트가 한다</b>
+        <span class="d">hisense 품목조회·naturefood 대시보드 NL검색에서 이미 채택한 원칙.
+        LLM이 SPARQL/SQL을 생성해 그대로 실행하는 구조는 채택하지 않는다.</span>
+      </span></li>
+      <li><span class="pn">P7</span><span>
+        <b>폴백 경로를 제거하지 않는다</b>
+        <span class="d">Fuseki 미기동·타임아웃 시 모든 화면은 온톨로지 없이 기존 SQL 경로로 동작해야 한다.
+        타임아웃 상한은 caren과 동일하게 <code>1.5s</code>에서 시작한다.</span>
+      </span></li>
+    </ul>
+  </section>
+
+  <!-- ══════════════ 3 ══════════════ -->
+  <section id="s3">
+    <div class="sec-head">
+      <span class="sec-no">§ 03</span>
+      <h2 class="sec-title">공통 코어 온톨로지</h2>
+    </div>
+
+    <p>
+      네임스페이스는 <code>http://mes.telomx.kr/ontology#</code> (접두어 <code>tx:</code>).
+      세 사이트가 <b>클래스와 관계는 공유</b>하고, 개체는 사이트별 named graph에 들어간다(§9.2).
+      클래스는 14개로 시작한다 — 세 MES에 실제로 테이블이 있고, 실제 질문에 쓰이는 것만 넣었다.
+    </p>
+
+    <h3><span class="h3num">3.1</span>객체 그래프</h3>
+
+    <figure>
+      <div class="fbox">
+        <svg viewBox="0 0 900 470" role="img" aria-label="수주에서 출하까지의 코어 객체 그래프. 거래처가 수주를 내고, 수주 라인이 품목을 지정하고, 작업지시가 라인을 이행하며 로트를 생산하고, 로트가 포장에 담겨 출하로 나간다. 품목은 BOM을 통해 자재 품목을 소모한다.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1.5 9,5 0,8.5" fill="currentColor"></polygon>
+            </marker>
+            <marker id="ahs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1.5 9,5 0,8.5" fill="#9C5A06"></polygon>
+            </marker>
+          </defs>
+
+          <!-- row 1 : 수주 흐름 -->
+          <rect x="16"  y="34" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="86"  y="55" text-anchor="middle" class="svg-ttl" fill="currentColor">거래처</text>
+          <text x="86"  y="71" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Partner</text>
+
+          <rect x="236" y="34" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="306" y="55" text-anchor="middle" class="svg-ttl" fill="currentColor">수주</text>
+          <text x="306" y="71" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Order</text>
+
+          <rect x="456" y="34" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="526" y="55" text-anchor="middle" class="svg-ttl" fill="currentColor">수주 라인</text>
+          <text x="526" y="71" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:OrderLine</text>
+
+          <rect x="700" y="34" width="140" height="46" rx="3" fill="#DCE8EC" stroke="#1C5871" stroke-width="1.6"></rect>
+          <text x="770" y="55" text-anchor="middle" class="svg-ttl" fill="#15191A">품목</text>
+          <text x="770" y="71" text-anchor="middle" class="svg-lab" fill="#15191A" opacity=".7">tx:Item</text>
+
+          <line x1="156" y1="57" x2="230" y2="57" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="193" y="49" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">places</text>
+          <line x1="376" y1="57" x2="450" y2="57" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="413" y="49" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">hasLine</text>
+          <line x1="596" y1="57" x2="694" y2="57" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="645" y="49" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">ofItem</text>
+
+          <!-- BOM 재귀 -->
+          <rect x="700" y="142" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="770" y="163" text-anchor="middle" class="svg-ttl" fill="currentColor">BOM</text>
+          <text x="770" y="179" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:BomLine</text>
+          <line x1="770" y1="80" x2="770" y2="136" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="778" y="112" class="svg-edge" fill="currentColor" opacity=".72">hasBom</text>
+          <path d="M840 165 C 884 165 884 57 846 57" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ah)"></path>
+          <text x="866" y="115" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72" transform="rotate(90 866 115)">consumes</text>
+
+          <!-- row 2 : 생산 -->
+          <rect x="456" y="142" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="526" y="163" text-anchor="middle" class="svg-ttl" fill="currentColor">작업지시</text>
+          <text x="526" y="179" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:WorkOrder</text>
+          <line x1="526" y1="136" x2="526" y2="86" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="534" y="115" class="svg-edge" fill="currentColor" opacity=".72">fulfills</text>
+
+          <rect x="236" y="142" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="306" y="163" text-anchor="middle" class="svg-ttl" fill="currentColor">공정 실적</text>
+          <text x="306" y="179" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:ProcessRun</text>
+          <line x1="450" y1="165" x2="382" y2="165" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="416" y="157" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">steps</text>
+
+          <rect x="16"  y="142" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="86"  y="163" text-anchor="middle" class="svg-ttl" fill="currentColor">설비</text>
+          <text x="86"  y="179" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Equipment</text>
+          <line x1="230" y1="165" x2="162" y2="165" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="196" y="157" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">ranOn</text>
+
+          <rect x="16"  y="250" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="86"  y="271" text-anchor="middle" class="svg-ttl" fill="currentColor">센서 채널</text>
+          <text x="86"  y="287" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:SensorChannel</text>
+          <line x1="86" y1="244" x2="86" y2="194" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="94" y="223" class="svg-edge" fill="currentColor" opacity=".72">measures</text>
+
+          <!-- row 3 : 재고·출하 -->
+          <rect x="456" y="250" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="526" y="271" text-anchor="middle" class="svg-ttl" fill="currentColor">로트</text>
+          <text x="526" y="287" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Lot</text>
+          <line x1="526" y1="244" x2="526" y2="194" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="534" y="223" class="svg-edge" fill="currentColor" opacity=".72">producedBy</text>
+
+          <rect x="700" y="250" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="770" y="271" text-anchor="middle" class="svg-ttl" fill="currentColor">재고 위치</text>
+          <text x="770" y="287" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:StockPosition</text>
+          <line x1="602" y1="273" x2="694" y2="273" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="648" y="265" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">storedAt</text>
+
+          <rect x="236" y="250" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="306" y="271" text-anchor="middle" class="svg-ttl" fill="currentColor">포장 묶음</text>
+          <text x="306" y="287" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Package</text>
+          <line x1="450" y1="273" x2="382" y2="273" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="416" y="265" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">packedInto</text>
+
+          <rect x="236" y="358" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="306" y="379" text-anchor="middle" class="svg-ttl" fill="currentColor">출하</text>
+          <text x="306" y="395" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Shipment</text>
+          <line x1="306" y1="302" x2="306" y2="352" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="314" y="331" class="svg-edge" fill="currentColor" opacity=".72">shipsPackage</text>
+
+          <!-- 출하 → 수주 (루프를 닫는 변) -->
+          <path d="M236 381 C 150 381 150 100 230 68" fill="none" stroke="#9C5A06" stroke-width="1.6" marker-end="url(#ahs)"></path>
+          <text x="152" y="240" text-anchor="middle" class="svg-edge" fill="#9C5A06" transform="rotate(-90 152 240)">settles · 납기 이행</text>
+
+          <!-- 창고 -->
+          <rect x="700" y="358" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="770" y="379" text-anchor="middle" class="svg-ttl" fill="currentColor">창고</text>
+          <text x="770" y="395" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Warehouse</text>
+          <line x1="770" y1="302" x2="770" y2="352" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah)"></line>
+          <text x="778" y="331" class="svg-edge" fill="currentColor" opacity=".72">at</text>
+
+          <!-- 도면/사진 -->
+          <rect x="456" y="358" width="140" height="46" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+          <text x="526" y="379" text-anchor="middle" class="svg-ttl" fill="currentColor">도면·제품사진</text>
+          <text x="526" y="395" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".62">tx:Document</text>
+          <path d="M596 381 C 660 381 866 381 866 200 C 866 200 866 84 846 68" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".55"></path>
+          <text x="640" y="373" class="svg-edge" fill="currentColor" opacity=".62">depicts →</text>
+
+          <text x="16" y="440" class="svg-lab" fill="currentColor" opacity=".6">실선 = 필수 관계 · 점선 = 선택 관계 · 주황 = 납기 이행을 닫는 변</text>
+          <text x="16" y="458" class="svg-lab" fill="#9C5A06">품목(강조) = 세 사이트 모두 마스터가 쪼개져 있는 지점 — §4.1의 매핑이 이 객체에 집중된다</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>그림 1.</b> 코어 객체 그래프. 오른쪽 위 <code>tx:Item</code>을 강조한 이유는 이 객체가 세 사이트에서
+        각각 다르게 쪼개져 있어서다(infurs는 <code>t_item</code>+<code>t_product</code>, hisense는 차종·ALC 속성 인라인,
+        naturefood는 <code>mes_item</code> 48컬럼). 주황색 변 <code>settles</code>는 "이 수주가 실제로 납품됐는가"를
+        답하는 경로로, 현재는 수주·포장·배송지시 3경로가 따로 집계돼 누락이 났던 구간이다.
+      </figcaption>
+    </figure>
+
+    <h3><span class="h3num">3.2</span>클래스 정의</h3>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>클래스</th><th>현실의 무엇</th><th>핵심 Property (선별)</th><th>추정 개체수</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">tx:Partner</td><td>거래처 — 발주기관·수요기관·고객사·공급사를 한 객체로</td><td>bizNo, name, role(발주/수요/공급), creditLimit</td><td class="num">28,000+</td></tr>
+          <tr><td class="mono">tx:Order</td><td>수주 1건</td><td>orderNo, orderDate, deliveryDeadline, status, grandTotal</td><td class="num">38</td></tr>
+          <tr><td class="mono">tx:OrderLine</td><td>수주의 품목별 한 줄 — 잔량 판단의 기준 단위</td><td>lineNo, qty, unitPrice, deadline, identifyNo</td><td class="num">66</td></tr>
+          <tr><td class="mono">tx:Item</td><td>품목 — 제품·부자재·원자재 공통</td><td>itemCode, identifyNo, itemType, unit, safetyStock, leadTimeDay</td><td class="num">1,114</td></tr>
+          <tr><td class="mono">tx:BomLine</td><td>품목 1단 소요 구성</td><td>qty, unit, lossRate</td><td class="num">1,270</td></tr>
+          <tr><td class="mono">tx:WorkOrder</td><td>작업지시</td><td>woNo, targetQty, productionDeadline, status</td><td class="num">57</td></tr>
+          <tr><td class="mono">tx:ProcessRun</td><td>공정별 진척 실적</td><td>process, startAt, endAt, goodQty, defectQty</td><td class="num">120</td></tr>
+          <tr><td class="mono">tx:Lot</td><td>로트 — 추적성의 단위</td><td>lotNo, qty, pkgType, expiryDate, productionDate</td><td class="num">180</td></tr>
+          <tr><td class="mono">tx:Package</td><td>포장 묶음 (hisense QR 라벨 단위)</td><td>packageNo, pkgType, packedAt, shippedAt</td><td class="num">33</td></tr>
+          <tr><td class="mono">tx:StockPosition</td><td>창고×품목(×로트) 현재고</td><td>qty, updatedAt</td><td class="num">212</td></tr>
+          <tr><td class="mono">tx:Warehouse</td><td>창고·구역</td><td>name, type, sectionName</td><td class="num">22</td></tr>
+          <tr><td class="mono">tx:Shipment</td><td>출하 — 배송지시·포장출하·판매출고 3경로의 공통 상위</td><td>route(order/package/delivery), dispatchDate, deliveredAt, status</td><td class="num">42</td></tr>
+          <tr><td class="mono">tx:Equipment</td><td>설비</td><td>eqCode, name, model, maker</td><td class="num">20</td></tr>
+          <tr><td class="mono">tx:SensorChannel</td><td>센서 채널 정의 — <em>측정값은 넣지 않음</em>(P4)</td><td>channel, unit, runThreshold, sourceTable</td><td class="num">6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13.5px;color:var(--muted)">
+      개체수는 세 DB 합계 실측(<code>information_schema</code> + <code>count(*)</code>, 2026-09-19 기준)이다.
+      <code>tx:Partner</code>만 유독 큰 것은 infurs <code>t_customer</code> 18,543 + <code>t_partner</code> 9,513 +
+      naturefood <code>mes_client</code> 8,494의 중복 정리 전 수치라서다 — 정리 후 실제 규모는 §10 Phase 1에서 확정한다.
+    </p>
+
+    <h3><span class="h3num">3.3</span>관계(ObjectProperty)</h3>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>관계</th><th>도메인 → 레인지</th><th>이 관계가 답하는 업무 질문</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">tx:places</td><td>Partner → Order</td><td>이 기관이 올해 발주한 수주는?</td></tr>
+          <tr><td class="mono">tx:hasLine</td><td>Order → OrderLine</td><td>이 수주에 남은 품목별 잔량은?</td></tr>
+          <tr><td class="mono">tx:ofItem</td><td>OrderLine · Lot · StockPosition → Item</td><td>이 품목이 걸린 수주·재고·로트 전부</td></tr>
+          <tr><td class="mono">tx:hasBom</td><td>Item → BomLine</td><td>이 제품을 만들려면 무엇이 필요한가?</td></tr>
+          <tr><td class="mono">tx:consumes</td><td>BomLine → Item</td><td>이 자재가 부족하면 못 만드는 제품은?(역방향 전이)</td></tr>
+          <tr><td class="mono">tx:fulfills</td><td>WorkOrder → OrderLine</td><td>이 작업지시는 어느 수주 라인을 위한 것인가?</td></tr>
+          <tr><td class="mono">tx:steps</td><td>WorkOrder → ProcessRun</td><td>이 지시는 어느 공정까지 왔나?</td></tr>
+          <tr><td class="mono">tx:ranOn</td><td>ProcessRun → Equipment</td><td>이 설비가 멈추면 지연되는 지시는?</td></tr>
+          <tr><td class="mono">tx:measures</td><td>SensorChannel → Equipment</td><td>이 설비의 가동 판정 근거 채널은?</td></tr>
+          <tr><td class="mono">tx:producedBy</td><td>Lot → WorkOrder</td><td>이 로트는 언제·어느 지시로 만들어졌나?</td></tr>
+          <tr><td class="mono">tx:storedAt</td><td>Lot · StockPosition → Warehouse</td><td>어느 창고에 얼마 있나?</td></tr>
+          <tr><td class="mono">tx:packedInto</td><td>Lot → Package</td><td>이 로트는 어느 묶음으로 나갔나?</td></tr>
+          <tr><td class="mono">tx:shipsPackage</td><td>Shipment → Package</td><td>이 출하에 실린 묶음·로트</td></tr>
+          <tr><td class="mono">tx:settles</td><td>Shipment → OrderLine</td><td><b>이 수주는 실제로 다 납품됐나?</b>(3경로 통합)</td></tr>
+          <tr><td class="mono">tx:depicts</td><td>Document → Item</td><td>이 품목의 도면·제품사진</td></tr>
+          <tr><td class="mono">tx:sameAs</td><td>Item → Item (사이트 간)</td><td>세 공장이 같은 자재를 쓰고 있나?(Phase 4)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout rule">
+      <span class="tag">설계 판단</span>
+      <p>
+        <code>tx:consumes</code>와 <code>tx:hasBom</code>의 <b>역방향 전이 폐쇄</b>가 이 온톨로지의 실질적 수익원이다.
+        "이 부자재가 떨어지면 어느 수주의 납기가 위험한가"는 지금 SQL로는 BOM 단계마다 조인을 새로 써야 하지만,
+        SPARQL에서는 <code>?item (^tx:consumes/^tx:hasBom)* ?product</code> 한 줄이다. caren의
+        <code>broaderSpecialty</code> 양방향 폐쇄와 같은 패턴을 그대로 쓴다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 4 ══════════════ -->
+  <section id="s4">
+    <div class="sec-head">
+      <span class="sec-no">§ 04</span>
+      <h2 class="sec-title">사이트별 매핑과 IRI 규칙</h2>
+    </div>
+    <p>
+      이 표가 설계서의 실질적 산출물이다. 클래스마다 세 사이트의 <em>실제</em> 테이블·컬럼을 명시한다.
+      빈칸은 그 사이트에 해당 실체가 없다는 뜻이고, 표에 담긴 불일치가 그대로 Phase 1의 작업 목록이 된다.
+    </p>
+
+    <h3><span class="h3num">4.1</span>객체 → 테이블 매핑</h3>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>클래스</th><th>infurs_db</th><th>hisense_db</th><th>naturefood</th><th>주의</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">Partner</td><td class="mono">t_customer + t_partner</td><td class="mono">t_partner (2행)</td><td class="mono">mes_client</td><td>infurs 이중 마스터, hisense는 사실상 비어 있음</td></tr>
+          <tr><td class="mono">Order</td><td class="mono">t_order</td><td class="mono">t_order</td><td class="mono">mes_sale_order</td><td>hisense는 거래처가 이 테이블에 인라인</td></tr>
+          <tr><td class="mono">OrderLine</td><td class="mono">t_order_item</td><td class="mono">t_order_item</td><td class="mono">mes_sale_item</td><td><b>PK가 <code>item_id</code></b> — 품목 PK와 동명(§4.2)</td></tr>
+          <tr><td class="mono">Item</td><td class="mono">t_item <b>+ t_product</b></td><td class="mono">t_item</td><td class="mono">mes_item</td><td>infurs는 <code>memo</code> 문자열로만 조인 가능</td></tr>
+          <tr><td class="mono">BomLine</td><td class="mono">t_bom / t_bom_detail</td><td class="mono">t_bom / t_bom_detail</td><td class="mono">mes_production_bom</td><td>naturefood는 BOM이 작업(<code>work_idx</code>)에 매달림</td></tr>
+          <tr><td class="mono">WorkOrder</td><td class="mono">t_work_order (<code>master_item_id</code> 有)</td><td class="mono">t_work_order (컬럼 無)</td><td class="mono">mes_production_request / _work</td><td><b>같은 문제를 다르게 해결한 지점</b></td></tr>
+          <tr><td class="mono">ProcessRun</td><td class="mono">t_production / t_process_step</td><td class="mono">t_production</td><td class="mono">mes_production_work / _time</td><td>naturefood는 공정 시간이 별 테이블</td></tr>
+          <tr><td class="mono">Lot</td><td>—</td><td class="mono">t_lot (180행)</td><td class="mono">mes_warehouse_stock (유통기한)</td><td>infurs는 로트 개념 없음 — 객체를 만들지 않는다(P1)</td></tr>
+          <tr><td class="mono">Package</td><td>—</td><td class="mono">t_package / t_package_item</td><td class="mono">mes_ship_item</td><td>hisense만 QR 라벨 단위 존재</td></tr>
+          <tr><td class="mono">StockPosition</td><td class="mono">t_stock</td><td class="mono">t_stock / t_stock_transfer</td><td class="mono">mes_warehouse_stock</td><td>naturefood는 구역(<code>section_name</code>)까지</td></tr>
+          <tr><td class="mono">Warehouse</td><td class="mono">t_warehouse (3)</td><td class="mono">t_warehouse (2)</td><td class="mono">mes_warehouse_in_out</td><td></td></tr>
+          <tr><td class="mono">Shipment</td><td class="mono">t_delivery / t_delivery_item</td><td class="mono">t_delivery + t_package + 판매출고</td><td class="mono">mes_ship_record / mes_shipping_order</td><td><b>hisense 3경로 통합이 핵심</b></td></tr>
+          <tr><td class="mono">Equipment</td><td class="mono">t_facility (0행)</td><td class="mono">t_facility (0행)</td><td class="mono">mes_equipment (11행)</td><td>설비 마스터는 naturefood만 실데이터</td></tr>
+          <tr><td class="mono">SensorChannel</td><td>—</td><td>—</td><td class="mono">mes_gathering_sensor <code>a1~a6</code></td><td>채널 정의만, 측정값 85,610행은 SQL 잔류(P4)</td></tr>
+          <tr><td class="mono">Document</td><td class="mono">t_drawing / t_product_picture</td><td class="mono">t_item_file</td><td class="mono">attached_files</td><td>hisense는 전용 테이블 없이 공용 파일표 재사용</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3><span class="h3num">4.2</span>IRI 규칙 — ID 이중공간을 구조적으로 없앤다</h3>
+    <p>
+      2026-08-07 hisense 장애의 원인은 <code>item_id</code>라는 <em>이름</em>이 두 가지를 가리켰다는 것이다.
+      16개 생성지점의 의미를 통일했더니 읽기측 12개 파일이 옛 의미를 그대로 읽어 회귀했다.
+      IRI는 클래스와 사이트를 이름 안에 포함하므로, 두 ID가 우연히 같은 문자열이 되는 일이 구조적으로 불가능하다.
+    </p>
+
+    <figure>
+      <div class="fbox">
+        <svg viewBox="0 0 880 300" role="img" aria-label="현재는 t_item의 PK와 t_order_item의 PK가 둘 다 item_id라는 같은 이름이어서 코드에서 혼용되며, hisense는 의미통일로 infurs는 컬럼추가로 서로 다르게 대응했다. IRI를 쓰면 품목과 주문라인이 각각 다른 IRI를 받으므로 혼용이 불가능하다.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1.5 9,5 0,8.5" fill="currentColor"></polygon>
+            </marker>
+          </defs>
+
+          <text x="14" y="22" class="svg-lab" fill="#9C5A06">현재 — 이름이 같은 두 ID 공간</text>
+          <line x1="14" y1="30" x2="404" y2="30" stroke="#9C5A06" stroke-width="1.4"></line>
+
+          <rect x="14" y="52" width="180" height="58" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="26" y="73" class="svg-ttl" fill="currentColor">t_item</text>
+          <text x="26" y="93" class="svg-lab" fill="#9C5A06">PK item_id = 404</text>
+          <text x="26" y="106" class="svg-lab" fill="currentColor" opacity=".6">품목 마스터</text>
+
+          <rect x="224" y="52" width="180" height="58" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="236" y="73" class="svg-ttl" fill="currentColor">t_order_item</text>
+          <text x="236" y="93" class="svg-lab" fill="#9C5A06">PK item_id = 404</text>
+          <text x="236" y="106" class="svg-lab" fill="currentColor" opacity=".6">주문 라인</text>
+
+          <path d="M194 81 L 218 81" stroke="#9C5A06" stroke-width="1.6" stroke-dasharray="3 3"></path>
+          <text x="209" y="132" text-anchor="middle" class="svg-edge" fill="#9C5A06">같은 숫자, 다른 실체</text>
+
+          <rect x="14" y="152" width="180" height="62" rx="3" fill="#F4E7D3" stroke="#9C5A06" stroke-width="1.2"></rect>
+          <text x="26" y="172" class="svg-lab" fill="#15191A">hisense 대응</text>
+          <text x="26" y="189" class="svg-lab" fill="#15191A" opacity=".8">생성 16지점 의미통일</text>
+          <text x="26" y="205" class="svg-lab" fill="#9C5A06">→ 읽기측 12파일 회귀</text>
+
+          <rect x="224" y="152" width="180" height="62" rx="3" fill="#F4E7D3" stroke="#9C5A06" stroke-width="1.2"></rect>
+          <text x="236" y="172" class="svg-lab" fill="#15191A">infurs 대응</text>
+          <text x="236" y="189" class="svg-lab" fill="#15191A" opacity=".8">master_item_id 컬럼 추가</text>
+          <text x="236" y="205" class="svg-lab" fill="#9C5A06">→ 두 사이트 해법 불일치</text>
+
+          <text x="14" y="252" class="svg-lab" fill="currentColor" opacity=".75">두 해법 모두 &lt;이름이 같다&gt;는 원인을 남겨둔 채 증상만 막았다.</text>
+
+          <!-- 화살표 -->
+          <line x1="424" y1="140" x2="470" y2="140" stroke="currentColor" stroke-width="1.4" marker-end="url(#ah2)"></line>
+
+          <text x="494" y="22" class="svg-lab" fill="#1C5871">IRI 도입 후 — 이름 충돌이 불가능</text>
+          <line x1="494" y1="30" x2="866" y2="30" stroke="#1C5871" stroke-width="1.4"></line>
+
+          <rect x="494" y="52" width="372" height="58" rx="3" fill="#DCE8EC" stroke="#1C5871" stroke-width="1.4"></rect>
+          <text x="508" y="73" class="svg-ttl" fill="#15191A">tx:hisense/Item/404</text>
+          <text x="508" y="93" class="svg-lab" fill="#15191A" opacity=".8">품목 마스터 — 사이트·클래스가 IRI에 박혀 있다</text>
+
+          <rect x="494" y="126" width="372" height="58" rx="3" fill="#DCE8EC" stroke="#1C5871" stroke-width="1.4"></rect>
+          <text x="508" y="147" class="svg-ttl" fill="#15191A">tx:hisense/OrderLine/404</text>
+          <text x="508" y="167" class="svg-lab" fill="#15191A" opacity=".8">주문 라인 — 같은 숫자여도 다른 객체</text>
+
+          <text x="494" y="212" class="svg-lab" fill="currentColor">ETL이 IRI를 만들 때 클래스를 반드시 지정하므로,</text>
+          <text x="494" y="230" class="svg-lab" fill="currentColor">잘못 매핑하면 적재 단계에서 형(型) 검증에 걸린다 —</text>
+          <text x="494" y="248" class="svg-lab" fill="#1C5871">런타임 오조인이 아니라 빌드 오류가 된다.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>그림 2.</b> 같은 결함에 대한 두 사이트의 대응과, IRI가 그 결함을 없애는 방식.
+        핵심은 "온톨로지가 더 똑똑해서"가 아니라 <b>오류 발생 시점이 런타임에서 적재 시점으로 옮겨진다</b>는 점이다.
+      </figcaption>
+    </figure>
+
+    <h4>IRI 생성 규칙</h4>
+    <div class="callout">
+      <p class="mono iri">http://mes.telomx.kr/id/{site}/{Class}/{naturalKey}</p>
+      <ul style="margin:12px 0 0;font-size:14px">
+        <li><code>{site}</code> — <code>infurs</code> | <code>hisense</code> | <code>naturefood</code>. 사이트를 IRI에 넣어 named graph와 이중 방어.</li>
+        <li><code>{Class}</code> — §3.2 클래스명 그대로. 이 조각이 ID 공간을 분리한다.</li>
+        <li><code>{naturalKey}</code> — <b>PK가 아니라 업무 키를 우선</b>한다. <code>Order</code>는 <code>order_no</code>,
+            <code>Item</code>은 <code>item_code</code>, <code>Lot</code>은 <code>lot_no</code>. PK는 업무 키가 없을 때만 쓰고
+            그 경우 <code>pk-</code> 접두어를 붙인다(<code>OrderLine/pk-23</code>).</li>
+        <li>업무 키를 쓰는 이유: 전체 재적재(full reload) 후에도 IRI가 안 바뀌어 외부에서 인용한 링크가 유지된다.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════════ 5 ══════════════ -->
+  <section id="s5">
+    <div class="sec-head">
+      <span class="sec-no">§ 05</span>
+      <h2 class="sec-title">Logic — 판단 규칙 등록부</h2>
+    </div>
+    <p>
+      판단 규칙은 이미 전부 존재한다. 문제는 그것이 <em>PHP 컨트롤러 안에 흩어져</em> 있어서
+      같은 규칙이 사이트마다 다르게 구현되고, 어느 화면이 어느 규칙을 쓰는지 아무도 모른다는 것이다.
+      Logic 계층의 목적은 규칙을 <b>새로 만드는 게 아니라 등록하는 것</b>이다 — 온톨로지에는
+      규칙의 <em>식별자·입력 객체·임계값·구현 위치</em>를 두고, 계산 자체는 기존 코드가 한다.
+    </p>
+
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>규칙</th><th>입력 객체</th><th>현재 구현 위치</th><th>등록 형태</th></tr></thead>
+        <tbody>
+          <tr><td>안전재고 미달 판정</td><td>StockPosition, Item</td><td><code>Inventory.php</code> · <code>t_item.safety_stock</code>/<code>reorder_point</code></td><td>임계값을 <code>tx:Item</code> Property로 승격</td></tr>
+          <tr><td>BOM 소요량 전개</td><td>Item, BomLine, WorkOrder</td><td><code>Bom.php</code>, <code>WorkOrder.php</code></td><td>전이 폐쇄 SPARQL + 수량은 SQL</td></tr>
+          <tr><td>수주 잔량 / 배송대상 판정</td><td>OrderLine, Shipment</td><td>hisense 3경로 합산(<code>Dashboard.php</code>, <code>Delivery.php</code>)</td><td><code>tx:settles</code> 경유 단일 질의로 대체</td></tr>
+          <tr><td>납기 위험</td><td>Order, OrderLine, WorkOrder</td><td>사이트별 산재</td><td>Function 등록 + 위험도 산식 단일화</td></tr>
+          <tr><td>설비 가동 판정</td><td>SensorChannel, Equipment</td><td>naturefood <code>Monitor.php</code> 임계값</td><td><code>tx:runThreshold</code> Property (SSOT)</td></tr>
+          <tr><td>포장 속도 / 리드타임 KPI</td><td>ProcessRun, Package</td><td>naturefood 공정모니터링 — 640 스틱/분, 포장구간=실적창</td><td>KPI 정의를 온톨로지에, 값은 SQL 집계</td></tr>
+          <tr><td>KPI 목표·실적</td><td>전 객체</td><td>hisense <code>t_kpi_config</code>(6행) / <code>t_kpi</code></td><td>KPI ↔ 객체 연결을 Link로 명시</td></tr>
+          <tr><td>품목 자동분류</td><td>Item</td><td>hisense 조달청 XLS 파싱 <code>item_type</code> 자동분류</td><td>분류 규칙을 클래스 계층으로 표현</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="tag">경계</span>
+      <p>
+        규칙을 온톨로지로 <b>옮기지</b> 않는다. 옮기면 SSOT가 둘이 되고(P2 위반), 기존 화면이
+        Fuseki 가동에 의존하게 된다(P7 위반). 온톨로지는 "이 규칙이 존재하고, 임계값은 이것이고,
+        구현은 여기 있다"를 아는 <em>목록</em>이다. 단, <b>임계값 숫자</b>는 예외로 온톨로지를 SSOT로 삼는다
+        — 지금 세 사이트에 흩어진 임계값이 서로 다른 게 실제 문제이기 때문이다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 6 ══════════════ -->
+  <section id="s6">
+    <div class="sec-head">
+      <span class="sec-no">§ 06</span>
+      <h2 class="sec-title">Action — 실행은 MES가 한다</h2>
+    </div>
+    <p>
+      블로그가 강조한 "Action Loop를 닫는다"는 부분은 우리 환경에서 가장 조심해야 하는 대목이다.
+      팔란티어는 Foundry가 원천이라 온톨로지가 직접 write-back한다. 우리는 반대로 <b>MES DB가 원천</b>이고,
+      그 DB에는 이미 피로 배운 불변식이 걸려 있다.
+    </p>
+
+    <h4>이미 존재하는 불변식 — 우회하면 안 되는 것들</h4>
+    <ul>
+      <li><b>3경로 이중차감 방지</b> — 판매출고가 <code>sales_order</code>/<code>package</code>/<code>delivery</code> 세 경로로 발생하며, 같은 수량이 두 번 차감되면 안 된다.</li>
+      <li><b>출고 상한</b> — 배정 로트 분기가 상한을 적용하지 않아 초과출고가 났던 이력. 상한은 품목별 잔량 기준.</li>
+      <li><b>포장 내역서 = 실제 출고</b> — 이 등식은 확정된 불변식이다.</li>
+      <li><b>작업지시 생성은 공용 헬퍼만</b> — <code>resolve_master_item_id()</code> / <code>link_work_order_to_plan()</code>. 16지점 일원화 결과를 되돌리는 경로를 만들지 않는다.</li>
+      <li><b>마이그레이션 실패 시 코드까지 롤백</b>되는 배포 스크립트가 있다 — 스키마 변경은 최소화한다.</li>
+    </ul>
+
+    <figure>
+      <div class="fbox">
+        <svg viewBox="0 0 860 330" role="img" aria-label="세 MES 데이터베이스에서 증분 ETL이 Fuseki의 tx-mes 데이터셋으로 읽기 전용 투영을 만들고, 영향분석·자연어질의·AI 에이전트가 그것을 조회한다. 실행은 온톨로지가 직접 하지 않고 기존 MES 엔드포인트를 호출해 데이터베이스를 변경하며, 센서 시계열은 데이터베이스에 남는다.">
+          <defs>
+            <marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1.5 9,5 0,8.5" fill="currentColor"></polygon>
+            </marker>
+            <marker id="ah3s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <polygon points="0,1.5 9,5 0,8.5" fill="#9C5A06"></polygon>
+            </marker>
+          </defs>
+
+          <!-- MES DB -->
+          <rect x="14" y="60" width="150" height="132" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"></rect>
+          <text x="89" y="48" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">SSOT</text>
+          <text x="28" y="86" class="svg-ttl" fill="currentColor">MES DB ×3</text>
+          <text x="28" y="108" class="svg-lab" fill="currentColor" opacity=".75">infurs_db</text>
+          <text x="28" y="126" class="svg-lab" fill="currentColor" opacity=".75">hisense_db</text>
+          <text x="28" y="144" class="svg-lab" fill="currentColor" opacity=".75">naturefood</text>
+          <text x="28" y="172" class="svg-lab" fill="currentColor" opacity=".55">MariaDB 10.3</text>
+
+          <!-- ETL -->
+          <rect x="228" y="88" width="126" height="76" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" ></rect>
+          <text x="291" y="116" text-anchor="middle" class="svg-ttl" fill="currentColor">증분 ETL</text>
+          <text x="291" y="136" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">updated_at 기준</text>
+          <text x="291" y="152" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">야간 + 이벤트</text>
+          <line x1="164" y1="126" x2="222" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah3)"></line>
+          <text x="193" y="118" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">read</text>
+
+          <!-- Fuseki -->
+          <rect x="418" y="60" width="176" height="132" rx="3" fill="#DCE8EC" stroke="#1C5871" stroke-width="1.6"></rect>
+          <text x="506" y="48" text-anchor="middle" class="svg-lab" fill="#1C5871">읽기 투영 · 재생성 가능</text>
+          <text x="434" y="86" class="svg-ttl" fill="#15191A">Fuseki / tx-mes</text>
+          <text x="434" y="108" class="svg-lab" fill="#15191A" opacity=".8">graph:infurs</text>
+          <text x="434" y="126" class="svg-lab" fill="#15191A" opacity=".8">graph:hisense</text>
+          <text x="434" y="144" class="svg-lab" fill="#15191A" opacity=".8">graph:naturefood</text>
+          <text x="434" y="172" class="svg-lab" fill="#15191A" opacity=".6">moai-fuseki 컨테이너 공유</text>
+          <line x1="354" y1="126" x2="412" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah3)"></line>
+          <text x="383" y="118" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">load</text>
+
+          <!-- 소비자 -->
+          <rect x="656" y="60" width="190" height="132" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"></rect>
+          <text x="670" y="86" class="svg-ttl" fill="currentColor">조회 계층</text>
+          <text x="670" y="108" class="svg-lab" fill="currentColor" opacity=".78">영향분석 (자재→납기)</text>
+          <text x="670" y="126" class="svg-lab" fill="currentColor" opacity=".78">자연어 질의</text>
+          <text x="670" y="144" class="svg-lab" fill="currentColor" opacity=".78">AI 에이전트</text>
+          <text x="670" y="172" class="svg-lab" fill="currentColor" opacity=".55">SPARQL 화이트리스트만</text>
+          <line x1="594" y1="126" x2="650" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah3)"></line>
+          <text x="622" y="118" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">query</text>
+
+          <!-- Action 루프 -->
+          <rect x="228" y="232" width="360" height="56" rx="3" fill="#F4E7D3" stroke="#9C5A06" stroke-width="1.4"></rect>
+          <text x="408" y="255" text-anchor="middle" class="svg-ttl" fill="#15191A">기존 MES 엔드포인트 (Command)</text>
+          <text x="408" y="274" text-anchor="middle" class="svg-lab" fill="#15191A" opacity=".8">pipeline_action · 공용 헬퍼 · 불변식 검사</text>
+
+          <path d="M751 192 C 751 260 600 260 594 260" fill="none" stroke="#9C5A06" stroke-width="1.6" marker-end="url(#ah3s)"></path>
+          <text x="690" y="228" text-anchor="middle" class="svg-edge" fill="#9C5A06">action 요청</text>
+
+          <path d="M228 260 C 120 260 89 240 89 198" fill="none" stroke="#9C5A06" stroke-width="1.6" marker-end="url(#ah3s)"></path>
+          <text x="140" y="252" text-anchor="middle" class="svg-edge" fill="#9C5A06">write</text>
+
+          <text x="418" y="310" class="svg-lab" fill="#9C5A06">온톨로지에서 DB로 가는 화살표는 없다 — 쓰기는 반드시 이 주황 경로를 지난다.</text>
+
+          <!-- 시계열 예외 -->
+          <path d="M89 60 C 89 24 506 24 506 54" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".45"></path>
+          <text x="297" y="18" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".6">센서 85,610행 · 시계열은 적재하지 않음 (P4)</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>그림 3.</b> 배치와 Action 루프. 온톨로지는 조회 계층에만 답하고,
+        상태를 바꾸는 요청은 전부 기존 MES 엔드포인트를 거쳐 불변식 검사를 받는다.
+        이 구조면 Fuseki가 죽어도 업무가 멈추지 않고(P7), 온톨로지를 전체 재적재해도 데이터가 유실되지 않는다(P2).
+      </figcaption>
+    </figure>
+
+    <h4>Action 정의 형식</h4>
+    <p>
+      온톨로지에 등록하는 Action은 "무엇을 할 수 있는가"의 <em>선언</em>이며, 실행 주체는 항상 MES다.
+      각 Action은 ① 대상 클래스 ② 호출할 엔드포인트 ③ 필요 권한 ④ 검증할 불변식 네 가지를 갖는다.
+      1차 등록 대상은 이미 화면이 있는 것들로 한정한다 — 작업지시 발행, 공정 진척 기록,
+      포장 묶음 생성, 출하 확정, 재고 이동, 배송완료 처리.
+    </p>
+  </section>
+
+  <!-- ══════════════ 7 ══════════════ -->
+  <section id="s7">
+    <div class="sec-head">
+      <span class="sec-no">§ 07</span>
+      <h2 class="sec-title">Security — 사람과 AI를 같은 체계로</h2>
+    </div>
+    <p>
+      AI가 조회·실행을 하기 시작하면 권한은 부가기능이 아니라 구조가 된다.
+      다행히 우리에게는 이미 권한 테이블이 있다 — <code>t_user</code>/<code>t_permission</code>/<code>t_menu</code>(infurs·hisense),
+      <code>mes_menu_users</code> 430행(naturefood). Action의 권한은 <b>새로 정의하지 않고 이 메뉴 권한에 매핑</b>한다.
+    </p>
+    <ul>
+      <li><b>Fuseki는 localhost 바인딩을 유지한다.</b> <code>moai-fuseki</code>는 host network + <code>--localhost</code>로 떠 있다. 외부 노출 금지 — 웹에서 SPARQL 엔드포인트를 직접 부르는 구조를 만들지 않는다.</li>
+      <li><b>질의는 서버측 화이트리스트만.</b> 파라미터만 바인딩하는 고정 SPARQL 템플릿. 자연어는 조건 파싱에만 쓴다(P6).</li>
+      <li><b>행 단위 제한은 named graph로.</b> 사용자가 속한 사이트의 graph만 질의 대상에 포함한다. 사이트 간 조회는 Phase 4에서 별도 권한으로.</li>
+      <li><b>AI 에이전트의 도구 범위 = 그 계정의 메뉴 권한.</b> 사람이 못 하는 일을 에이전트가 할 수 있는 경로를 만들지 않는다.</li>
+      <li><b>선결 조치.</b> <code>login.php</code>에 admin 비밀번호가 평문으로 박혀 있는 문제가 infurs·hisense 양쪽에 남아 있다. 온톨로지 조회 계층을 붙이기 전에 이것부터 정리해야 한다 — 권한 체계 위에 AI를 올리는 설계에서 최초 관문이 뚫려 있으면 나머지 설계가 무의미하다.</li>
+    </ul>
+  </section>
+
+  <!-- ══════════════ 8 ══════════════ -->
+  <section id="s8">
+    <div class="sec-head">
+      <span class="sec-no">§ 08</span>
+      <h2 class="sec-title">Decision Lineage</h2>
+    </div>
+    <p>
+      "데이터가 어디서 왔나"(Data Lineage)보다 넓은 "누가 무엇을 보고 어떤 판단을 했고 그 결과가 어땠나"를
+      기록하자는 개념이다. 우리는 이미 조각을 갖고 있다 — 다만 서로 연결되지 않은 로그들이다.
+    </p>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>기존 로그</th><th>담고 있는 것</th><th>Lineage로 승격시 추가할 것</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">t_audit_log</td><td><code>user_id</code>, <code>action</code>, <code>target</code>, <code>ref_id</code>, <code>summary</code>, <code>ip</code></td><td>대상을 <b>IRI</b>로 기록 — 테이블명+PK 대신</td></tr>
+          <tr><td class="mono">t_ai_parse_log</td><td>OCR 텍스트, AI 결과, 정규식 결과, <code>parse_method</code></td><td>어느 Logic·모델 버전이 쓰였는지</td></tr>
+          <tr><td class="mono">t_ocr_correction</td><td>사람이 고친 값</td><td>판단 주체(사람/AI)와 수정 근거 — 재학습 입력</td></tr>
+          <tr><td class="mono">ai_rule_history</td><td>규칙 변경 이력 (현재 0행)</td><td>임계값 변경 → 영향받은 판단 연결</td></tr>
+          <tr><td class="mono">t_document_log</td><td>문서 발행 이력 17행</td><td>어느 Order·Shipment IRI에 귀속되는지</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="tag">최소 변경 원칙</span>
+      <p>
+        새 로그 테이블을 만들지 않는다. <code>t_audit_log.target</code>에 들어가는 문자열을 IRI 형식으로 바꾸는 것만으로
+        다섯 로그가 같은 객체를 가리키게 된다. MariaDB 10.3에서 <code>AFTER</code>·<code>INSTANT</code> 컬럼 추가가
+        지원되지 않는 제약도 이 방식이면 피할 수 있다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 9 ══════════════ -->
+  <section id="s9">
+    <div class="sec-head">
+      <span class="sec-no">§ 09</span>
+      <h2 class="sec-title">배치 아키텍처와 동기화</h2>
+    </div>
+
+    <h3><span class="h3num">9.1</span>서버 제약이 설계를 결정한다</h3>
+    <p>
+      이 서버는 RAM <span class="num">3,665</span>MB에 가용 <span class="num">1,320</span>MB다.
+      새벽 백업의 git bundle이 반복 OOM kill을 당한 이력이 있고, Claude 세션에는 cgroup 캡이 걸려 있다.
+      따라서 <b>새 컨테이너·새 JVM을 띄우지 않는다.</b> caren과 동일하게 이미 7주 가동 중인
+      <code>moai-fuseki</code>에 <code>tx-mes</code> TDB2 데이터셋 하나만 추가한다.
+    </p>
+
+    <h3><span class="h3num">9.2</span>트리플 규모 추정</h3>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>Named graph</th><th>업무 객체 행수(실측)</th><th>객체당 트리플</th><th>추정 트리플</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">graph:infurs</td><td class="num">30,659</td><td class="num">8~12</td><td class="num">245K ~ 368K</td></tr>
+          <tr><td class="mono">graph:hisense</td><td class="num">2,417</td><td class="num">10~14</td><td class="num">24K ~ 34K</td></tr>
+          <tr><td class="mono">graph:naturefood</td><td class="num">9,774</td><td class="num">8~12</td><td class="num">78K ~ 117K</td></tr>
+          <tr><td class="mono">graph:schema</td><td>클래스 14 · 관계 16</td><td>—</td><td class="num">~400</td></tr>
+          <tr><td colspan="3"><b>합계</b> (세션·로그·시계열 제외)</td><td class="num"><b>35만 ~ 52만</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13.5px;color:var(--muted)">
+      TDB2에서 50만 트리플은 수백 MB 힙으로 충분하며 caren(271 트리플)과 같은 인스턴스를 공유해도 문제없는 규모다.
+      단, <code>graph:infurs</code>의 80%가 거래처 중복이므로 Phase 1의 Partner 정리로 절반 이하로 줄 가능성이 크다.
+      <b>naturefood 센서 85,610행을 넣으면 규모가 이 추정과 무의미해진다</b> — P4를 지키는 이유다.
+    </p>
+
+    <h3><span class="h3num">9.3</span>동기화 방식</h3>
+    <ul>
+      <li><b>1차: 야간 전체 재적재.</b> 50만 트리플이면 전체 재적재가 수분 내다. 증분 로직의 버그 위험보다 단순함이 낫다. 기존 백업 크론 시간(OOM 이력)과 겹치지 않게 배치한다.</li>
+      <li><b>2차: 이벤트 증분.</b> 수주 등록·작업지시 발행·출하 확정 시점에 해당 객체만 갱신. <code>updated_at</code> 기준.</li>
+      <li><b>실패 처리.</b> 적재 실패 시 이전 그래프를 유지한다(부분 적재 금지). 적재 전 <code>riot --validate</code>로 TTL 문법 검증 — caren에서 쓰던 절차 그대로.</li>
+      <li><b>불변식 점검.</b> infurs의 <code>check_invariants.php</code> 패턴을 확장해, 적재 후 객체 수·필수 Link 누락을 상시 점검한다.</li>
+      <li><b>외부 의존 없음.</b> 이 서버는 npm·jsdelivr·Docker Hub·Cloudflare 대역이 차단돼 있다. ETL은 서버에 이미 있는 PHP CLI 또는 표준 라이브러리 Python으로만 만든다(caren <code>ontology.py</code>가 <code>urllib</code>만 쓴 이유).</li>
+    </ul>
+  </section>
+
+  <!-- ══════════════ 10 ══════════════ -->
+  <section id="s10">
+    <div class="sec-head">
+      <span class="sec-no">§ 10</span>
+      <h2 class="sec-title">단계별 로드맵</h2>
+    </div>
+    <p>
+      각 단계는 <b>그 단계만으로 눈에 보이는 성과</b>가 있어야 한다.
+      "온톨로지를 다 만든 다음에 효과가 난다"는 계획은 중간에 멈추면 전부 손실이므로 채택하지 않는다.
+    </p>
+
+    <div class="phases">
+      <div class="phase">
+        <div class="pid"><b>Phase 0</b>합의</div>
+        <div>
+          <h4>용어 합의와 스키마 확정</h4>
+          <ul>
+            <li>§3.2 클래스 14개·§3.3 관계 16개를 현장 용어로 검토 — 세 사이트 담당자가 같은 말을 쓰는지 확인</li>
+            <li><code>tx:</code> 네임스페이스·IRI 규칙(§4.2) 확정, <code>mes-core.ttl</code> 작성 후 <code>riot --validate</code></li>
+            <li>Fuseki에 <code>tx-mes</code> 데이터셋 생성 + <code>graph:schema</code> 적재</li>
+          </ul>
+          <div class="out"><b>산출물</b> <code>mes-core.ttl</code> · 용어 대조표 · 빈 데이터셋 &nbsp;·&nbsp; <b>검증</b> 문법 검증 통과, 트리플 ~400</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pid"><b>Phase 1</b>적재</div>
+        <div>
+          <h4>한 사이트 전체 적재 — hisense 먼저</h4>
+          <ul>
+            <li>hisense를 1번으로 두는 이유: 객체 2,417행으로 가장 작고, Lot·Package·3경로 출하가 <em>유일하게 다 있는</em> 사이트라 모델 검증이 제대로 된다</li>
+            <li>ETL 작성(PHP CLI) → <code>graph:hisense</code> 적재 → 객체 수·필수 Link 누락 점검</li>
+            <li>부수 성과: 적재가 실패하는 행이 곧 데이터 결함 목록이 된다(고아 명세서·미연결 도면 등)</li>
+          </ul>
+          <div class="out"><b>산출물</b> ETL 스크립트 · 적재 리포트 · 결함 목록 &nbsp;·&nbsp; <b>검증</b> 2.4만~3.4만 트리플, 필수 Link 누락 0</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pid"><b>Phase 2</b>첫 수익</div>
+        <div>
+          <h4>자재 영향분석 화면 — 온톨로지가 아니면 못 만드는 것</h4>
+          <ul>
+            <li>질문: <em>"이 부자재가 떨어지면 어느 수주의 납기가 위험한가?"</em> — <code>^tx:consumes/^tx:hasBom</code> 전이 폐쇄</li>
+            <li>현재 SQL로는 BOM 단계마다 조인을 새로 써야 해서 화면이 없다. SPARQL 한 질의로 대체</li>
+            <li><code>tx:settles</code>로 3경로 출하를 합산해 수주 잔량을 단일 질의로 — 3차 스윕에서 손으로 맞춘 로직의 검산에도 쓴다</li>
+            <li>Fuseki 미기동 시 "영향분석 일시 사용 불가" 표시 후 기존 화면 정상 동작(P7)</li>
+          </ul>
+          <div class="out"><b>산출물</b> 영향분석 화면 1개 · 화이트리스트 SPARQL 템플릿 &nbsp;·&nbsp; <b>검증</b> 기존 수주잔량 집계와 수치 일치</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pid"><b>Phase 3</b>확산</div>
+        <div>
+          <h4>infurs·naturefood 적재와 Partner 정리</h4>
+          <ul>
+            <li>infurs: <code>t_item</code>+<code>t_product</code>를 <b>하나의 <code>tx:Item</code></b>으로 — <code>memo</code> 문자열 조인을 IRI 동일성으로 대체. 미연결 312품목이 여기서 드러난다</li>
+            <li>infurs: <code>t_customer</code>(18,543)+<code>t_partner</code>(9,513) 중복 정리 → <code>tx:Partner</code> 실제 규모 확정</li>
+            <li>naturefood: <code>mes_item</code> 48컬럼 중 실제 쓰이는 Property만 선별(Kitchen Sink 해소), <code>SensorChannel</code> 6채널 정의·임계값 등록</li>
+            <li>hisense <code>t_order</code>의 인라인 거래처 9컬럼 → <code>tx:Partner</code> 객체로 승격(DB는 그대로, 온톨로지에서 분리)</li>
+          </ul>
+          <div class="out"><b>산출물</b> 3그래프 적재 완료 · 중복 정리 리포트 &nbsp;·&nbsp; <b>검증</b> 35만~52만 트리플, 사이트별 불변식 점검 통과</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="pid"><b>Phase 4</b>운영</div>
+        <div>
+          <h4>Action 등록 · Lineage · 자연어 질의</h4>
+          <ul>
+            <li>Action 6종 등록(§6) — 대상 클래스·엔드포인트·권한·불변식 4요소</li>
+            <li><code>t_audit_log.target</code>을 IRI로 전환 → 5개 로그가 같은 객체를 가리킴(§8)</li>
+            <li>기존 NL검색(hisense 품목조회·naturefood 대시보드)의 조건 파싱 결과를 SPARQL 화이트리스트로 라우팅</li>
+            <li><code>tx:sameAs</code>로 사이트 간 동일 자재 연결 — 세 공장 공통 구매·재고 재배분 검토의 전제</li>
+          </ul>
+          <div class="out"><b>산출물</b> Action 등록부 · Lineage 전환 · NL 질의 연결 &nbsp;·&nbsp; <b>검증</b> 권한 밖 Action 차단 확인, 감사 로그로 판단 추적 가능</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="tag">전제 조건</span>
+      <p>
+        Phase 4의 자연어 질의는 LLM 크레딧을 쓴다. hisense 자연어검색·일반수주서 OCR이 이미
+        <b>크레딧 부족으로 라이브 미검증</b> 상태다. Phase 4 착수 전에 크레딧 확보 여부를 먼저 확인해야 하며,
+        확보 안 되면 Phase 4에서 자연어 항목만 분리해 뒤로 미룬다 — Action 등록과 Lineage는 크레딧과 무관하다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 11 ══════════════ -->
+  <section id="s11">
+    <div class="sec-head">
+      <span class="sec-no">§ 11</span>
+      <h2 class="sec-title">금지 목록과 성공 판정</h2>
+    </div>
+
+    <h3><span class="h3num">11.1</span>하지 않는 것</h3>
+    <ul>
+      <li><b>테이블을 그대로 객체로 옮기지 않는다.</b> <code>t_order_item</code> 한 행에 품목명·규격·단가가 복사돼 있어도, 객체는 <code>OrderLine</code>과 <code>Item</code> 둘로 나눈다.</li>
+      <li><b>사이트별로 <code>Item</code> 클래스를 따로 만들지 않는다.</b> 그것이 System Silos의 재생산이다. 차이는 Property로, 클래스로는 만들지 않는다.</li>
+      <li><b>쓰이지 않는 컬럼을 Property로 올리지 않는다.</b> naturefood <code>item_param1~4</code>처럼 의미가 코드에만 있는 필드는 의미를 확인한 것만 이름 붙여 올린다.</li>
+      <li><b>온톨로지에만 있는 데이터를 만들지 않는다.</b> 예외는 임계값(§5)뿐이며, 그것도 DB에 반영 경로를 함께 만든다.</li>
+      <li><b>기존 화면을 Fuseki 의존으로 바꾸지 않는다.</b> 온톨로지는 새 화면을 추가할 뿐이다.</li>
+      <li><b>LLM이 생성한 질의를 그대로 실행하지 않는다.</b></li>
+      <li><b>새 Fuseki 인스턴스·새 컨테이너를 띄우지 않는다.</b> RAM 제약(§9.1).</li>
+    </ul>
+
+    <h3><span class="h3num">11.2</span>성공 판정</h3>
+    <p>다음 네 가지가 되면 이 설계는 성공한 것으로 본다. 되지 않으면 트리플 수와 무관하게 실패다.</p>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>판정 항목</th><th>판정 기준</th></tr></thead>
+        <tbody>
+          <tr><td>영향 추적</td><td>"이 자재가 없으면 위험한 수주"를 <b>한 질의로</b> 답한다 — 지금은 답하는 화면이 없다</td></tr>
+          <tr><td>ID 사고 재발 방지</td><td>품목 ID와 주문라인 ID를 혼용한 코드가 <b>적재 단계에서 걸린다</b> — 지금은 런타임 회귀로 발견된다</td></tr>
+          <tr><td>재사용</td><td>한 사이트에서 만든 질의·점검이 <b>graph 이름만 바꿔</b> 다른 사이트에 돈다</td></tr>
+          <tr><td>무해성</td><td>Fuseki를 정지시켜도 <b>세 MES의 기존 화면이 전부 정상 동작한다</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════ 12 ══════════════ -->
+  <section id="s12">
+    <div class="sec-head">
+      <span class="sec-no">§ 12</span>
+      <h2 class="sec-title">미결 사항</h2>
+    </div>
+    <p>설계를 확정하려면 판단이 필요한 항목들이다. 전부 사용자 결정 사항이다.</p>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>#</th><th>미결 사항</th><th>결정이 필요한 이유</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">D1</td><td>Phase 1 대상이 hisense가 맞는지</td><td>규모·모델 완결성은 hisense가 유리하지만, 사업계획서 산출물 기한이 걸린 사이트가 따로 있으면 순서가 바뀐다</td></tr>
+          <tr><td class="mono">D2</td><td>infurs 거래처 이중 마스터를 <b>DB에서도</b> 통합할지</td><td>온톨로지에서만 합치면 화면은 그대로 둘이다. DB 통합은 별건 작업이며 영향 범위가 크다</td></tr>
+          <tr><td class="mono">D3</td><td><code>t_item</code>+<code>t_product</code> 통합의 최종 방향</td><td>온톨로지 동일성으로 덮을지, infurs <code>master_item_id</code>처럼 브리지 컬럼을 추가할지</td></tr>
+          <tr><td class="mono">D4</td><td>세 사이트 공통 자재 연결(<code>tx:sameAs</code>)을 어디까지 볼지</td><td>공장 간 재고 재배분은 영업·구매 정책 문제여서 기술 판단만으로는 못 정한다</td></tr>
+          <tr><td class="mono">D5</td><td>임계값 SSOT를 온톨로지로 옮기는 범위</td><td>안전재고·가동판정·KPI 목표 중 어디까지를 온톨로지가 소유할지</td></tr>
+          <tr><td class="mono">D6</td><td>Phase 4 자연어 항목의 LLM 크레딧</td><td>미확보 시 해당 항목만 분리 연기 필요(§10 전제 조건)</td></tr>
+          <tr><td class="mono">D7</td><td><code>login.php</code> 평문 admin 비밀번호 선결 조치 일정</td><td>권한 위에 AI를 올리는 설계의 전제(§7). 코드 수정과 비밀번호 변경 둘 다 필요</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>TX-ONT-DESIGN r1.0 · 2026-09-19 · 운영 DB 실측 기준</span>
+    <span class="mono">infurs_db · hisense_db · naturefood</span>
+  </footer>
+</div>
