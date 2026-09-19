@@ -51,3 +51,10 @@
 !/telomx-mes-ontology/pdf/
 /telomx-mes-ontology/pdf/*
 !/telomx-mes-ontology/pdf/*.pdf
+
+# --- ops 스크립트 (/root/scripts) ---
+# 평문 자격증명이 없는 것만 올린다(2026-09-20 전수 확인: 비밀번호는 전부 런타임에 .env 에서 읽는다).
+# telom-x-dns-challenge/ 는 certbot 이 쓰는 작업 디렉터리라 제외 유지.
+!/scripts/
+/scripts/*
+!/scripts/*.sh
