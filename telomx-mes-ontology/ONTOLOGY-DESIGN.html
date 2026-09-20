@@ -251,6 +251,16 @@
     font-size: 12.5px; color: var(--muted);
     display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between;
   }
+  .phase .pid .done {
+    display: block; margin-top: 7px; font-size: 10.5px; color: var(--good);
+    letter-spacing: .03em; line-height: 1.5;
+  }
+  .phase .res {
+    font-size: 12.5px; color: var(--ink-2); margin-top: 9px;
+    border-left: 2px solid var(--good); padding: 2px 0 2px 10px;
+  }
+  .phase .res b { color: var(--ink); font-weight: 600; }
+
   @media (prefers-reduced-motion: no-preference) { a { transition: color .15s ease; } }
 </style>
 
@@ -265,11 +275,11 @@
       데이터를 옮기는 작업이 아니라, <strong>세 공장의 업무 세계를 같은 언어로 합의하는 작업</strong>이다.
     </p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-ONT-DESIGN r1.0</span></div>
-      <div><span class="k">작성일</span><span class="v">2026-09-19</span></div>
+      <div><span class="k">문서</span><span class="v">TX-ONT-DESIGN r1.1</span></div>
+      <div><span class="k">작성 · 개정</span><span class="v">2026-09-19 · 2026-09-20</span></div>
       <div><span class="k">대상 시스템</span><span class="v">infurs_db · hisense_db · naturefood</span></div>
-      <div><span class="k">근거</span><span class="v">운영 DB 실측 + Palantir Ontology 설계원칙</span></div>
-      <div><span class="k">상태</span><span class="v">설계안 — 미착수</span></div>
+      <div><span class="k">근거</span><span class="v">운영 DB 실측 + 적재 결과 실측 + Palantir Ontology 설계원칙</span></div>
+      <div><span class="k">상태</span><span class="v">Phase 0~3 적재 완료 (3사 286,057 트리플) · Phase 4 미착수</span></div>
     </div>
   </header>
 
@@ -290,6 +300,36 @@
       <li><a href="#s12">미결 사항</a></li>
     </ol>
   </nav>
+
+  <div class="callout rule" id="rev">
+    <span class="tag">r1.1 개정 요약 — 실측이 설계를 고친 지점</span>
+    <p>
+      r1.0은 적재 <em>전</em>에 쓴 설계다. Phase 0~3을 실제로 돌리는 동안 <b>설계가 틀린 곳이 네 군데</b>
+      드러났고, 이 판은 그것을 반영한 것이다. 고친 결과보다 고친 근거가 오래 쓰이므로 근거를 함께 남긴다.
+    </p>
+    <ul style="margin:10px 0 0;font-size:14px">
+      <li><b>잔량 판정 기준을 문서에서 원장으로 바꿨다</b>(§3.2·§5).
+          3경로 출하가 겹치면 문서 합계가 주문수량을 넘는다 — hisense 품목 85가 문서 <span class="num">21</span> /
+          원장 <span class="num">20</span>이었다. <code>tx:shippedQty</code>를 신설하고 잔량·납기 이행은 이 값으로만 판정한다.
+          취소분(<code>status=9</code>)을 빼지 않으면 <q>초과출고가 있다</q>는 틀린 결론에 이른다.</li>
+      <li><b>클래스 14 → 16, 관계 16 → 20</b>(§3.2·§3.3).
+          출하 라인(<code>tx:ShipmentLine</code>)이 없으면 3경로를 같은 단위로 셀 수 없었고, r1.0 클래스 표에는
+          그림에 그려 둔 <code>tx:Document</code>가 빠져 있었다. 관계는 <code>customer</code>·<code>forOrder</code>·
+          <code>shipsTo</code>·<code>shipsLot</code>이 늘었다.</li>
+      <li><b>거래처 병합 키를 <q>사업자번호</q>에서 <q>사업자번호 + 이름</q>으로 바꿨다</b>(§4.2).
+          한 사업자번호 아래 서로 다른 납품처가 들어 있다 — 당진시청 한 번호에 <span class="num">103</span>행
+          (여성가족과·민원위생과…), 휴게소 운영사 한 번호에 29행이 각각 다른 지점이다.
+          번호로만 접으면 수주의 기관명이 엉뚱한 이름의 객체에 붙어 <b>납기 연락 대상을 잘못 가리킨다</b>.</li>
+      <li><b>적재 전 <code>riot --validate</code>를 없앴다</b>(§9.3).
+          그래프 PUT이 파싱과 저장을 한 트랜잭션에서 처리하므로 검증이 중복이고, 컨테이너 안에서 JVM을 또 띄우는 것이
+          <code>moai-fuseki</code> 메모리 한도를 건드렸다. 적재가 5분+에서 <span class="num">3</span>초로 줄었다.</li>
+    </ul>
+    <p style="margin-top:10px">
+      트리플 규모도 추정(35만~52만)에서 실측 <span class="num">286,057</span>로 교체했다 —
+      거래처 중복 정리가 r1.0의 예상대로 작동한 결과다(§9.2). 로드맵(§10)과 성공 판정(§11.2)에는
+      Phase 0~3의 실제 결과를, 미결 사항(§12)에는 해소된 항목과 새로 생긴 판단 두 건을 반영했다.
+    </p>
+  </div>
 
   <!-- ══════════════ 1 ══════════════ -->
   <section id="s1">
@@ -376,6 +416,64 @@
       이 설계는 그 선례의 <b>운영 방식</b>을 그대로 물려받는다. 새 인프라를 세우는 제안이 아니라,
       검증된 배치 위에 <code>tx-mes</code> 데이터셋 하나를 더하는 제안이다.
     </p>
+
+    <h3><span class="h3num">1.2</span>적재 후 — 진단이 실제로 해소됐는지 <span style="font-size:12.5px;color:var(--muted);font-weight:400">(r1.1)</span></h3>
+    <p>
+      위 표는 r1.0의 진단이다. Phase 1~3을 적재한 뒤 같은 항목을 다시 확인했다.
+      <b>해소됐다는 뜻은 온톨로지 쪽에서 해소됐다는 것</b>이고, MES DB·화면은 그대로다(P2) —
+      DB까지 합칠지는 여전히 판단 사항이다(§12 D2·D3).
+    </p>
+    <div class="scroll">
+      <table class="tight">
+        <thead><tr><th>안티패턴</th><th>온톨로지에서 해소된 방식 (실측)</th><th>남은 것</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>System Silos</b></td>
+            <td>infurs <code>t_item</code> 687 + <code>t_product</code> 661 → <code>tx:Item</code>
+                <span class="num">687</span>개. <code>memo</code> 문자열 조인이 IRI 동일성으로 대체됐고
+                <span class="num">661/661</span> 전건 매칭. 도면·제품사진 <span class="num">927</span>건이
+                품목에 직접 붙는다.</td>
+            <td>두 마스터의 단가가 어긋난 <span class="num">16</span>건(합치기 전에는 비교할 방법이 없던 값).
+                사진 없는 품목 <span class="num">324</span> · 도면 없는 품목 <span class="num">126</span>.</td>
+          </tr>
+          <tr>
+            <td><b>Department Silos</b></td>
+            <td>infurs <code>t_customer</code> 18,543 + <code>t_partner</code> 9,513 = <span class="num">28,056</span>행
+                → <code>tx:Partner</code> <span class="num">9,707</span>객체(<b>65.4% 감소</b>).
+                병합 근거는 <code>tx:mergedFrom</code>에 한 행도 빠짐없이 싣고, 점검이 총합을 DB 행 수와 맞춘다.</td>
+            <td>동명 기관이 여러 건이라 연결하지 않은 수주 <span class="num">1</span>건.
+                DB·화면 통합 여부(D2).</td>
+          </tr>
+          <tr>
+            <td><b>God Object</b></td>
+            <td>hisense <code>t_order</code>의 인라인 기관 9컬럼 → <code>tx:Partner</code> 승격.
+                <b>발주기관(조달청)과 수요기관이 다른 역할</b>로 분리돼, 납기 지연 시 연락 대상이 질의로 나온다.</td>
+            <td>infurs는 <code>ordering_org</code>가 <b>11건 전부 NULL</b> — 수주서 PDF 파서가 발주기관을
+                저장하지 않는다(D9).</td>
+          </tr>
+          <tr>
+            <td><b>Kitchen Sink</b></td>
+            <td>naturefood <code>item_param1~4</code>·<code>envolop_*</code>·<code>clt_ctgr1~4</code>를
+                <b>싣지 않았다</b> — 의미를 아는 컬럼만 옮겼다(§11.1).
+                infurs <code>t_customer.memo</code>의 <q>거래처코드/업태/종목</q> 자유텍스트도 같은 이유로 제외.</td>
+            <td>제외한 컬럼의 의미를 나중에 확인하면 그때 이름을 붙여 올린다.</td>
+          </tr>
+          <tr>
+            <td><b>Join Key를 관계로 착각</b></td>
+            <td>IRI가 클래스를 포함하므로 두 ID 공간이 섞이지 않고, <q>한 IRI가 두 클래스를 가짐 = 0</q>
+                불변식이 <b>적재 시점에</b> 잡는다. 사이트마다 반대인 관례
+                (infurs <code>t_work_order.item_id</code>=주문라인 / hisense=마스터)를 ETL에 명시했다.</td>
+            <td>DB의 컬럼명은 그대로다 — 새 SQL을 쓸 때의 위험은 남아 있다.</td>
+          </tr>
+          <tr>
+            <td><b>공통 언어 부재</b></td>
+            <td>hisense에서 만든 자재 영향분석 질의가 <b><code>graph</code> 이름만 바꿔</b> infurs에서 그대로 돌았다
+                (자재 8종이 수주라인에 걸림). 점검 스크립트도 같은 구조를 세 사이트가 공유한다.</td>
+            <td>infurs BOM이 9품목만 등록돼 있어 <b>질의는 돌지만 답할 데이터가 적다</b>(D8).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <!-- ══════════════ 2 ══════════════ -->
@@ -437,7 +535,9 @@
     <p>
       네임스페이스는 <code>http://mes.telomx.kr/ontology#</code> (접두어 <code>tx:</code>).
       세 사이트가 <b>클래스와 관계는 공유</b>하고, 개체는 사이트별 named graph에 들어간다(§9.2).
-      클래스는 14개로 시작한다 — 세 MES에 실제로 테이블이 있고, 실제 질문에 쓰이는 것만 넣었다.
+      클래스는 <b>16개</b>다 — 세 MES에 실제로 테이블이 있고, 실제 질문에 쓰이는 것만 넣었다.
+      r1.0의 14개에 적재 중 <code>tx:ShipmentLine</code>(3경로 출하를 같은 단위로 세려면 필요했다)과
+      <code>tx:Document</code>(그림 1에는 있었으나 표에서 빠져 있었다)를 더했다.
     </p>
 
     <h3><span class="h3num">3.1</span>객체 그래프</h3>
@@ -570,29 +670,34 @@
     <h3><span class="h3num">3.2</span>클래스 정의</h3>
     <div class="scroll">
       <table class="tight">
-        <thead><tr><th>클래스</th><th>현실의 무엇</th><th>핵심 Property (선별)</th><th>추정 개체수</th></tr></thead>
+        <thead><tr><th>클래스</th><th>현실의 무엇</th><th>핵심 Property (선별)</th><th>적재 개체수<br><span style="font-weight:400;color:var(--muted);font-size:11.5px">실측 2026-09-20 · infurs / hisense / naturefood</span></th></tr></thead>
         <tbody>
-          <tr><td class="mono">tx:Partner</td><td>거래처 — 발주기관·수요기관·고객사·공급사를 한 객체로</td><td>bizNo, name, role(발주/수요/공급), creditLimit</td><td class="num">28,000+</td></tr>
-          <tr><td class="mono">tx:Order</td><td>수주 1건</td><td>orderNo, orderDate, deliveryDeadline, status, grandTotal</td><td class="num">38</td></tr>
-          <tr><td class="mono">tx:OrderLine</td><td>수주의 품목별 한 줄 — 잔량 판단의 기준 단위</td><td>lineNo, qty, unitPrice, deadline, identifyNo</td><td class="num">66</td></tr>
-          <tr><td class="mono">tx:Item</td><td>품목 — 제품·부자재·원자재 공통</td><td>itemCode, identifyNo, itemType, unit, safetyStock, leadTimeDay</td><td class="num">1,114</td></tr>
-          <tr><td class="mono">tx:BomLine</td><td>품목 1단 소요 구성</td><td>qty, unit, lossRate</td><td class="num">1,270</td></tr>
-          <tr><td class="mono">tx:WorkOrder</td><td>작업지시</td><td>woNo, targetQty, productionDeadline, status</td><td class="num">57</td></tr>
-          <tr><td class="mono">tx:ProcessRun</td><td>공정별 진척 실적</td><td>process, startAt, endAt, goodQty, defectQty</td><td class="num">120</td></tr>
-          <tr><td class="mono">tx:Lot</td><td>로트 — 추적성의 단위</td><td>lotNo, qty, pkgType, expiryDate, productionDate</td><td class="num">180</td></tr>
-          <tr><td class="mono">tx:Package</td><td>포장 묶음 (hisense QR 라벨 단위)</td><td>packageNo, pkgType, packedAt, shippedAt</td><td class="num">33</td></tr>
-          <tr><td class="mono">tx:StockPosition</td><td>창고×품목(×로트) 현재고</td><td>qty, updatedAt</td><td class="num">212</td></tr>
-          <tr><td class="mono">tx:Warehouse</td><td>창고·구역</td><td>name, type, sectionName</td><td class="num">22</td></tr>
-          <tr><td class="mono">tx:Shipment</td><td>출하 — 배송지시·포장출하·판매출고 3경로의 공통 상위</td><td>route(order/package/delivery), dispatchDate, deliveredAt, status</td><td class="num">42</td></tr>
-          <tr><td class="mono">tx:Equipment</td><td>설비</td><td>eqCode, name, model, maker</td><td class="num">20</td></tr>
-          <tr><td class="mono">tx:SensorChannel</td><td>센서 채널 정의 — <em>측정값은 넣지 않음</em>(P4)</td><td>channel, unit, runThreshold, sourceTable</td><td class="num">6</td></tr>
+          <tr><td class="mono">tx:Partner</td><td>거래처 — 발주기관·수요기관·고객사·공급사를 한 객체로</td><td>bizNo, partnerRole, mergedFrom, tel, managerPhone</td><td class="num">18,205<br><span style="color:var(--muted);font-size:11.5px">9,707 / 4 / 8,494</span></td></tr>
+          <tr><td class="mono">tx:Order</td><td>수주 1건</td><td>orderNo, orderDate, deliveryDeadline, status, totalAmount</td><td class="num">38<br><span style="color:var(--muted);font-size:11.5px">11 / 2 / 25</span></td></tr>
+          <tr><td class="mono">tx:OrderLine</td><td>수주의 품목별 한 줄 — 잔량 판단의 기준 단위</td><td>lineNo, qty, unitPrice, deliveryDeadline, identifyNo</td><td class="num">61<br><span style="color:var(--muted);font-size:11.5px">13 / 23 / 25</span></td></tr>
+          <tr><td class="mono">tx:Item</td><td>품목 — 제품·부자재·원자재 공통</td><td>itemCode, identifyNo, itemType, unit, safetyStock, leadTimeDay</td><td class="num">1,114<br><span style="color:var(--muted);font-size:11.5px">687 / 404 / 23</span></td></tr>
+          <tr><td class="mono">tx:BomLine</td><td>품목 1단 소요 구성</td><td>qty, unit, lossRate, processStep</td><td class="num">669<br><span style="color:var(--muted);font-size:11.5px">49 / 600 / 20</span></td></tr>
+          <tr><td class="mono">tx:WorkOrder</td><td>작업지시</td><td>woNo, targetQty, productionDeadline, status</td><td class="num">57<br><span style="color:var(--muted);font-size:11.5px">13 / 18 / 26</span></td></tr>
+          <tr><td class="mono">tx:ProcessRun</td><td>공정별 진척 실적</td><td>processStep, goodQty, defectQty, prodDate</td><td class="num">94<br><span style="color:var(--muted);font-size:11.5px">44 / 18 / 32</span></td></tr>
+          <tr><td class="mono">tx:Lot</td><td>로트 — 추적성의 단위</td><td>lotNo, qty, pkgType, expiryDate, productionDate</td><td class="num">180<br><span style="color:var(--muted);font-size:11.5px">— / 180 / —</span></td></tr>
+          <tr><td class="mono">tx:Package</td><td>포장 묶음 (hisense QR 라벨 단위)</td><td>packageNo, pkgType, packedAt, shippedAt</td><td class="num">5<br><span style="color:var(--muted);font-size:11.5px">— / 5 / —</span></td></tr>
+          <tr><td class="mono">tx:Shipment</td><td>출하 — 배송지시·포장출하·판매출고 3경로의 공통 상위</td><td>route(delivery/package/…), dispatchDate, deliveredAt, status</td><td class="num">36<br><span style="color:var(--muted);font-size:11.5px">8 / 10 / 18</span></td></tr>
+          <tr><td class="mono"><b>tx:ShipmentLine</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td>출하 1건의 품목별 수량 — <b>3경로를 같은 단위로 세는 자리</b></td><td>qty(문서), <b>shippedQty(원장)</b>, route, ofItem</td><td class="num">76<br><span style="color:var(--muted);font-size:11.5px">10 / 48 / 18</span></td></tr>
+          <tr><td class="mono">tx:StockPosition</td><td>창고×품목(×로트) 현재고</td><td>qty, updatedAt</td><td class="num">211<br><span style="color:var(--muted);font-size:11.5px">25 / 171 / 15</span></td></tr>
+          <tr><td class="mono">tx:Warehouse</td><td>창고·구역</td><td>warehouseCode, name, warehouseType</td><td class="num">7<br><span style="color:var(--muted);font-size:11.5px">3 / 2 / 2</span></td></tr>
+          <tr><td class="mono">tx:Equipment</td><td>설비</td><td>equipmentCode, name, model, maker</td><td class="num">11<br><span style="color:var(--muted);font-size:11.5px">— / — / 11</span></td></tr>
+          <tr><td class="mono">tx:SensorChannel</td><td>센서 채널 정의 — <em>측정값은 넣지 않음</em>(P4)</td><td>channelKey, unit, runOverThreshold, scaleFactor</td><td class="num">6<br><span style="color:var(--muted);font-size:11.5px">— / — / 6</span></td></tr>
+          <tr><td class="mono"><b>tx:Document</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td>도면·제품사진 — 그림 1에는 있었으나 r1.0 표에서 빠져 있었다</td><td>fileType, filePath, depicts</td><td class="num">927<br><span style="color:var(--muted);font-size:11.5px">927 / 0 / —</span></td></tr>
         </tbody>
       </table>
     </div>
     <p style="font-size:13.5px;color:var(--muted)">
-      개체수는 세 DB 합계 실측(<code>information_schema</code> + <code>count(*)</code>, 2026-09-19 기준)이다.
-      <code>tx:Partner</code>만 유독 큰 것은 infurs <code>t_customer</code> 18,543 + <code>t_partner</code> 9,513 +
-      naturefood <code>mes_client</code> 8,494의 중복 정리 전 수치라서다 — 정리 후 실제 규모는 §10 Phase 1에서 확정한다.
+      개체수는 <b>실제 그래프를 센 값</b>이다(2026-09-20, Fuseki <code>tx-mes</code>). r1.0의 추정과 달라진 곳은 둘이다.
+      <code>tx:Partner</code>는 infurs 28,056행을 <span class="num">9,707</span>객체로 접어 3사 <span class="num">18,205</span>가 됐고
+      (r1.0 추정 28,000+), <code>tx:BomLine</code>은 hisense BOM 600건이 실제로 적재돼 669로 줄었다(추정 1,270).
+      <code>tx:Package</code> 5·<code>tx:Equipment</code> 11처럼 추정보다 작은 항목은 원천이 데모 수준이라는 뜻이며,
+      <b>없는 것을 만들지 않는다</b>는 P1을 지킨 결과다. hisense <code>tx:Partner</code> 4는 마스터 2 +
+      수주에서 승격된 기관 2(조달청)다.
     </p>
 
     <h3><span class="h3num">3.3</span>관계(ObjectProperty)</h3>
@@ -600,8 +705,9 @@
       <table class="tight">
         <thead><tr><th>관계</th><th>도메인 → 레인지</th><th>이 관계가 답하는 업무 질문</th></tr></thead>
         <tbody>
-          <tr><td class="mono">tx:places</td><td>Partner → Order</td><td>이 기관이 올해 발주한 수주는?</td></tr>
-          <tr><td class="mono">tx:hasLine</td><td>Order → OrderLine</td><td>이 수주에 남은 품목별 잔량은?</td></tr>
+          <tr><td class="mono">tx:places</td><td>Partner → Order</td><td>이 기관이 올해 발주한 수주는?(발주기관 — hisense는 조달청)</td></tr>
+          <tr><td class="mono"><b>tx:customer</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td>Order → Partner</td><td><b>납기가 늦어지면 연락할 곳은?</b>(수요기관 — 발주기관과 다르다)</td></tr>
+          <tr><td class="mono">tx:hasLine</td><td>Order → OrderLine<br>Shipment → ShipmentLine</td><td>이 수주에 남은 품목별 잔량은? / 이 출하에 실린 품목별 수량은?</td></tr>
           <tr><td class="mono">tx:ofItem</td><td>OrderLine · Lot · StockPosition → Item</td><td>이 품목이 걸린 수주·재고·로트 전부</td></tr>
           <tr><td class="mono">tx:hasBom</td><td>Item → BomLine</td><td>이 제품을 만들려면 무엇이 필요한가?</td></tr>
           <tr><td class="mono">tx:consumes</td><td>BomLine → Item</td><td>이 자재가 부족하면 못 만드는 제품은?(역방향 전이)</td></tr>
@@ -612,8 +718,11 @@
           <tr><td class="mono">tx:producedBy</td><td>Lot → WorkOrder</td><td>이 로트는 언제·어느 지시로 만들어졌나?</td></tr>
           <tr><td class="mono">tx:storedAt</td><td>Lot · StockPosition → Warehouse</td><td>어느 창고에 얼마 있나?</td></tr>
           <tr><td class="mono">tx:packedInto</td><td>Lot → Package</td><td>이 로트는 어느 묶음으로 나갔나?</td></tr>
-          <tr><td class="mono">tx:shipsPackage</td><td>Shipment → Package</td><td>이 출하에 실린 묶음·로트</td></tr>
-          <tr><td class="mono">tx:settles</td><td>Shipment → OrderLine</td><td><b>이 수주는 실제로 다 납품됐나?</b>(3경로 통합)</td></tr>
+          <tr><td class="mono">tx:shipsPackage</td><td>Shipment → Package</td><td>이 출하에 실린 묶음</td></tr>
+          <tr><td class="mono"><b>tx:shipsLot</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td>Shipment → Lot</td><td>이 출하로 실제 나간 로트는?(출고 원장에서 역추적)</td></tr>
+          <tr><td class="mono"><b>tx:forOrder</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td>Shipment → Order</td><td>이 출하는 어느 수주의 것인가?(머리 단위 — 라인 이행은 settles)</td></tr>
+          <tr><td class="mono"><b>tx:shipsTo</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td>Shipment → Partner</td><td>이 출하를 받는 기관은?</td></tr>
+          <tr><td class="mono">tx:settles</td><td>Shipment → OrderLine</td><td><b>이 수주는 실제로 다 납품됐나?</b>(3경로 통합 — 수량은 <code>tx:shippedQty</code>로 센다)</td></tr>
           <tr><td class="mono">tx:depicts</td><td>Document → Item</td><td>이 품목의 도면·제품사진</td></tr>
           <tr><td class="mono">tx:sameAs</td><td>Item → Item (사이트 간)</td><td>세 공장이 같은 자재를 쓰고 있나?(Phase 4)</td></tr>
         </tbody>
@@ -628,6 +737,16 @@
         <code>broaderSpecialty</code> 양방향 폐쇄와 같은 패턴을 그대로 쓴다.
       </p>
     </div>
+    <div class="callout warn">
+      <span class="tag">r1.1 — 수량을 세는 속성이 둘이다</span>
+      <p>
+        <code>tx:qty</code>는 <b>문서에 적힌 수량</b>(배송지시·포장 내역서)이고
+        <code>tx:shippedQty</code>는 <b>출고 원장의 실제 수량</b>이다. 잔량·납기 이행은 반드시 후자로 판정한다 —
+        3경로가 겹치면 문서 합계가 주문수량을 넘기 때문이다(hisense 품목 85: 문서 21 / 원장 20).
+        문서 수량도 버리지 않는다. <q>문서가 0</q>과 <q>문서가 아예 없다</q>는 다른 사실이고,
+        둘의 차이가 곧 <b>아직 출고되지 않은 지시</b>이기 때문이다.
+      </p>
+    </div>
   </section>
 
   <!-- ══════════════ 4 ══════════════ -->
@@ -638,7 +757,9 @@
     </div>
     <p>
       이 표가 설계서의 실질적 산출물이다. 클래스마다 세 사이트의 <em>실제</em> 테이블·컬럼을 명시한다.
-      빈칸은 그 사이트에 해당 실체가 없다는 뜻이고, 표에 담긴 불일치가 그대로 Phase 1의 작업 목록이 된다.
+      빈칸은 그 사이트에 해당 실체가 없다는 뜻이고, 표에 담긴 불일치가 그대로 Phase 1~3의 작업 목록이 됐다.
+      <b>r1.1에서는 적재하며 확인된 내용으로 고쳤다</b> — 특히 naturefood 출하 테이블과
+      infurs 원장 키는 r1.0의 기술이 틀렸던 지점이다.
     </p>
 
     <h3><span class="h3num">4.1</span>객체 → 테이블 매핑</h3>
@@ -646,21 +767,22 @@
       <table class="tight">
         <thead><tr><th>클래스</th><th>infurs_db</th><th>hisense_db</th><th>naturefood</th><th>주의</th></tr></thead>
         <tbody>
-          <tr><td class="mono">Partner</td><td class="mono">t_customer + t_partner</td><td class="mono">t_partner (2행)</td><td class="mono">mes_client</td><td>infurs 이중 마스터, hisense는 사실상 비어 있음</td></tr>
+          <tr><td class="mono">Partner</td><td class="mono">t_customer + t_partner</td><td class="mono">t_partner (2행) + t_order 인라인</td><td class="mono">mes_client</td><td>infurs는 <b>사업자번호+이름</b>으로 병합(§4.2), hisense는 수주에서 승격</td></tr>
           <tr><td class="mono">Order</td><td class="mono">t_order</td><td class="mono">t_order</td><td class="mono">mes_sale_order</td><td>hisense는 거래처가 이 테이블에 인라인</td></tr>
           <tr><td class="mono">OrderLine</td><td class="mono">t_order_item</td><td class="mono">t_order_item</td><td class="mono">mes_sale_item</td><td><b>PK가 <code>item_id</code></b> — 품목 PK와 동명(§4.2)</td></tr>
-          <tr><td class="mono">Item</td><td class="mono">t_item <b>+ t_product</b></td><td class="mono">t_item</td><td class="mono">mes_item</td><td>infurs는 <code>memo</code> 문자열로만 조인 가능</td></tr>
+          <tr><td class="mono">Item</td><td class="mono">t_item <b>+ t_product</b></td><td class="mono">t_item</td><td class="mono">mes_item</td><td>infurs는 <code>memo</code> 문자열로만 조인 가능 → <b>661/661 병합 완료</b>, 흔적은 <code>tx:mergedFrom</code></td></tr>
           <tr><td class="mono">BomLine</td><td class="mono">t_bom / t_bom_detail</td><td class="mono">t_bom / t_bom_detail</td><td class="mono">mes_production_bom</td><td>naturefood는 BOM이 작업(<code>work_idx</code>)에 매달림</td></tr>
-          <tr><td class="mono">WorkOrder</td><td class="mono">t_work_order (<code>master_item_id</code> 有)</td><td class="mono">t_work_order (컬럼 無)</td><td class="mono">mes_production_request / _work</td><td><b>같은 문제를 다르게 해결한 지점</b></td></tr>
+          <tr><td class="mono">WorkOrder</td><td class="mono">t_work_order (<code>master_item_id</code> 有)</td><td class="mono">t_work_order (컬럼 無)</td><td class="mono">mes_production_plan / _work</td><td><b>같은 문제를 다르게 해결한 지점</b> — infurs <code>item_id</code>=주문라인, hisense=마스터. ETL이 사이트별로 갈린다</td></tr>
           <tr><td class="mono">ProcessRun</td><td class="mono">t_production / t_process_step</td><td class="mono">t_production</td><td class="mono">mes_production_work / _time</td><td>naturefood는 공정 시간이 별 테이블</td></tr>
-          <tr><td class="mono">Lot</td><td>—</td><td class="mono">t_lot (180행)</td><td class="mono">mes_warehouse_stock (유통기한)</td><td>infurs는 로트 개념 없음 — 객체를 만들지 않는다(P1)</td></tr>
-          <tr><td class="mono">Package</td><td>—</td><td class="mono">t_package / t_package_item</td><td class="mono">mes_ship_item</td><td>hisense만 QR 라벨 단위 존재</td></tr>
+          <tr><td class="mono">Lot</td><td>—</td><td class="mono">t_lot (180행)</td><td>— <span style="color:var(--muted);font-size:12px">(바코드만, 작업지시 연결 없음)</span></td><td>infurs·naturefood는 로트 객체를 만들지 않는다(P1) — naturefood 바코드 연결은 Phase 4</td></tr>
+          <tr><td class="mono">Package</td><td>—</td><td class="mono">t_package / t_package_item</td><td>—</td><td>hisense만 QR 라벨 단위 존재. <b>r1.0이 naturefood <code>mes_ship_item</code>을 여기 적은 것은 오기</b> — 그건 출하 실적이다</td></tr>
           <tr><td class="mono">StockPosition</td><td class="mono">t_stock</td><td class="mono">t_stock / t_stock_transfer</td><td class="mono">mes_warehouse_stock</td><td>naturefood는 구역(<code>section_name</code>)까지</td></tr>
           <tr><td class="mono">Warehouse</td><td class="mono">t_warehouse (3)</td><td class="mono">t_warehouse (2)</td><td class="mono">mes_warehouse_in_out</td><td></td></tr>
-          <tr><td class="mono">Shipment</td><td class="mono">t_delivery / t_delivery_item</td><td class="mono">t_delivery + t_package + 판매출고</td><td class="mono">mes_ship_record / mes_shipping_order</td><td><b>hisense 3경로 통합이 핵심</b></td></tr>
-          <tr><td class="mono">Equipment</td><td class="mono">t_facility (0행)</td><td class="mono">t_facility (0행)</td><td class="mono">mes_equipment (11행)</td><td>설비 마스터는 naturefood만 실데이터</td></tr>
+          <tr><td class="mono">Shipment</td><td class="mono">t_delivery</td><td class="mono">t_delivery + t_package + 판매출고</td><td class="mono">mes_shipping_order (지시서)</td><td><b>hisense 3경로 통합이 핵심.</b> naturefood는 지시서가 없는 옛 출하는 라인 하나짜리 출하를 만든다 — 머리 없는 라인은 집계에서 통째로 빠진다</td></tr>
+          <tr><td class="mono"><b>ShipmentLine</b> <span style="color:var(--good);font-size:11px">r1.1</span></td><td class="mono">t_delivery_item<br><span style="font-size:11.5px;color:var(--muted)">원장 키 <code>ref_type='delivery_item'</code>·<code>ref_id=t_delivery_item.id</code></span></td><td class="mono">t_delivery_item + t_package_item<br><span style="font-size:11.5px;color:var(--muted)">원장 키 <code>ref_id=delivery_id</code> / <code>package_id</code></span></td><td class="mono">mes_ship_item (실적 <code>qty_out</code>)</td><td><b>원장 키 공간이 사이트마다 다르다 — 베끼면 조용히 0건이 된다.</b> hisense는 취소 <code>status=9</code> 제외 필수, infurs·naturefood에는 취소 코드가 없다</td></tr>
+          <tr><td class="mono">Equipment</td><td class="mono">t_facility (0행)</td><td class="mono">t_facility (0행)</td><td class="mono">mes_equipment (11행)</td><td>설비 마스터는 naturefood만 실데이터 — 나머지는 객체 0개로 적재하고 그 사실을 결함목록에 남긴다</td></tr>
           <tr><td class="mono">SensorChannel</td><td>—</td><td>—</td><td class="mono">mes_gathering_sensor <code>a1~a6</code></td><td>채널 정의만, 측정값 85,610행은 SQL 잔류(P4)</td></tr>
-          <tr><td class="mono">Document</td><td class="mono">t_drawing / t_product_picture</td><td class="mono">t_item_file</td><td class="mono">attached_files</td><td>hisense는 전용 테이블 없이 공용 파일표 재사용</td></tr>
+          <tr><td class="mono">Document</td><td class="mono">t_drawing (561) / t_product_picture (366)</td><td class="mono">t_item_file (0행)</td><td>— <span style="color:var(--muted);font-size:12px">(품목에 붙지 않음)</span></td><td>hisense는 전용 테이블 없이 공용 파일표 재사용. <b>실제 문서는 infurs에만 있다(927건)</b></td></tr>
         </tbody>
       </table>
     </div>
@@ -746,6 +868,27 @@
         <li>업무 키를 쓰는 이유: 전체 재적재(full reload) 후에도 IRI가 안 바뀌어 외부에서 인용한 링크가 유지된다.</li>
       </ul>
     </div>
+
+    <h4>r1.1 — 적재하며 추가된 규칙</h4>
+    <p>
+      업무 키를 쓰려면 <b>그 키가 정말 유일한지</b>를 적재가 확인해야 한다. 아래 넷은 실제로 안 유일했던 사례에서 나왔다.
+    </p>
+    <div class="callout">
+      <ul style="margin:0;font-size:14px">
+        <li><b>자연키가 비었거나 중복이면 <code>pk-</code>로 떨어뜨리고 결함으로 기록한다.</b>
+            조용히 넘어가면 서로 다른 두 행이 한 객체로 합쳐진다 — 발견하기 가장 어려운 종류의 사고다.</li>
+        <li><b>infurs <code>WorkOrder</code>는 처음부터 PK를 쓴다.</b> <code>wo_no</code>가 <em>수주 단위</em>로 발급돼
+            라인마다 중복이다(<code>WO-260727-004</code>가 2행). 자연키로 쓰면 두 작업지시가 한 객체가 된다.</li>
+        <li><b><code>Partner</code>의 자연키는 <q>사업자번호 + 이름</q>이다</b> —
+            <code>Partner/biz-3118301218-당진시청</code> 형태. 번호만 쓰면 한 법인의 부서·지점이 뭉개지고(당진시청 103행),
+            이름만 쓰면 동명의 다른 사업체가 합쳐진다(<q>개별화물</q>이 서로 다른 14곳).
+            실측 <span class="num">92</span>개 법인이 부서·지점을 갖고 있고, 그것들은 <code>tx:bizNo</code>가 같아 질의로 묶인다.</li>
+        <li><b>모든 객체는 <code>tx:sourceTable</code>·<code>tx:sourcePk</code>를 싣고, 병합된 객체는
+            <code>tx:mergedFrom</code>을 원천 행마다 하나씩 싣는다.</b>
+            병합은 판단이고, 되짚을 수 없는 판단은 쓸 수 없다. 점검이 <code>mergedFrom</code> 총합을 DB 행 수와 맞춰
+            <b>병합 중 조용히 사라진 행</b>을 잡는다(infurs 28,056 = 28,056).</li>
+      </ul>
+    </div>
   </section>
 
   <!-- ══════════════ 5 ══════════════ -->
@@ -767,7 +910,7 @@
         <tbody>
           <tr><td>안전재고 미달 판정</td><td>StockPosition, Item</td><td><code>Inventory.php</code> · <code>t_item.safety_stock</code>/<code>reorder_point</code></td><td>임계값을 <code>tx:Item</code> Property로 승격</td></tr>
           <tr><td>BOM 소요량 전개</td><td>Item, BomLine, WorkOrder</td><td><code>Bom.php</code>, <code>WorkOrder.php</code></td><td>전이 폐쇄 SPARQL + 수량은 SQL</td></tr>
-          <tr><td>수주 잔량 / 배송대상 판정</td><td>OrderLine, Shipment</td><td>hisense 3경로 합산(<code>Dashboard.php</code>, <code>Delivery.php</code>)</td><td><code>tx:settles</code> 경유 단일 질의로 대체</td></tr>
+          <tr><td>수주 잔량 / 배송대상 판정</td><td>OrderLine, Shipment, ShipmentLine</td><td>hisense 3경로 합산(<code>Dashboard.php</code>, <code>Delivery.php</code>, <code>Package_model::shipped_out_qty()</code>)</td><td><b>구현 완료</b> — <code>tx:settles</code> 경유 단일 질의. 수량은 <b><code>tx:shippedQty</code>(원장)</b>로 세며 문서 수량과 분리한다</td></tr>
           <tr><td>납기 위험</td><td>Order, OrderLine, WorkOrder</td><td>사이트별 산재</td><td>Function 등록 + 위험도 산식 단일화</td></tr>
           <tr><td>설비 가동 판정</td><td>SensorChannel, Equipment</td><td>naturefood <code>Monitor.php</code> 임계값</td><td><code>tx:runThreshold</code> Property (SSOT)</td></tr>
           <tr><td>포장 속도 / 리드타임 KPI</td><td>ProcessRun, Package</td><td>naturefood 공정모니터링 — 640 스틱/분, 포장구간=실적창</td><td>KPI 정의를 온톨로지에, 값은 SQL 집계</td></tr>
@@ -775,6 +918,22 @@
           <tr><td>품목 자동분류</td><td>Item</td><td>hisense 조달청 XLS 파싱 <code>item_type</code> 자동분류</td><td>분류 규칙을 클래스 계층으로 표현</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="callout rule">
+      <span class="tag">r1.1 — 이 규칙만은 온톨로지가 판정 기준을 바꿨다</span>
+      <p>
+        <b>출고 잔량의 기준을 문서에서 원장으로 바꾼 것</b>은 r1.1에서 유일하게 <em>업무 규칙 자체</em>가 확정된 대목이다.
+        기존 화면들은 배송지시 문서 수량으로 잔량을 세고 있었고, 3경로가 겹치는 수주에서 그 합계가 주문수량을 넘었다
+        (hisense 품목 85: 문서 21 / 원장 20). 원장(<code>t_stock_transaction</code>)이 사실이므로 그것으로 판정한다.
+      </p>
+      <p>
+        여기엔 함정이 둘 있고 둘 다 실제로 밟았다. ① <b>취소분</b>(hisense <code>status=9</code>)을 빼지 않으면
+        <q>초과출고가 있다</q>는 틀린 결론이 난다 — 포장 출하 → 취소 → 재출하의 자취였고, 제대로 세면
+        19+1=20으로 주문수량과 정확히 맞았다. ② ETL이 문서를 따라가며 원장을 붙이므로 <b>문서 없는 원장 출고는
+        조용히 빠진다</b>. 그래서 점검에 <q>원장 실출고 = 그래프 출하수량</q>을 넣어 반대쪽을 센다
+        (hisense 183=183, infurs 72=72, naturefood 23,002=23,002).
+      </p>
     </div>
 
     <div class="callout warn">
@@ -909,7 +1068,12 @@
       <li><b>질의는 서버측 화이트리스트만.</b> 파라미터만 바인딩하는 고정 SPARQL 템플릿. 자연어는 조건 파싱에만 쓴다(P6).</li>
       <li><b>행 단위 제한은 named graph로.</b> 사용자가 속한 사이트의 graph만 질의 대상에 포함한다. 사이트 간 조회는 Phase 4에서 별도 권한으로.</li>
       <li><b>AI 에이전트의 도구 범위 = 그 계정의 메뉴 권한.</b> 사람이 못 하는 일을 에이전트가 할 수 있는 경로를 만들지 않는다.</li>
-      <li><b>선결 조치.</b> <code>login.php</code>에 admin 비밀번호가 평문으로 박혀 있는 문제가 infurs·hisense 양쪽에 남아 있다. 온톨로지 조회 계층을 붙이기 전에 이것부터 정리해야 한다 — 권한 체계 위에 AI를 올리는 설계에서 최초 관문이 뚫려 있으면 나머지 설계가 무의미하다.</li>
+      <li><b>선결 조치 <span style="color:var(--good);font-size:11.5px">r1.1 부분 해소</span>.</b>
+          <code>login.php</code>에 admin 비밀번호가 평문으로 박혀 있던 문제는 <b>hisense는 코드 제거·비밀번호 교체까지 완료</b>됐다(2026-09-20 확인).
+          <b>infurs와 ssfc는 그대로 남아 있다</b>(같은 원본에서 갈라진 세 사이트의 공통 결함).
+          Phase 1~3 적재는 읽기 전용이라 이 조건과 무관하게 진행했지만,
+          <b>infurs에 조회 화면이나 Action을 붙이기 전에는 선결 조건</b>이다 — 권한 체계 위에 AI를 올리는 설계에서
+          최초 관문이 뚫려 있으면 나머지 설계가 무의미하다. 코드 수정과 비밀번호 변경을 <b>함께</b> 해야 한다(§12 D7).</li>
     </ul>
   </section>
 
@@ -960,31 +1124,50 @@
       <code>moai-fuseki</code>에 <code>tx-mes</code> TDB2 데이터셋 하나만 추가한다.
     </p>
 
-    <h3><span class="h3num">9.2</span>트리플 규모 추정</h3>
+    <h3><span class="h3num">9.2</span>트리플 규모 — 추정과 실측</h3>
     <div class="scroll">
       <table class="tight">
-        <thead><tr><th>Named graph</th><th>업무 객체 행수(실측)</th><th>객체당 트리플</th><th>추정 트리플</th></tr></thead>
+        <thead><tr><th>Named graph</th><th>적재 객체수(실측)</th><th>객체당 트리플</th><th>적재 트리플(실측)</th><th>r1.0 추정</th></tr></thead>
         <tbody>
-          <tr><td class="mono">graph:infurs</td><td class="num">30,659</td><td class="num">8~12</td><td class="num">245K ~ 368K</td></tr>
-          <tr><td class="mono">graph:hisense</td><td class="num">2,417</td><td class="num">10~14</td><td class="num">24K ~ 34K</td></tr>
-          <tr><td class="mono">graph:naturefood</td><td class="num">9,774</td><td class="num">8~12</td><td class="num">78K ~ 117K</td></tr>
-          <tr><td class="mono">graph:schema</td><td>클래스 14 · 관계 16</td><td>—</td><td class="num">~400</td></tr>
-          <tr><td colspan="3"><b>합계</b> (세션·로그·시계열 제외)</td><td class="num"><b>35만 ~ 52만</b></td></tr>
+          <tr><td class="mono">graph:infurs</td><td class="num">11,497</td><td class="num">15.7</td><td class="num">180,337</td><td class="num">245K ~ 368K</td></tr>
+          <tr><td class="mono">graph:hisense</td><td class="num">1,485</td><td class="num">11.9</td><td class="num">17,604</td><td class="num">24K ~ 34K</td></tr>
+          <tr><td class="mono">graph:naturefood</td><td class="num">8,715</td><td class="num">10.1</td><td class="num">87,672</td><td class="num">78K ~ 117K</td></tr>
+          <tr><td class="mono">graph:schema</td><td>클래스 16 · 관계 20 · 속성 98</td><td>—</td><td class="num">444</td><td class="num">~400</td></tr>
+          <tr><td colspan="3"><b>합계</b> (세션·로그·시계열 제외)</td><td class="num"><b>286,057</b></td><td class="num">35만 ~ 52만</td></tr>
         </tbody>
       </table>
     </div>
     <p style="font-size:13.5px;color:var(--muted)">
-      TDB2에서 50만 트리플은 수백 MB 힙으로 충분하며 caren(271 트리플)과 같은 인스턴스를 공유해도 문제없는 규모다.
-      단, <code>graph:infurs</code>의 80%가 거래처 중복이므로 Phase 1의 Partner 정리로 절반 이하로 줄 가능성이 크다.
-      <b>naturefood 센서 85,610행을 넣으면 규모가 이 추정과 무의미해진다</b> — P4를 지키는 이유다.
+      <b>추정보다 작아진 이유는 하나다</b> — <code>graph:infurs</code>의 대부분을 차지하던 거래처 중복이
+      28,056행에서 9,707객체로 접혔다(r1.0이 <q>Partner 정리로 절반 이하</q>라고 적은 그 예상이 맞았다).
+      반대로 <b>객체당 트리플은 추정(8~12)보다 많다</b>(infurs 15.7). 병합 근거(<code>tx:mergedFrom</code>)를
+      원천 행마다 하나씩 싣기 때문이며, 되짚을 수 있는 병합을 위해 의도적으로 치르는 비용이다.
+      hisense가 추정 하단보다 작은 것(17.6K)은 <code>t_item_file</code>·<code>t_company</code>처럼
+      비어 있는 원천에 객체를 만들지 않았기 때문이다(P1).
+      naturefood 센서 85,610행을 넣으면 규모가 이 표와 무의미해진다 — P4를 지키는 이유다.
+      TDB2에서 28만 트리플은 caren(271 트리플)과 인스턴스를 공유해도 문제없고, 실측 질의 응답은 10ms 수준이다.
     </p>
 
-    <h3><span class="h3num">9.3</span>동기화 방식</h3>
+    <h3><span class="h3num">9.3</span>동기화 방식 <span style="font-size:12.5px;color:var(--muted);font-weight:400">(r1.1 — 실제 운영 값으로 교체)</span></h3>
     <ul>
-      <li><b>1차: 야간 전체 재적재.</b> 50만 트리플이면 전체 재적재가 수분 내다. 증분 로직의 버그 위험보다 단순함이 낫다. 기존 백업 크론 시간(OOM 이력)과 겹치지 않게 배치한다.</li>
-      <li><b>2차: 이벤트 증분.</b> 수주 등록·작업지시 발행·출하 확정 시점에 해당 객체만 갱신. <code>updated_at</code> 기준.</li>
-      <li><b>실패 처리.</b> 적재 실패 시 이전 그래프를 유지한다(부분 적재 금지). 적재 전 <code>riot --validate</code>로 TTL 문법 검증 — caren에서 쓰던 절차 그대로.</li>
-      <li><b>불변식 점검.</b> infurs의 <code>check_invariants.php</code> 패턴을 확장해, 적재 후 객체 수·필수 Link 누락을 상시 점검한다.</li>
+      <li><b>야간이 아니라 매시 전체 재적재.</b> 실측 적재 시간이 hisense <span class="num">3</span>초 ·
+          naturefood <span class="num">6</span>초 · infurs <span class="num">14</span>초라 야간까지 기다릴 이유가 없었다.
+          cron은 <code>:25</code> / <code>:40</code> / <code>:55</code>로 나눠 서로, 그리고 백업(OOM 이력)과 겹치지 않게 뒀다.
+          <b>증분 ETL은 만들지 않았다</b> — 전체 재적재가 이 속도면 증분 로직의 버그 위험을 살 이유가 없다(2차 계획은 보류).</li>
+      <li><b>그래프 단위 PUT이 트랜잭션이다.</b> 적재는 <code>PUT /data?graph=…</code> 하나로 통째 교체된다.
+          실패하면 아무것도 바뀌지 않으므로 이전 그래프가 그대로 남는다(부분 적재 없음) — 실측 확인.</li>
+      <li><b>적재 전 <code>riot --validate</code>는 없앴다.</b> PUT이 파싱과 저장을 한 트랜잭션에서 하므로
+          깨진 입력은 400(줄·칸 번호 포함)으로 거부되고 그래프는 보존된다. 검증을 컨테이너 안에서 JVM으로 또 돌리던 것이
+          <code>moai-fuseki</code> 메모리 한도에 붙어 스래싱했다 — <b>다시 넣지 말 것</b>(적재 5분+ → 3초).</li>
+      <li><b>겹침 방지와 상태 노출.</b> cron 진입점은 <code>flock</code>으로 겹침을 막고, 한 줄 로그와
+          <code>out/status.json</code>(<code>data_at</code> = <em>마지막으로 성공한</em> 적재 시각)을 남긴다.
+          실패한 실행이 이 값을 밀어 올리면 화면이 <q>방금 기준</q>이라고 거짓말한다 — 그래프는 옛것 그대로인데.
+          hisense <code>/impact</code>는 이 값을 <b>데이터 기준 시각 칩</b>으로 띄우고 2회분(2시간 30분)을 넘기면 경고한다.</li>
+      <li><b>불변식 점검.</b> 적재 직후 자동 실행되며 실패하면 종료코드 1이다.
+          항목 수는 hisense 25 · naturefood 25 · infurs 34. 세 사이트가 같은 구조를 공유하되
+          사이트 고유 불변식을 더한다 — infurs는 <q>병합 근거 총합 = DB 행 수</q>,
+          공통으로 <q>한 IRI가 두 클래스를 가짐 = 0</q> · <q>스키마에 없는 술어 = 0</q> ·
+          <q>원장 실출고 = 그래프 출하수량</q>.</li>
       <li><b>외부 의존 없음.</b> 이 서버는 npm·jsdelivr·Docker Hub·Cloudflare 대역이 차단돼 있다. ETL은 서버에 이미 있는 PHP CLI 또는 표준 라이브러리 Python으로만 만든다(caren <code>ontology.py</code>가 <code>urllib</code>만 쓴 이유).</li>
     </ul>
   </section>
@@ -999,10 +1182,15 @@
       각 단계는 <b>그 단계만으로 눈에 보이는 성과</b>가 있어야 한다.
       "온톨로지를 다 만든 다음에 효과가 난다"는 계획은 중간에 멈추면 전부 손실이므로 채택하지 않는다.
     </p>
+    <p style="font-size:13.5px;color:var(--muted)">
+      <b>r1.1 기준 진행 상황:</b> Phase 0~3 완료(2026-09-19 ~ 09-20), Phase 4 미착수.
+      각 단계에 <span style="color:var(--good)">완료 표시</span>와 <b>실제 결과</b>를 덧붙였다 —
+      계획과 결과가 다른 곳이 다음 단계의 근거가 된다.
+    </p>
 
     <div class="phases">
       <div class="phase">
-        <div class="pid"><b>Phase 0</b>합의</div>
+        <div class="pid"><b>Phase 0</b>합의<span class="done">✔ 완료<br>2026-09-19</span></div>
         <div>
           <h4>용어 합의와 스키마 확정</h4>
           <ul>
@@ -1011,11 +1199,16 @@
             <li>Fuseki에 <code>tx-mes</code> 데이터셋 생성 + <code>graph:schema</code> 적재</li>
           </ul>
           <div class="out"><b>산출물</b> <code>mes-core.ttl</code> · 용어 대조표 · 빈 데이터셋 &nbsp;·&nbsp; <b>검증</b> 문법 검증 통과, 트리플 ~400</div>
+          <div class="res"><b>결과</b> <code>mes-core.ttl</code>(현재 r1.2: 클래스 16 · 관계 20 · 속성 98, 444 트리플),
+            <code>tx-mes</code> 데이터셋 생성. <b>세 사이트가 이 파일 한 벌을 공유하고 복사본을 두지 않는다</b> —
+            원본은 hisense 레포에 있고 나머지 사이트는 경로로 읽는다. 사이트가 멋대로 만든 술어는
+            <q>스키마에 없는 술어 = 0</q> 불변식이 잡는다. <b>용어 합의 회의는 아직 못 했다</b> —
+            클래스·관계는 DB 실측과 기존 화면 용어로 정했다.</div>
         </div>
       </div>
 
       <div class="phase">
-        <div class="pid"><b>Phase 1</b>적재</div>
+        <div class="pid"><b>Phase 1</b>적재<span class="done">✔ 완료<br>2026-09-19</span></div>
         <div>
           <h4>한 사이트 전체 적재 — hisense 먼저</h4>
           <ul>
@@ -1024,11 +1217,16 @@
             <li>부수 성과: 적재가 실패하는 행이 곧 데이터 결함 목록이 된다(고아 명세서·미연결 도면 등)</li>
           </ul>
           <div class="out"><b>산출물</b> ETL 스크립트 · 적재 리포트 · 결함 목록 &nbsp;·&nbsp; <b>검증</b> 2.4만~3.4만 트리플, 필수 Link 누락 0</div>
+          <div class="res"><b>결과</b> <code>graph:hisense</code> <b>17,604 트리플</b>(D1대로 hisense 먼저),
+            점검 25항목 통과 · 필수 Link 누락 0. <b>모델이 실제로 고쳐진 단계</b>다 —
+            <code>tx:ShipmentLine</code>·<code>tx:shipsLot</code> 신설, 그리고 <b>출하 수량을 문서가 아니라 원장으로</b>
+            판정하도록 바꿨다(§5). 예고했던 <q>결함 목록</q>은 실제로 나왔다: 문서≠원장 6건 · 품목 없는 출하 1 ·
+            거래처 객체 없는 수주 2.</div>
         </div>
       </div>
 
       <div class="phase">
-        <div class="pid"><b>Phase 2</b>첫 수익</div>
+        <div class="pid"><b>Phase 2</b>첫 수익<span class="done">✔ 완료<br>2026-09-19</span></div>
         <div>
           <h4>자재 영향분석 화면 — 온톨로지가 아니면 못 만드는 것</h4>
           <ul>
@@ -1038,11 +1236,18 @@
             <li>Fuseki 미기동 시 "영향분석 일시 사용 불가" 표시 후 기존 화면 정상 동작(P7)</li>
           </ul>
           <div class="out"><b>산출물</b> 영향분석 화면 1개 · 화이트리스트 SPARQL 템플릿 &nbsp;·&nbsp; <b>검증</b> 기존 수주잔량 집계와 수치 일치</div>
+          <div class="res"><b>결과</b> hisense <code>/impact</code> 화면(재고 메뉴 하위), 화이트리스트 SPARQL 4개,
+            실측 응답 <b>~10ms</b>(폴백 타임아웃 1.5s). <code>/impact/verify</code>가 온톨로지 잔량과
+            <code>Package_model::shipped_out_qty()</code>를 대조해 <b>23라인 전부 일치</b>.
+            Fuseki를 세우면 자재목록(SQL)은 그대로 뜨고 분석 영역만 물러난다 — P7 실측 확인.
+            <b>이 단계에서 ETL 회귀를 하나 잡았다</b>: 포장 경로 출하라인을 머리에 잇는 줄이 빠져 포장 QR 출고분이
+            집계에서 통째로 누락됐다. 객체 수 점검은 통과했고 <b>연결의 반대쪽을 세지 않아서</b> 못 잡은 것이라,
+            점검에 <q>출하에 안 붙은 출하라인 = 0</q>을 추가했다.</div>
         </div>
       </div>
 
       <div class="phase">
-        <div class="pid"><b>Phase 3</b>확산</div>
+        <div class="pid"><b>Phase 3</b>확산<span class="done">✔ 완료<br>2026-09-20</span></div>
         <div>
           <h4>infurs·naturefood 적재와 Partner 정리</h4>
           <ul>
@@ -1052,11 +1257,20 @@
             <li>hisense <code>t_order</code>의 인라인 거래처 9컬럼 → <code>tx:Partner</code> 객체로 승격(DB는 그대로, 온톨로지에서 분리)</li>
           </ul>
           <div class="out"><b>산출물</b> 3그래프 적재 완료 · 중복 정리 리포트 &nbsp;·&nbsp; <b>검증</b> 35만~52만 트리플, 사이트별 불변식 점검 통과</div>
+          <div class="res"><b>결과</b> 3그래프 <b>286,057 트리플</b>(추정보다 작은 이유는 §9.2),
+            사이트별 점검 전항목 통과(hisense 25 · naturefood 25 · infurs 34).
+            거래처 중복 정리: infurs 28,056행 → <b>9,707객체(65.4% 감소)</b>, 리포트 9,688행.
+            품목 두 마스터는 661/661 병합 — <b>예고했던 <q>미연결 312품목</q>은 실제로는 사진이 없는 품목</b>
+            324건이었고, 마스터 매칭 자체는 전건 성공했다.
+            hisense 인라인 거래처는 발주기관(조달청)·수요기관으로 분리 승격.
+            naturefood는 Kitchen Sink 컬럼을 승계하지 않고 센서는 채널 6개의 정의·임계값만 실었다.
+            <b>계획과 달랐던 것</b>: 거래처 병합 키를 사업자번호만으로 잡으면 부서·지점이 뭉개져
+            <q>번호+이름</q>으로 바꿨다(§4.2).</div>
         </div>
       </div>
 
       <div class="phase">
-        <div class="pid"><b>Phase 4</b>운영</div>
+        <div class="pid"><b>Phase 4</b>운영<span class="done" style="color:var(--muted)">미착수</span></div>
         <div>
           <h4>Action 등록 · Lineage · 자연어 질의</h4>
           <ul>
@@ -1066,6 +1280,10 @@
             <li><code>tx:sameAs</code>로 사이트 간 동일 자재 연결 — 세 공장 공통 구매·재고 재배분 검토의 전제</li>
           </ul>
           <div class="out"><b>산출물</b> Action 등록부 · Lineage 전환 · NL 질의 연결 &nbsp;·&nbsp; <b>검증</b> 권한 밖 Action 차단 확인, 감사 로그로 판단 추적 가능</div>
+          <div class="res" style="border-left-color:var(--muted)"><b>착수 전에 정리할 것(r1.1)</b>
+            ① infurs BOM 등록 — 질의는 그래프 이름만 바꿔 돌지만 등록된 BOM 9품목이 실제 수주와 거의 겹치지 않아
+            <b>영향분석 화면을 붙여도 답할 데이터가 없다</b>(D8). ② infurs·ssfc <code>login.php</code> 평문 비밀번호(§7·D7).
+            ③ LLM 크레딧(D6). ④ naturefood 로트-작업지시 연결(현재 바코드만).</div>
         </div>
       </div>
     </div>
@@ -1096,21 +1314,41 @@
       <li><b>기존 화면을 Fuseki 의존으로 바꾸지 않는다.</b> 온톨로지는 새 화면을 추가할 뿐이다.</li>
       <li><b>LLM이 생성한 질의를 그대로 실행하지 않는다.</b></li>
       <li><b>새 Fuseki 인스턴스·새 컨테이너를 띄우지 않는다.</b> RAM 제약(§9.1).</li>
+      <li><b>적재 과정에서 JVM을 따로 띄우지 않는다.</b> <span style="color:var(--good);font-size:11.5px">r1.1 추가</span>
+          <code>riot --validate</code>를 컨테이너 안에서 돌리던 것이 메모리 한도에 붙어 스래싱했다(§9.3).
+          검증은 PUT이 트랜잭션으로 한다.</li>
+      <li><b>병합한 객체에서 원천 행을 지우지 않는다.</b> <span style="color:var(--good);font-size:11.5px">r1.1 추가</span>
+          두 마스터를 한 객체로 합칠 때 <code>tx:mergedFrom</code>으로 원천 행을 전부 남긴다.
+          되짚을 수 없는 병합은 검증도 못 하고 틀렸을 때 고칠 수도 없다(§4.2).</li>
     </ul>
 
     <h3><span class="h3num">11.2</span>성공 판정</h3>
-    <p>다음 네 가지가 되면 이 설계는 성공한 것으로 본다. 되지 않으면 트리플 수와 무관하게 실패다.</p>
+    <p>다음 네 가지가 되면 이 설계는 성공한 것으로 본다. 되지 않으면 트리플 수와 무관하게 실패다.
+      <span style="color:var(--muted);font-size:13.5px">r1.1에서 Phase 0~3 기준의 판정 결과를 덧붙였다.</span></p>
     <div class="scroll">
       <table class="tight">
-        <thead><tr><th>판정 항목</th><th>판정 기준</th></tr></thead>
+        <thead><tr><th>판정 항목</th><th>판정 기준</th><th>r1.1 결과 (2026-09-20)</th></tr></thead>
         <tbody>
-          <tr><td>영향 추적</td><td>"이 자재가 없으면 위험한 수주"를 <b>한 질의로</b> 답한다 — 지금은 답하는 화면이 없다</td></tr>
-          <tr><td>ID 사고 재발 방지</td><td>품목 ID와 주문라인 ID를 혼용한 코드가 <b>적재 단계에서 걸린다</b> — 지금은 런타임 회귀로 발견된다</td></tr>
-          <tr><td>재사용</td><td>한 사이트에서 만든 질의·점검이 <b>graph 이름만 바꿔</b> 다른 사이트에 돈다</td></tr>
-          <tr><td>무해성</td><td>Fuseki를 정지시켜도 <b>세 MES의 기존 화면이 전부 정상 동작한다</b></td></tr>
+          <tr><td>영향 추적</td><td>"이 자재가 없으면 위험한 수주"를 <b>한 질의로</b> 답한다 — 지금은 답하는 화면이 없다</td>
+              <td><b style="color:var(--good)">달성(hisense)</b> — <code>/impact</code> 화면, 전이 폐쇄 한 질의, ~10ms.
+                  <b>infurs는 질의는 돌지만 BOM 데이터가 없어 답이 비어 있다</b>(D8). naturefood는 화면 미구축.</td></tr>
+          <tr><td>ID 사고 재발 방지</td><td>품목 ID와 주문라인 ID를 혼용한 코드가 <b>적재 단계에서 걸린다</b> — 지금은 런타임 회귀로 발견된다</td>
+              <td><b style="color:var(--good)">달성</b> — <q>한 IRI가 두 클래스를 가짐 = 0</q> ·
+                  <q>OrderLine IRI에 <code>pk-</code> 접두어</q>가 세 사이트 점검에 상시 포함.
+                  <b>다만 적재 점검은 ETL만 지킨다</b> — DB에 새 SQL을 쓰는 코드는 여전히 사람이 조심해야 한다.</td></tr>
+          <tr><td>재사용</td><td>한 사이트에서 만든 질의·점검이 <b>graph 이름만 바꿔</b> 다른 사이트에 돈다</td>
+              <td><b style="color:var(--good)">달성</b> — hisense 영향분석 질의를 <code>graph</code> 이름만 바꿔
+                  infurs에서 실행(자재 8종이 수주라인에 걸림). 점검 스크립트도 세 사이트가 같은 구조를 공유한다.</td></tr>
+          <tr><td>무해성</td><td>Fuseki를 정지시켜도 <b>세 MES의 기존 화면이 전부 정상 동작한다</b></td>
+              <td><b style="color:var(--good)">달성</b> — 온톨로지를 읽는 화면은 hisense <code>/impact</code> 하나뿐이고
+                  그마저 폴백한다(실측). 나머지 화면은 Fuseki를 모른다. ETL은 읽기 전용이라 MES DB에 쓰지 않는다.</td></tr>
         </tbody>
       </table>
     </div>
+    <p style="font-size:13.5px;color:var(--muted)">
+      네 항목 모두 <b>hisense에서는 달성, 세 사이트 전부로는 미완</b>이다. 남은 것은 설계 문제가 아니라
+      데이터 공백(infurs BOM)과 화면 부재이며, 그래서 Phase 4 착수 전 정리 목록에 넣었다.
+    </p>
   </section>
 
   <!-- ══════════════ 12 ══════════════ -->
@@ -1119,25 +1357,51 @@
       <span class="sec-no">§ 12</span>
       <h2 class="sec-title">미결 사항</h2>
     </div>
-    <p>설계를 확정하려면 판단이 필요한 항목들이다. 전부 사용자 결정 사항이다.</p>
+    <p>설계를 확정하려면 판단이 필요한 항목들이다. 전부 사용자 결정 사항이다.
+      <span style="color:var(--muted);font-size:13.5px">r1.1에서 해소된 항목은 그대로 두고 상태만 적었다 —
+      무엇이 왜 그렇게 정해졌는지가 다음 판단의 근거이기 때문이다.</span></p>
     <div class="scroll">
       <table class="tight">
-        <thead><tr><th>#</th><th>미결 사항</th><th>결정이 필요한 이유</th></tr></thead>
+        <thead><tr><th>#</th><th>미결 사항</th><th>결정이 필요한 이유 · r1.1 상태</th></tr></thead>
         <tbody>
-          <tr><td class="mono">D1</td><td>Phase 1 대상이 hisense가 맞는지</td><td>규모·모델 완결성은 hisense가 유리하지만, 사업계획서 산출물 기한이 걸린 사이트가 따로 있으면 순서가 바뀐다</td></tr>
-          <tr><td class="mono">D2</td><td>infurs 거래처 이중 마스터를 <b>DB에서도</b> 통합할지</td><td>온톨로지에서만 합치면 화면은 그대로 둘이다. DB 통합은 별건 작업이며 영향 범위가 크다</td></tr>
-          <tr><td class="mono">D3</td><td><code>t_item</code>+<code>t_product</code> 통합의 최종 방향</td><td>온톨로지 동일성으로 덮을지, infurs <code>master_item_id</code>처럼 브리지 컬럼을 추가할지</td></tr>
-          <tr><td class="mono">D4</td><td>세 사이트 공통 자재 연결(<code>tx:sameAs</code>)을 어디까지 볼지</td><td>공장 간 재고 재배분은 영업·구매 정책 문제여서 기술 판단만으로는 못 정한다</td></tr>
-          <tr><td class="mono">D5</td><td>임계값 SSOT를 온톨로지로 옮기는 범위</td><td>안전재고·가동판정·KPI 목표 중 어디까지를 온톨로지가 소유할지</td></tr>
-          <tr><td class="mono">D6</td><td>Phase 4 자연어 항목의 LLM 크레딧</td><td>미확보 시 해당 항목만 분리 연기 필요(§10 전제 조건)</td></tr>
-          <tr><td class="mono">D7</td><td><code>login.php</code> 평문 admin 비밀번호 선결 조치 일정</td><td>권한 위에 AI를 올리는 설계의 전제(§7). 코드 수정과 비밀번호 변경 둘 다 필요</td></tr>
+          <tr><td class="mono">D1</td><td>Phase 1 대상이 hisense가 맞는지</td>
+              <td><b style="color:var(--good)">해소</b> — hisense로 진행했고 모델 검증이 실제로 거기서 이뤄졌다
+                  (Lot·Package·3경로가 다 있는 유일한 사이트라 <code>tx:ShipmentLine</code>·원장 기준 판정이 이때 나왔다).
+                  이후 naturefood → infurs 순서로 확산.</td></tr>
+          <tr><td class="mono">D2</td><td>infurs 거래처 이중 마스터를 <b>DB에서도</b> 통합할지</td>
+              <td><b>여전히 미결.</b> 온톨로지에서는 28,056행 → 9,707객체로 합쳐졌고 병합 규칙·근거·리포트가 다 있다
+                  (§4.2). DB 통합은 그 규칙을 그대로 쓸 수 있지만 화면·여신·결제조건 영향 범위가 크다.
+                  <b>결정에 쓸 재료가 이제 있다</b>는 점만 달라졌다.</td></tr>
+          <tr><td class="mono">D3</td><td><code>t_item</code>+<code>t_product</code> 통합의 최종 방향</td>
+              <td><b>여전히 미결.</b> 온톨로지 동일성으로는 661/661 합쳐졌다.
+                  부수로 <b>두 마스터의 단가가 어긋난 16건</b>이 드러났으니 DB를 합치든 안 합치든 이 16건은 정리해야 한다.</td></tr>
+          <tr><td class="mono">D4</td><td>세 사이트 공통 자재 연결(<code>tx:sameAs</code>)을 어디까지 볼지</td>
+              <td>공장 간 재고 재배분은 영업·구매 정책 문제여서 기술 판단만으로는 못 정한다. Phase 4 항목.</td></tr>
+          <tr><td class="mono">D5</td><td>임계값 SSOT를 온톨로지로 옮기는 범위</td>
+              <td>안전재고·가동판정·KPI 목표 중 어디까지를 온톨로지가 소유할지.
+                  현재는 naturefood 센서 임계값만 그래프에 있고 SSOT는 여전히 <code>GatheringSensorModel.php</code>다
+                  — 그 파일이 바뀌면 ETL 표도 함께 고쳐야 하는 이중 관리 상태다.</td></tr>
+          <tr><td class="mono">D6</td><td>Phase 4 자연어 항목의 LLM 크레딧</td>
+              <td>미확보 시 해당 항목만 분리 연기 필요(§10 전제 조건). Action 등록·Lineage는 크레딧과 무관하다.</td></tr>
+          <tr><td class="mono">D7</td><td><code>login.php</code> 평문 admin 비밀번호 선결 조치</td>
+              <td><b style="color:var(--good)">hisense 해소</b>(코드 제거 + 비밀번호 교체, 2026-09-20 확인) ·
+                  <b>infurs·ssfc 미조치</b>. infurs에 조회 화면을 붙이기 전 선결 조건(§7).
+                  데모·현장 시연이 자동입력에 의존할 수 있어 교체 시점을 정해야 한다.</td></tr>
+          <tr><td class="mono">D8</td><td><b>infurs BOM 등록</b> <span style="color:var(--good);font-size:11px">r1.1 신규</span></td>
+              <td>BOM이 등록된 9품목이 실제 수주 품목과 거의 겹치지 않아(<code>IFS-NV06</code>·<code>IFS-NL03</code> 둘뿐)
+                  영향분석 화면을 붙여도 답이 비어 있다. <b>온톨로지가 아니라 기준정보의 공백</b>이므로
+                  누가 언제 BOM을 등록할지가 결정 사항이다.</td></tr>
+          <tr><td class="mono">D9</td><td><b>infurs 발주기관 저장</b> <span style="color:var(--good);font-size:11px">r1.1 신규</span></td>
+              <td><code>t_order.ordering_org</code>가 11건 전부 NULL이다 — 수주서 PDF 파서가 발주기관을 저장하지 않는다.
+                  hisense처럼 발주기관(조달청)과 수요기관을 나눠 보려면 파서를 고쳐야 하고,
+                  그게 필요한 업무인지부터 확인이 필요하다.</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
   <footer>
-    <span>TX-ONT-DESIGN r1.0 · 2026-09-19 · 운영 DB 실측 기준</span>
+    <span>TX-ONT-DESIGN r1.1 · 2026-09-19 작성 · 2026-09-20 개정 · 운영 DB + 적재 결과 실측 기준</span>
     <span class="mono">infurs_db · hisense_db · naturefood</span>
   </footer>
 </div>
