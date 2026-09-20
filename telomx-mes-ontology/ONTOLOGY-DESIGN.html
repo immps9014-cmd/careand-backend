@@ -664,6 +664,9 @@
         각각 다르게 쪼개져 있어서다(infurs는 <code>t_item</code>+<code>t_product</code>, hisense는 차종·ALC 속성 인라인,
         naturefood는 <code>mes_item</code> 48컬럼). 주황색 변 <code>settles</code>는 "이 수주가 실제로 납품됐는가"를
         답하는 경로로, 현재는 수주·포장·배송지시 3경로가 따로 집계돼 누락이 났던 구간이다.
+        <b>r1.1</b>: 이 그림은 출하의 <em>머리</em>(<code>tx:Shipment</code>)만 그렸다. 적재 과정에서
+        품목별 수량을 담는 <code>tx:ShipmentLine</code>(<code>Shipment ─hasLine→ ShipmentLine ─ofItem→ Item</code>)이
+        추가됐고, 3경로를 같은 단위로 세는 일은 그쪽에서 한다(§3.2).
       </figcaption>
     </figure>
 
@@ -991,9 +994,9 @@
 
           <!-- ETL -->
           <rect x="228" y="88" width="126" height="76" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" ></rect>
-          <text x="291" y="116" text-anchor="middle" class="svg-ttl" fill="currentColor">증분 ETL</text>
-          <text x="291" y="136" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">updated_at 기준</text>
-          <text x="291" y="152" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">야간 + 이벤트</text>
+          <text x="291" y="116" text-anchor="middle" class="svg-ttl" fill="currentColor">전체 재적재 ETL</text>
+          <text x="291" y="136" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">PHP CLI · 읽기 전용</text>
+          <text x="291" y="152" text-anchor="middle" class="svg-lab" fill="currentColor" opacity=".7">매시 (3~14초)</text>
           <line x1="164" y1="126" x2="222" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah3)"></line>
           <text x="193" y="118" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">read</text>
 
@@ -1001,9 +1004,9 @@
           <rect x="418" y="60" width="176" height="132" rx="3" fill="#DCE8EC" stroke="#1C5871" stroke-width="1.6"></rect>
           <text x="506" y="48" text-anchor="middle" class="svg-lab" fill="#1C5871">읽기 투영 · 재생성 가능</text>
           <text x="434" y="86" class="svg-ttl" fill="#15191A">Fuseki / tx-mes</text>
-          <text x="434" y="108" class="svg-lab" fill="#15191A" opacity=".8">graph:infurs</text>
-          <text x="434" y="126" class="svg-lab" fill="#15191A" opacity=".8">graph:hisense</text>
-          <text x="434" y="144" class="svg-lab" fill="#15191A" opacity=".8">graph:naturefood</text>
+          <text x="434" y="108" class="svg-lab" fill="#15191A" opacity=".8">graph:infurs 180,337</text>
+          <text x="434" y="126" class="svg-lab" fill="#15191A" opacity=".8">graph:hisense 17,604</text>
+          <text x="434" y="144" class="svg-lab" fill="#15191A" opacity=".8">graph:naturefood 87,672</text>
           <text x="434" y="172" class="svg-lab" fill="#15191A" opacity=".6">moai-fuseki 컨테이너 공유</text>
           <line x1="354" y1="126" x2="412" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#ah3)"></line>
           <text x="383" y="118" text-anchor="middle" class="svg-edge" fill="currentColor" opacity=".72">load</text>
@@ -1040,6 +1043,9 @@
         <b>그림 3.</b> 배치와 Action 루프. 온톨로지는 조회 계층에만 답하고,
         상태를 바꾸는 요청은 전부 기존 MES 엔드포인트를 거쳐 불변식 검사를 받는다.
         이 구조면 Fuseki가 죽어도 업무가 멈추지 않고(P7), 온톨로지를 전체 재적재해도 데이터가 유실되지 않는다(P2).
+        <b>r1.1</b>: 트리플 수는 2026-09-20 실측이고, 증분 ETL은 만들지 않았다 —
+        전체 재적재가 3~14초라 증분 로직의 버그 위험을 살 이유가 없었다(§9.3).
+        오른쪽 조회 계층 중 실제로 붙은 것은 hisense 영향분석 하나뿐이다.
       </figcaption>
     </figure>
 
