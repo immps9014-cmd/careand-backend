@@ -52,6 +52,8 @@
 !/telomx-mes-ontology/make_pdf.js
 !/telomx-mes-ontology/TERM-MAP.html
 !/telomx-mes-ontology/make_pdf_term.js
+!/telomx-mes-ontology/APPS-ROADMAP.html
+!/telomx-mes-ontology/make_pdf_apps.js
 !/telomx-mes-ontology/pdf/
 /telomx-mes-ontology/pdf/*
 !/telomx-mes-ontology/pdf/*.pdf
