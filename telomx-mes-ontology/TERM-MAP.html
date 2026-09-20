@@ -1,0 +1,769 @@
+<title>MES 용어 대조표</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* 토큰은 TX-ONT-DESIGN 설계서와 같은 한 벌이다 — 같은 문서 계열이라 팔레트를 새로 만들지 않는다. */
+  :root {
+    --ground: #F2F4F1;
+    --surface: #FFFFFF;
+    --surface-2: #E9ECE7;
+    --ink: #15191A;
+    --ink-2: #39423F;
+    --muted: #64706C;
+    --line: #D4D9D2;
+    --line-2: #BFC6BD;
+    --accent: #1C5871;
+    --accent-soft: #DCE8EC;
+    --signal: #9C5A06;
+    --signal-soft: #F4E7D3;
+    --good: #2A6349;
+    --shadow: 0 1px 2px rgba(21, 25, 26, .05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1213;  --surface: #171C1D;  --surface-2: #1E2425;
+      --ink: #E7EAE6;     --ink-2: #C3CAC6;    --muted: #8D9894;
+      --line: #2B3233;    --line-2: #3B4344;
+      --accent: #7CB6CE;  --accent-soft: #17313B;
+      --signal: #DDA35A;  --signal-soft: #33260F;
+      --good: #6FB392;    --shadow: none;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1213;  --surface: #171C1D;  --surface-2: #1E2425;
+    --ink: #E7EAE6;     --ink-2: #C3CAC6;    --muted: #8D9894;
+    --line: #2B3233;    --line-2: #3B4344;
+    --accent: #7CB6CE;  --accent-soft: #17313B;
+    --signal: #DDA35A;  --signal-soft: #33260F;
+    --good: #6FB392;    --shadow: none;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    font-size: 16px; line-height: 1.7; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 0 72px; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  /* ── 표제 ─────────────────────────────── */
+  .mast { padding-block: 52px 30px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: clamp(28px, 5.4vw, 42px); line-height: 1.22; letter-spacing: -.02em;
+    margin: 0; text-wrap: balance;
+  }
+  .lede { font-size: clamp(15.5px, 2.1vw, 18px); color: var(--ink-2); max-width: 64ch; margin: 18px 0 0; }
+  .docmeta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 2px 28px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px;
+  }
+  .docmeta div { display: flex; flex-direction: column; gap: 3px; }
+  .docmeta .k {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .docmeta .v { font-size: 14px; font-weight: 500; }
+
+  /* ── 섹션 ─────────────────────────────── */
+  section { margin-top: 58px; }
+  .sec-head { border-top: 1px solid var(--line-2); padding-top: 13px; margin-bottom: 22px; }
+  .sec-no {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .1em;
+    color: var(--accent); display: block; margin-bottom: 7px;
+  }
+  h2.sec-title {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: clamp(21px, 3.2vw, 27px); line-height: 1.3; letter-spacing: -.015em;
+    margin: 0; text-wrap: balance;
+  }
+  h3 { font-size: 16.5px; font-weight: 600; margin: 32px 0 10px; }
+  h3 .h3num { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--accent); margin-right: 8px; }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  ul { max-width: 70ch; padding-left: 21px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .875em; background: var(--surface-2);
+    padding: .1em .36em; border-radius: 3px; border: 1px solid var(--line); white-space: nowrap;
+  }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  /* ── 표 ───────────────────────────────── */
+  .scroll { overflow-x: auto; margin: 18px 0 22px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    background: var(--surface-2); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.term { white-space: nowrap; }
+  td.term b { display: block; font-size: 13.5px; }
+  td.term span {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); display: block;
+  }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .site { font-size: 12.5px; }
+  .site em { font-style: normal; color: var(--muted); font-size: 11.5px; display: block; }
+  .none { color: var(--muted); }
+
+  /* 확인란 — 인쇄해서 손으로 적는 칸이다. 화면에서도 같은 모양으로 보인다. */
+  td.chk, .chk-line {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-2); white-space: nowrap;
+  }
+  .box {
+    display: inline-block; width: 11px; height: 11px; border: 1.3px solid var(--line-2);
+    border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--surface);
+  }
+  .fill { border-bottom: 1px solid var(--line-2); display: inline-block; min-width: 72px; height: 1em; }
+
+  /* ── 강조 블록 ─────────────────────────── */
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    padding: 15px 17px; margin: 20px 0; box-shadow: var(--shadow);
+  }
+  .callout.warn { border-left-color: var(--signal); background: var(--signal-soft); }
+  .callout.rule { border-left-color: var(--good); }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+  .callout .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px;
+  }
+
+  /* ── 쟁점 카드 — 번호(T1…)는 결정 기록의 번호와 같다 ── */
+  .issues { display: grid; gap: 13px; margin: 22px 0; }
+  .issue {
+    display: grid; grid-template-columns: 62px 1fr; gap: 0 18px;
+    border: 1px solid var(--line); border-radius: 4px; background: var(--surface);
+    padding: 15px 17px; box-shadow: var(--shadow);
+  }
+  .issue .tid {
+    font-family: "IBM Plex Mono", monospace; font-size: 17px; font-weight: 500; color: var(--accent);
+    border-right: 1px solid var(--line); padding-right: 14px;
+  }
+  .issue h4 { margin: 0 0 7px; font-size: 15.5px; color: var(--ink); font-weight: 600; }
+  .issue .why { font-size: 13.5px; color: var(--ink-2); margin: 0 0 9px; max-width: none; }
+  .issue .why b { color: var(--ink); }
+  .issue .opts { margin: 0 0 9px; padding-left: 19px; font-size: 13.5px; }
+  .issue .base {
+    font-size: 13px; color: var(--ink-2); border-left: 2px solid var(--good);
+    padding: 2px 0 2px 10px; margin-bottom: 10px;
+  }
+  .issue .base b { color: var(--good); }
+  .issue .decide {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted);
+    border-top: 1px dashed var(--line); padding-top: 9px;
+  }
+
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 20px 0; display: grid; gap: 1px; max-width: none; }
+  .steps li {
+    counter-increment: st; display: grid; grid-template-columns: 28px 1fr; gap: 0 14px;
+    border-top: 1px solid var(--line); padding-block: 13px; margin: 0;
+  }
+  .steps li::before {
+    content: counter(st); font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    color: var(--accent); padding-top: 2px;
+  }
+  /* ::before 가 1열을 쓰므로 나머지 두 요소를 2열에 명시한다 — 안 하면 span 이 28px 칸으로 밀려 한 글자씩 접힌다. */
+  .steps li > b, .steps li > span { grid-column: 2; }
+  .steps b { font-weight: 600; margin-bottom: 2px; }
+  .steps span { color: var(--ink-2); font-size: 14px; }
+
+  footer {
+    margin-top: 66px; border-top: 2px solid var(--ink); padding-top: 16px;
+    font-size: 12.5px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between;
+  }
+
+  @media (max-width: 620px) {
+    .issue { grid-template-columns: 1fr; gap: 8px; }
+    .issue .tid { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 8px; }
+  }
+  @media print {
+    .scroll { overflow: visible; }
+    .issue, .callout, tr, thead { break-inside: avoid; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">TelomX · MES Ontology · Phase 0 산출물</p>
+    <h1>용어 대조표 — 세 공장이 같은 말을 쓰고 있나</h1>
+    <p class="lede">
+      온톨로지의 클래스·관계 이름은 지금까지 <em>DB 실측과 화면 라벨</em>만 보고 정했다.
+      현장 담당자가 같은 뜻으로 쓰는지는 아직 확인하지 않았다 — 이 문서는 그 확인을 한 번에 끝내기 위한
+      <strong>회의용 워크시트</strong>다. 읽는 문서가 아니라 <strong>표시하고 적는 문서</strong>다.
+    </p>
+    <div class="docmeta">
+      <div><span class="k">문서</span><span class="v">TX-ONT-TERMS r1.0</span></div>
+      <div><span class="k">작성일</span><span class="v">2026-09-20</span></div>
+      <div><span class="k">근거</span><span class="v">3사 메뉴·화면 라벨 + DB 실측</span></div>
+      <div><span class="k">짝 문서</span><span class="v">TX-ONT-DESIGN r1.1 §3·§4</span></div>
+      <div><span class="k">참석</span><span class="v">infurs · hisense · naturefood 담당자</span></div>
+    </div>
+  </header>
+
+  <!-- ══════════════ 0 ══════════════ -->
+  <section id="s0">
+    <div class="sec-head">
+      <span class="sec-no">§ 00</span>
+      <h2 class="sec-title">이 문서를 쓰는 방법</h2>
+    </div>
+
+    <p>
+      회의에서 정할 것은 <b>온톨로지 이름을 무엇으로 할지</b>가 아니다. 이미 세 사이트에 적재까지 끝났고
+      이름은 바꾸기 쉽다(<code>rdfs:label</code> 한 줄). 정할 것은
+      <b>"이 낱말이 세 공장에서 같은 것을 가리키는가"</b>이고, 다르다면 <b>무엇을 기준으로 삼을지</b>다.
+      §2·§3은 그 확인용 표이고, §4는 <b>확인만으로는 끝나지 않는 쟁점</b> 10건이다.
+    </p>
+
+    <ol class="steps">
+      <li><b>§2·§3을 각자 훑는다 (15분)</b><span>자기 사이트 칸을 보고 <q>우리는 그렇게 안 부른다</q> 싶은 줄에 표시만 한다. 토론하지 않는다.</span></li>
+      <li><b>표시된 줄만 모아 읽는다 (10분)</b><span>표시가 한 사이트뿐이면 그 사이트 화면 라벨 문제이고, 여러 사이트면 §4 쟁점으로 올린다.</span></li>
+      <li><b>§4 쟁점 T1~T10을 순서대로 정한다 (25분)</b><span>각 쟁점에 <b>기본안</b>이 적혀 있다. 기본안대로 갈지, 다르게 갈지만 결정하면 된다.</span></li>
+      <li><b>§6 결정 기록란에 적는다 (5분)</b><span>결정과 결정자·날짜를 남긴다. 이 기록이 다음 단계(§7)의 입력이다.</span></li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="tag">회의에서 하지 않을 것</span>
+      <p>
+        <b>화면 라벨을 지금 바꾸기로 결정하지 않는다.</b> 라벨 변경은 사이트별 화면 작업이고 영향 범위가 따로 있다.
+        오늘은 <b>기준 낱말</b>만 정하고, 어느 화면을 언제 맞출지는 별건으로 잡는다.
+        <b>DB 컬럼명도 건드리지 않는다</b> — 온톨로지가 존재하는 이유가 컬럼명을 안 건드리고 이름을 맞추는 것이다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 1 ══════════════ -->
+  <section id="s1">
+    <div class="sec-head">
+      <span class="sec-no">§ 01</span>
+      <h2 class="sec-title">왜 지금 맞춰야 하나</h2>
+    </div>
+    <p>
+      적재는 끝났고(3사 286,057 트리플) 한 사이트에서 만든 질의가 다른 사이트에서 그대로 돈다.
+      그런데 <b>사람이 쓰는 말과 그래프의 이름이 갈리면 그 이점이 사라진다</b> — 화면에서 <q>판매출고</q>를 찾던
+      담당자가 <q>출하</q>로 답하는 새 화면을 믿지 못하고, 질의를 고쳐 달라는 요청이 사이트별로 갈라진다.
+    </p>
+    <p>
+      말이 갈린다는 건 추측이 아니다. <b>한 사이트 안에서도 이미 갈려 있다.</b>
+    </p>
+    <div class="callout">
+      <span class="tag">실물 증거 — 한 사이트 안의 이름 불일치</span>
+      <ul>
+        <li><b>infurs</b>: 메뉴 <q>기준정보 &gt; 품목관리</q>가 여는 것은 <code>t_product</code>(제품 마스터 661건)다.
+            수주·재고·BOM이 실제로 참조하는 품목 마스터는 <code>t_item</code>(687건)으로 <b>다른 테이블</b>이다.
+            <q>품목</q>이라는 한 낱말이 두 마스터를 가리킨다.</li>
+        <li><b>naturefood</b>: 메뉴 이름은 <q>판매출하</q>인데 같은 행의 경로 표시는
+            <q>재고관리 → 생산입고</q>이고 실제 주소는 <code>/material/material_out</code>다.
+            이름·경로·주소 셋이 서로 다르다.</li>
+        <li><b>naturefood</b>: 거래처 구분 코드가 8,494건 중 <b>8,490건이 같은 값</b>(<code>guest</code>·<code>all</code>)이다.
+            구분이 있으나 실제로는 구분하지 않고 입력됐다.</li>
+      </ul>
+    </div>
+    <p>
+      그래서 이 회의의 성과 판정은 단순하다. <b>§6 결정 기록란이 채워지면 성공</b>이고,
+      <q>대체로 비슷하네요</q>로 끝나면 실패다.
+    </p>
+  </section>
+
+  <!-- ══════════════ 2 ══════════════ -->
+  <section id="s2">
+    <div class="sec-head">
+      <span class="sec-no">§ 02</span>
+      <h2 class="sec-title">객체 16개 — 무엇을 무엇이라 부르는가</h2>
+    </div>
+    <p>
+      각 사이트 칸에 적힌 것은 <b>실제 메뉴·화면 라벨</b>(2026-09-20 기준)이다. 내가 지어낸 말이 아니라
+      메뉴 테이블과 화면 코드에서 뽑았다. 자기 사이트 칸이 현장에서 쓰는 말과 다르면 표시해 달라.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>온톨로지 용어</th><th>뜻 (한 줄)</th><th>infurs</th><th>hisense</th><th>naturefood</th><th>확인</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="term"><b>거래처</b><span>tx:Partner</span></td>
+            <td>물건을 주문하거나 공급하는 <b>조직 1곳</b></td>
+            <td class="site">기준정보 &gt; 거래처관리 <em>발주기관/수요기관 구분</em></td>
+            <td class="site">수주 화면 안의 기관명 <em>발주기관=조달청 / 수요기관</em></td>
+            <td class="site">기준정보 &gt; 거래처등록 <em>거래처·대리점 / 판매·구매</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>수주</b><span>tx:Order</span></td>
+            <td>고객 주문 <b>1건</b>(문서 1장)</td>
+            <td class="site">수주관리 <em>납품요구번호</em></td>
+            <td class="site">총무 &gt; 수주 <em>납품요구</em></td>
+            <td class="site">영업관리 &gt; 판매수주서 <em>+ 자체생산요청</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>수주 라인</b><span>tx:OrderLine</span></td>
+            <td>수주의 <b>품목별 한 줄</b> — 잔량·납기를 세는 단위</td>
+            <td class="site">수주 상세의 품목 행</td>
+            <td class="site">수주 상세의 품목 행</td>
+            <td class="site">판매수주서의 품목 행</td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>품목</b><span>tx:Item</span></td>
+            <td>제품·반제품·원자재·부자재를 <b>한 종류로</b> 본 것</td>
+            <td class="site"><b>주의</b> 기준정보 &gt; 품목관리 화면은 제품 마스터다 <em>수주·재고가 쓰는 마스터는 따로 있다 → T1</em></td>
+            <td class="site">기준정보 &gt; 품목관리</td>
+            <td class="site">기준정보 &gt; 품목등록 <em>제품·반제품·부품</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>BOM 구성</b><span>tx:BomLine</span></td>
+            <td>1개를 만들 때 <b>필요한 하위 품목과 소요량</b> 한 줄</td>
+            <td class="site">기준정보 &gt; BOM관리 <em>품목에 달림</em></td>
+            <td class="site">기준정보 BOM <em>품목에 달림</em></td>
+            <td class="site">기준정보 &gt; <b>공정BOM</b> <em>작업에 달림 → T8</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>작업지시</b><span>tx:WorkOrder</span></td>
+            <td><b>무엇을 몇 개 만들라</b>는 지시 1건</td>
+            <td class="site">생산관리 &gt; 생산일정·생산실적 <em>메뉴엔 없고 화면 안에서 '작업지시'</em></td>
+            <td class="site">총무 &gt; 작업지시</td>
+            <td class="site">생산관리 &gt; 생산입고·현장생산등록 <em>공정별 작업 → T2</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>공정 실적</b><span>tx:ProcessRun</span></td>
+            <td>공정별 <b>진척·양품·불량</b> 기록</td>
+            <td class="site">생산관리 &gt; 생산실적 · 작업현장</td>
+            <td class="site">생산 &gt; 생산입고 <em>공정 진척 기록</em></td>
+            <td class="site">생산관리 &gt; 작업일보 · 현장생산등록</td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>로트</b><span>tx:Lot</span></td>
+            <td>같이 만들어져 <b>같이 추적되는 묶음</b></td>
+            <td class="site none">없음 <em>로트 테이블 0행</em></td>
+            <td class="site">로트 <em>화면에서 가장 많이 쓰는 말</em></td>
+            <td class="site">QR코드 · 바코드 <em>작업지시와 연결 없음 → T7</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>포장 묶음</b><span>tx:Package</span></td>
+            <td>QR 라벨 한 장이 붙는 <b>포장 단위</b></td>
+            <td class="site none">없음</td>
+            <td class="site">포장·출하 &gt; 완성품 포장</td>
+            <td class="site none">없음</td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>출하</b><span>tx:Shipment</span></td>
+            <td>고객에게 <b>한 번에 나간 건</b>(문서 1장)</td>
+            <td class="site">배송관리 + 재고관리 &gt; 판매출고</td>
+            <td class="site">포장·출하 &gt; 출하실적 · 배송</td>
+            <td class="site">재고관리 &gt; 판매출하 <em>출하지시서</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>출하 라인</b><span>tx:ShipmentLine</span></td>
+            <td>출하 1건의 <b>품목별 수량</b> 한 줄</td>
+            <td class="site">배송 품목 행</td>
+            <td class="site">배송지시 품목 · 포장 내역서 행</td>
+            <td class="site">출하 실적 행 <em>실제 출고수량</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>재고 위치</b><span>tx:StockPosition</span></td>
+            <td><b>창고 × 품목</b>의 현재 수량</td>
+            <td class="site">재고관리 &gt; 창고재고</td>
+            <td class="site">재고 &gt; 창고재고</td>
+            <td class="site">재고관리 &gt; 창고재고</td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>창고</b><span>tx:Warehouse</span></td>
+            <td>물건을 <b>두는 곳</b></td>
+            <td class="site">완제품 창고 · 자재 창고 · 출하 대기장</td>
+            <td class="site">제품창고 · 자재창고</td>
+            <td class="site">제품창고 · 원료창고</td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>설비</b><span>tx:Equipment</span></td>
+            <td>일하는 <b>기계 1대</b></td>
+            <td class="site">기준정보 &gt; 설비관리 <em>등록 0대</em></td>
+            <td class="site">기준정보 &gt; 설비관리 <em>등록 0대</em></td>
+            <td class="site">기준정보 &gt; 설비등록 <em>11대</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>센서 채널</b><span>tx:SensorChannel</span></td>
+            <td>설비에서 <b>무엇을 재는지</b>와 가동 판정 기준값</td>
+            <td class="site none">없음</td>
+            <td class="site none">없음</td>
+            <td class="site">공정데이터 · 생산모니터링 <em>6채널</em></td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+          <tr>
+            <td class="term"><b>도면·제품사진</b><span>tx:Document</span></td>
+            <td>품목에 붙는 <b>그림·도면 파일</b></td>
+            <td class="site">기준정보 &gt; 도면관리 · 제품사진관리 <em>927건</em></td>
+            <td class="site">품목 첨부파일 <em>등록 0건</em></td>
+            <td class="site none">품목에 붙는 파일 없음</td>
+            <td class="chk"><span class="box"></span>같다 <span class="box"></span>다름</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--muted)">
+      <q>없음</q>은 그 사이트에 그 개념이 <b>없다</b>는 뜻이고, 온톨로지도 객체를 만들지 않았다.
+      없는 것을 만들지 않는 것이 설계 원칙이라(TX-ONT-DESIGN P1) <q>우리도 필요하다</q>면 그것은 용어 문제가 아니라
+      기능 요청이므로 별도로 적어 달라.
+    </p>
+  </section>
+
+  <!-- ══════════════ 3 ══════════════ -->
+  <section id="s3">
+    <div class="sec-head">
+      <span class="sec-no">§ 03</span>
+      <h2 class="sec-title">관계 — 문장으로 읽어서 맞는지</h2>
+    </div>
+    <p>
+      관계는 이름을 볼 필요가 없다. <b>문장이 맞는지만</b> 봐 달라. 아래 문장이 현장에서 참이면 그 관계는 맞게 걸린 것이고,
+      <q>우리는 그렇게 안 이어진다</q>면 그 줄이 쟁점이다.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>관계</th><th>이렇게 읽는다</th><th>확인</th></tr></thead>
+        <tbody>
+          <tr><td class="term"><span>places</span></td><td><b>발주기관</b>이 이 <b>수주</b>를 냈다 <span style="color:var(--muted)">— 조달 건은 조달청</span></td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>customer</span></td><td>이 <b>수주</b>의 물건을 <b>수요기관</b>이 받는다 <span style="color:var(--muted)">— 납기 늦으면 연락할 곳</span></td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>hasLine</span></td><td>이 <b>수주</b>는 이 <b>품목 줄</b>들로 되어 있다 / 이 <b>출하</b>는 이 <b>품목 줄</b>들을 담았다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>ofItem</span></td><td>이 줄은 이 <b>품목</b>에 대한 것이다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>hasBom / consumes</span></td><td>이 <b>품목</b>을 만들려면 이 <b>자재</b>가 필요하다 <span style="color:var(--muted)">— 거꾸로 타면 "이 자재가 없으면 못 만드는 제품"</span></td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>fulfills</span></td><td>이 <b>작업지시</b>는 이 <b>수주 줄</b>을 만들기 위한 것이다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>steps</span></td><td>이 <b>작업지시</b>는 이 <b>공정들</b>을 거쳤다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>producedBy</span></td><td>이 <b>로트</b>는 이 <b>작업지시</b>로 만들어졌다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>packedInto / shipsPackage</span></td><td>이 <b>로트</b>는 이 <b>포장</b>에 담겼고, 그 포장이 이 <b>출하</b>로 나갔다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>shipsLot</span></td><td>이 <b>출하</b>로 실제 나간 <b>로트</b>는 이것이다 <span style="color:var(--muted)">— 출고 기록에서 거꾸로 찾은 것</span></td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>settles</span></td><td>이 <b>출하</b>가 이 <b>수주 줄</b>의 납기를 이행했다 <span style="color:var(--muted)">— "다 납품됐나"를 답하는 변</span></td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>forOrder / shipsTo</span></td><td>이 <b>출하</b>는 이 <b>수주</b>의 것이고, 이 <b>기관</b>이 받는다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>storedAt</span></td><td>이 재고는 이 <b>창고</b>에 있다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>ranOn / measures</span></td><td>이 공정은 이 <b>설비</b>에서 돌았고, 그 설비는 이 <b>채널</b>로 측정한다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>depicts</span></td><td>이 <b>도면·사진</b>은 이 <b>품목</b>을 나타낸다</td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+          <tr><td class="term"><span>sameAs</span></td><td><b>세 공장이 쓰는 이 자재는 같은 물건이다</b> <span style="color:var(--muted)">— 아직 연결 안 함(Phase 4)</span></td><td class="chk"><span class="box"></span>맞다 <span class="box"></span>아니다</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════ 4 ══════════════ -->
+  <section id="s4">
+    <div class="sec-head">
+      <span class="sec-no">§ 04</span>
+      <h2 class="sec-title">정해야 하는 쟁점 T1~T10</h2>
+    </div>
+    <p>
+      확인만으로 끝나지 않는 것들이다. 각 쟁점에는 <b>왜 갈리는지(실측)</b>·<b>선택지</b>·<b>기본안</b>이 적혀 있다.
+      기본안은 지금 온톨로지가 실제로 쓰고 있는 규칙이므로, <b>기본안대로 가면 추가 작업이 없다.</b>
+    </p>
+
+    <div class="issues">
+
+      <div class="issue">
+        <div class="tid">T1</div>
+        <div>
+          <h4><q>품목</q>이 가리키는 것</h4>
+          <p class="why">infurs는 품목 마스터가 <b>둘</b>이다. 수주·재고·BOM이 참조하는 것(687건)과
+            도면·사진이 참조하는 것(661건)인데, <b>메뉴의 <q>품목관리</q>는 뒤쪽을 연다.</b>
+            둘은 연결 키가 없어 메모의 <q>모델명:</q> 문자열로만 이어진다(온톨로지에서는 한 객체로 합쳐 661/661 연결됨).</p>
+          <ul class="opts">
+            <li>가) 수주·재고가 쓰는 쪽을 <q>품목</q>, 도면·사진 쪽을 <q>제품(도면용)</q>으로 부른다</li>
+            <li>나) 반대로 부른다 — 현장이 이미 <q>제품</q>을 품목이라 부르고 있다면</li>
+            <li>다) 한쪽을 폐지한다(DB 통합 — 별건 작업, 영향 범위 큼)</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 온톨로지는 이미 둘을 한 객체로 합쳤으니 말만 정하면 된다.
+            화면 라벨 수정은 별건으로 잡는다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T2</div>
+        <div>
+          <h4><q>작업지시 1건</q>의 단위</h4>
+          <p class="why">세 사이트가 다르다. hisense는 <b>수주 단위로 번호를 발급</b>하고 품목별로 행이 나뉘며,
+            infurs도 같은 번호가 라인마다 반복된다(<code>WO-260727-004</code>가 2행).
+            naturefood는 <b>공정마다</b> 작업이 따로 생긴다(교반 작업, 포장 작업…).
+            <q>작업지시 몇 건이냐</q>는 질문의 답이 사이트마다 다른 수가 된다.</p>
+          <ul class="opts">
+            <li>가) <b>수주 라인 단위</b> 1건 = 작업지시 1건, 공정별 기록은 <q>공정 실적</q></li>
+            <li>나) 수주 단위 1건 = 작업지시 1건, 품목별은 <q>지시 품목</q></li>
+            <li>다) 사이트마다 다르게 두고 세는 질의를 따로 만든다</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 지금 그래프가 그렇게 세고 있다(3사 57건).
+            <q>지시번호</q>는 사이트가 발급한 그대로 속성으로 싣는다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T3</div>
+        <div>
+          <h4>출하 · 출고 · 배송 · 납품 — 네 낱말의 경계</h4>
+          <p class="why">infurs는 <q>판매출고</q>와 <q>배송관리</q>가 따로 있고, hisense는 <q>출하실적</q>과 <q>배송</q>이,
+            naturefood는 <q>판매출하</q>가 있다. 같은 일을 셋이 다르게 부르는데,
+            <b>수량이 어긋나는 지점이 정확히 여기</b>다(§5 참고).</p>
+          <ul class="opts">
+            <li>가) <b>출고</b>=창고에서 물건이 빠진 것(재고 기록) · <b>출하</b>=고객에게 보낸 건(문서) ·
+                <b>배송</b>=실어 옮기는 일 · <b>납품완료</b>=받는 쪽이 확인한 것</li>
+            <li>나) 출하·출고를 한 낱말로 합친다</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 네 낱말이 실제로 서로 다른 사건이고, 온톨로지도 그렇게 나눠 싣는다
+            (출하 객체 + 경로 + 실제 출고수량).</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T4</div>
+        <div>
+          <h4><q>거래처</q>에 기관까지 넣을지</h4>
+          <p class="why">infurs·hisense는 조달 납품이라 <b>발주기관(조달청)</b>과 <b>수요기관(실제 받는 곳)</b>이 다르고,
+            naturefood는 사고파는 <b>거래처</b>다. 한편 naturefood 거래처 구분값은 8,494건 중 8,490건이 같은 값으로
+            <b>사실상 구분 없이</b> 들어가 있다.</p>
+          <ul class="opts">
+            <li>가) <b>한 낱말 <q>거래처</q> + 역할</b>(발주기관·수요기관·고객사·공급업체)</li>
+            <li>나) 기관과 거래처를 아예 다른 것으로 부른다</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 지금 그래프가 그렇다(3사 18,205곳, 역할 속성으로 구분).
+            naturefood 구분값 정리는 데이터 작업으로 따로 잡는다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T5</div>
+        <div>
+          <h4>수주 · 납품요구 · 판매수주서 · 자체생산</h4>
+          <p class="why">조달 건은 <q>납품요구</q>가 정확한 말이고(번호 체계도 그쪽), naturefood는 <q>판매수주서</q>에
+            <b>자체생산요청</b>까지 같은 테이블에 들어 있다 — 자체생산은 거래처가 없는 게 정상이다.</p>
+          <ul class="opts">
+            <li>가) 통칭은 <b>수주</b>, 조달 건의 납품요구번호는 <b>수주번호</b>로 싣고, 자체생산은 <b>유형</b>으로 구분</li>
+            <li>나) 조달 건만 <q>납품요구</q>로 따로 부른다</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 지금 그래프가 그렇다(수주 38건 중 자체생산 유형 포함).</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T6</div>
+        <div>
+          <h4>수량을 부르는 이름 셋</h4>
+          <p class="why">이번 개정에서 <b>판정 기준이 실제로 바뀐</b> 대목이다.
+            hisense 품목 85는 <b>문서 21 / 실제 출고 20</b>이었다 — 출하 경로가 겹치면 문서 합계가 주문수량을 넘는다.
+            그래서 잔량은 문서가 아니라 <b>재고 기록</b>으로 센다. 취소분을 빼지 않으면 <q>초과출고</q>라는 틀린 결론도 난다.</p>
+          <ul class="opts">
+            <li>가) <b>주문수량</b>(수주 줄) · <b>지시수량</b>(배송지시·포장 문서) · <b>실출고수량</b>(재고 기록),
+                <b>잔량 = 주문수량 − 실출고수량</b></li>
+            <li>나) 지시수량을 <q>출하수량</q>으로 부른다(현재 화면 다수가 이렇게 쓴다)</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 낱말이 셋이어야 사고가 안 난다. 나)를 택하면 화면끼리 같은 말로 다른 수를
+            보여주는 상태가 유지된다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T7</div>
+        <div>
+          <h4><q>로트</q>를 세 곳에서 같은 뜻으로 쓰는가</h4>
+          <p class="why">hisense는 로트로 추적(180건)하고, naturefood는 <b>QR·바코드</b>가 있지만 작업지시와 연결이 없고,
+            infurs는 로트 자체를 쓰지 않는다(0건). 식품은 유통기한이 붙어 사실상 로트 개념이 필요하다.</p>
+          <ul class="opts">
+            <li>가) naturefood 바코드를 <b>로트로 승격</b>한다(작업지시 연결 추가 — 개발 필요)</li>
+            <li>나) 지금처럼 hisense만 로트를 쓰고, naturefood는 <q>바코드</q>로 둔다</li>
+          </ul>
+          <p class="base"><b>기본안 나)</b> 오늘은 말만 맞춘다. 가)는 Phase 4 개발 항목이라 별도 판단이 필요하다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T8</div>
+        <div>
+          <h4>공정 이름을 표준화할지</h4>
+          <p class="why">세 공장의 공정이 실제로 다르다 — infurs <b>재단·엣지·가공·조립</b>,
+            hisense <b>조립/포장</b>, naturefood <b>교반·추출농축·가열·세병·충진·포장·발효</b>.
+            게다가 naturefood는 BOM이 <b>공정</b>에 달려 있어 <q>공정BOM</q>이라 부른다.</p>
+          <ul class="opts">
+            <li>가) 표준화하지 않는다 — 공정 이름은 사이트 것을 그대로 싣고, 온톨로지는 <q>공정</q>을 객체로 만들지 않는다</li>
+            <li>나) 상위 공정군(가공·조립·포장·검사)을 만들어 사이트 공정을 그 아래로 분류한다</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 지금 그렇게 싣고 있다. 나)는 KPI를 사이트 간에 비교하려 할 때 필요해지는데,
+            비교가 실제로 필요한지부터 확인이 필요하다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T9</div>
+        <div>
+          <h4>재고 기준값 낱말 — 안전재고 · 발주점 · 적정재고 · 재공재고</h4>
+          <p class="why">네 낱말이 사이트마다 섞여 쓰인다(infurs 안전재고·발주점 컬럼, naturefood <q>적정재고관리</q>·
+            <q>재공재고관리</q> 메뉴). 이 값들은 <b>경고를 띄우는 기준</b>이라 뜻이 갈리면 경고가 갈린다.</p>
+          <ul class="opts">
+            <li>가) <b>안전재고</b>=이 아래로 내려가면 위험 · <b>발주점</b>=여기서 주문을 건다 ·
+                <b>재공</b>=만들고 있는 중간 물량. <q>적정재고</q>는 쓰지 않는다</li>
+            <li>나) 사이트별 현행 낱말을 유지한다</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 다만 <b>값을 어디가 소유할지</b>(DB냐 온톨로지냐)는 설계서 미결 D5로 남아 있다 —
+            오늘은 낱말만 정한다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+      <div class="issue">
+        <div class="tid">T10</div>
+        <div>
+          <h4>품목 구분 값 체계</h4>
+          <p class="why">infurs·hisense는 <b>제품·반제품·원자재·부자재</b> 넷이고,
+            naturefood는 <b>제품·반제품·부품·원자재·세트·상품·기타</b> 일곱(영문 코드)이다.
+            온톨로지는 사람이 읽는 뜻과 원본 코드를 <b>둘 다</b> 싣고 있다.</p>
+          <ul class="opts">
+            <li>가) 공통 구분은 <b>제품·반제품·원자재·부자재</b> 넷으로 보고, 나머지는 사이트 고유 값으로 둔다</li>
+            <li>나) 일곱으로 통일한다(세 사이트 화면·코드 수정 필요)</li>
+          </ul>
+          <p class="base"><b>기본안 가)</b> 사이트 고유 값을 없애지 않고도 공통 질의가 돌아간다.</p>
+          <p class="decide">결정: <span class="fill"></span>  결정자: <span class="fill"></span></p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════ 5 ══════════════ -->
+  <section id="s5">
+    <div class="sec-head">
+      <span class="sec-no">§ 05</span>
+      <h2 class="sec-title">가장 사고가 잦은 구간 — 판단에 쓰는 말</h2>
+    </div>
+    <p>
+      객체 이름이 갈리면 질의를 못 쓰는 정도지만, <b>판단에 쓰는 말이 갈리면 숫자가 틀린다.</b>
+      아래 넷은 실제로 틀린 적이 있는 지점이다.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>판단</th><th>합의할 기준</th><th>실측 근거</th><th>확인</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>이 수주는 다 납품됐나</b></td>
+            <td>주문수량 = <b>실출고수량 합계</b>면 완료. 문서 수량으로 세지 않는다</td>
+            <td class="site">3경로가 겹치면 문서 합계가 주문수량을 넘는다(문서 21 / 원장 20). 취소분 제외 필수</td>
+            <td class="chk"><span class="box"></span>합의 <span class="box"></span>보류</td>
+          </tr>
+          <tr>
+            <td><b>이 자재가 없으면 위험한 수주</b></td>
+            <td>BOM을 <b>몇 단이든</b> 거꾸로 타서 걸리는 수주 줄 전부. 납기 이른 순</td>
+            <td class="site">hisense에서 화면으로 동작(~10ms). infurs는 BOM 등록이 9품목뿐이라 답이 비어 있다</td>
+            <td class="chk"><span class="box"></span>합의 <span class="box"></span>보류</td>
+          </tr>
+          <tr>
+            <td><b>납기가 위험하다</b></td>
+            <td>기준을 오늘 정한다 — 남은 일수, 남은 수량, 진행 공정 중 <b>무엇으로</b> 판정할지</td>
+            <td class="site">현재 사이트별로 다르게 계산한다(설계서 §5 <q>사이트별 산재</q>)</td>
+            <td class="chk"><span class="box"></span>합의 <span class="box"></span>보류</td>
+          </tr>
+          <tr>
+            <td><b>설비가 돌고 있다</b></td>
+            <td>측정값이 <b>기준값을 넘는 구간</b>만 가동. 온도는 멈춰도 계속 측정되므로 0 초과로는 판정 불가</td>
+            <td class="site">naturefood 교반·가열 85℃ 기준. 이 값의 원본은 화면 코드에 있다(설계서 미결 D5)</td>
+            <td class="chk"><span class="box"></span>합의 <span class="box"></span>보류</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════ 6 ══════════════ -->
+  <section id="s6">
+    <div class="sec-head">
+      <span class="sec-no">§ 06</span>
+      <h2 class="sec-title">결정 기록란</h2>
+    </div>
+    <p>
+      회의의 산출물은 이 표다. <b>보류도 결정</b>이므로 적어 둔다 — 적지 않으면 다음 회의에서 같은 말을 다시 한다.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:52px">#</th><th style="width:210px">쟁점</th><th>결정</th><th style="width:110px">결정자</th><th style="width:96px">날짜</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">T1</td><td><q>품목</q>이 가리키는 것</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T2</td><td>작업지시 1건의 단위</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T3</td><td>출하·출고·배송·납품 경계</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T4</td><td>거래처에 기관을 넣을지</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T5</td><td>수주·납품요구·자체생산</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T6</td><td>수량 세 낱말</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T7</td><td>로트를 같은 뜻으로 쓰는가</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T8</td><td>공정 이름 표준화</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T9</td><td>재고 기준값 낱말</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">T10</td><td>품목 구분 값 체계</td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">기타</td><td></td><td></td><td></td><td></td></tr>
+          <tr><td class="mono">기타</td><td></td><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="chk-line">
+      §2·§3에서 <q>다름</q>으로 표시된 줄 수: <span class="fill"></span> 건 ·
+      그중 화면 라벨만 고치면 되는 것: <span class="fill"></span> 건 ·
+      별건 작업이 필요한 것: <span class="fill"></span> 건
+    </p>
+  </section>
+
+  <!-- ══════════════ 7 ══════════════ -->
+  <section id="s7">
+    <div class="sec-head">
+      <span class="sec-no">§ 07</span>
+      <h2 class="sec-title">회의 후에 할 일</h2>
+    </div>
+    <p>
+      결정이 나면 반영은 짧다. <b>이름은 한 파일에만 있다</b> — 세 사이트가 공유하는 공통 스키마
+      <code>mes-core.ttl</code>의 <code>rdfs:label</code>이고, 사이트별 복사본은 없다.
+    </p>
+    <ol class="steps">
+      <li><b>공통 스키마의 이름을 고친다</b><span><code>mes-core.ttl</code>의 <code>rdfs:label</code>만 수정한다.
+        클래스·관계의 <em>식별자</em>(<code>tx:Shipment</code> 등)는 바꾸지 않는다 — 바꾸면 적재·질의·화면이 전부 따라 바뀐다.</span></li>
+      <li><b>스키마만 재적재한다</b><span>hisense 쪽 적재기를 스키마 전용으로 한 번 돌린다(수초).
+        세 사이트 그래프는 건드릴 필요가 없다 — 이름은 스키마에만 있다.</span></li>
+      <li><b>점검을 돌린다</b><span>세 사이트 점검 스크립트의 <q>스키마에 없는 술어 = 0</q> 항목이
+        이름 변경 실수를 잡는다.</span></li>
+      <li><b>설계서에 반영한다</b><span>TX-ONT-DESIGN을 r1.2로 올려 §3.2·§4.1 표의 용어와 §12 미결 상태를 맞춘다.
+        오늘 <q>보류</q>로 남은 것은 미결 항목으로 올린다.</span></li>
+      <li><b>화면 라벨은 사이트별 작업으로 잡는다</b><span>온톨로지와 무관하게 각 사이트에서 진행한다.
+        바꾸지 않아도 그래프는 정상 동작한다 — 사람이 헷갈리는 비용만 남는다.</span></li>
+    </ol>
+    <div class="callout rule">
+      <span class="tag">이 회의가 늦어도 괜찮은 이유 · 그래도 해야 하는 이유</span>
+      <p>
+        적재와 질의는 이미 돌고 있어서 <b>회의가 늦어도 시스템은 멈추지 않는다.</b>
+        하지만 새 화면이 늘어날수록 라벨과 그래프 이름의 거리가 벌어지고, 그때는 고칠 화면이 늘어난다.
+        지금은 온톨로지를 읽는 화면이 <b>한 개</b>뿐이라 가장 싸게 맞출 수 있는 시점이다.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <span>TX-ONT-TERMS r1.0 · 2026-09-20 · 3사 메뉴·화면 라벨 + DB 실측 기준</span>
+    <span class="mono">infurs · hisense · naturefood</span>
+  </footer>
+</div>

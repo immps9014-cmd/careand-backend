@@ -48,6 +48,8 @@
 /telomx-mes-ontology/*
 !/telomx-mes-ontology/ONTOLOGY-DESIGN.html
 !/telomx-mes-ontology/make_pdf.js
+!/telomx-mes-ontology/TERM-MAP.html
+!/telomx-mes-ontology/make_pdf_term.js
 !/telomx-mes-ontology/pdf/
 /telomx-mes-ontology/pdf/*
 !/telomx-mes-ontology/pdf/*.pdf
