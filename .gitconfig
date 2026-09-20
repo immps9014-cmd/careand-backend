@@ -2,3 +2,11 @@
 	directory = /home/claude2/edu-portal
 	directory = /var/www/html/mes
 	directory = /home/claude2/edu-portal
+	directory = /var/www/html/ssfc
+	directory = /var/www/html/hisense
+	directory = /var/www/nature-food
+[pack]
+	threads = 1
+	windowMemory = 16m
+	packSizeLimit = 100m
+	deltaCacheSize = 16m

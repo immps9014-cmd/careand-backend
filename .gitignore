@@ -40,6 +40,8 @@
 
 # caren/.claude/{agents,skills} — 플랫폼 공용 에이전트/스킬 정의(4개 레포가 상속). 순수 텍스트 md만 있음.
 !/caren/.claude/
+# 스킬 스크립트 실행 시 생기는 파이썬 바이트코드 캐시는 제외
+/caren/.claude/**/__pycache__/
 
 # --- 텔롬엑스 MES 온톨로지 설계서 (2026-09-19) ---
 # HTML 이 원본이고 PDF 는 make_pdf.js 로 재생성되는 배포본이다.
