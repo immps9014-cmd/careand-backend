@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Admin\AiModelController;
 use App\Http\Controllers\Api\V1\Admin\CsController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\InsightsController;
+use App\Http\Controllers\Api\V1\Admin\OntologyController;
 use App\Http\Controllers\Api\V1\Admin\OperationsController;
 use App\Http\Controllers\Api\V1\AnomalyAlertController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -216,6 +217,12 @@ Route::prefix('v1')->group(function () {
 
             // 자연어 인사이트 검색 (회원가입/매칭/매출 현황)
             Route::get('insights/query', [InsightsController::class, 'query']);
+
+            // 온톨로지 분석 (질병 커버리지 · 인력 이탈 영향분석) — AI 서비스 프록시, 조회 전용
+            Route::prefix('ontology')->group(function () {
+                Route::get('overview', [OntologyController::class, 'overview']);
+                Route::get('caregivers/{id}/impact', [OntologyController::class, 'caregiverImpact'])->whereNumber('id');
+            });
 
             // Phase 2: AI 모델 운영
             Route::prefix('ai-models')->group(function () {

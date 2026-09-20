@@ -179,6 +179,28 @@ class AiService
     }
 
     /**
+     * 6. 온톨로지 분석 — 관리자 화면(/admin/ontology)용 개요
+     *
+     * 질병별 공급 커버리지 · 특기별 인력 분포 · 인력 목록 + 마지막 적재 시각.
+     * AI 서비스가 Fuseki 화이트리스트 질의만 실행한다(SPARQL 문자열은 오가지 않는다).
+     * Fuseki 가 죽어도 200 + available=false 로 온다 — 화면이 배너를 띄운다.
+     */
+    public function ontologyOverview(): array
+    {
+        return $this->call('/ai/ontology/overview', [], timeout: 20);
+    }
+
+    /**
+     * 7. 온톨로지 영향분석 — 인력 1명이 빠지면 흔들리는 매칭·세션과 대체 후보
+     */
+    public function ontologyCaregiverImpact(int $caregiverId): array
+    {
+        return $this->call('/ai/ontology/caregiver-impact', [
+            'caregiver_id' => $caregiverId,
+        ], timeout: 20);
+    }
+
+    /**
      * 공통 HTTP 호출
      */
     private function call(string $endpoint, array $payload, ?int $timeout = null): array
