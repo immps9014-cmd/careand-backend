@@ -54,6 +54,13 @@ careand-ai-service의 매칭 스코어링(`main.py`/`l2r.py`)과 backend 가격 
 | 파이프라인 | `ontology/load.sh` = 스키마 PUT → `etl_caren.py` → 그래프 PUT → `check.py` |
 | 주기 | cron 매시 :10 `reload.cron.sh`(2초), 로그 `/var/log/caren-ontology.log`, `out/status.json` |
 | 점검 | `check.py` 53항목 — FAIL 0 유지가 기준. WARN 은 원천 DB 사실 |
+| 화면 | 관리자 **`/admin/ontology`** — 질병 커버리지 · 특기 공급 · 인력 이탈 영향분석 |
+
+화면은 3계층이다: `ontology.py` 분석질의(화이트리스트) → `POST /ai/ontology/overview`·
+`/ai/ontology/caregiver-impact` → backend `OntologyController`(role:admin) → admin-web
+`app/(dashboard)/ontology/page.tsx`. **SPARQL 문자열은 계층을 넘지 않는다**(파라미터는 정수 ID).
+조회 전용 — 그래프는 DB 의 투영이라 여기에 쓰기를 붙이면 SSOT 가 둘이 된다.
+분석 질의 타임아웃은 8초(`FUSEKI_ANALYSIS_TIMEOUT_SEC`)로 매칭 경로 1.5초와 분리돼 있다.
 
 핵심 클래스/프로퍼티:
 
