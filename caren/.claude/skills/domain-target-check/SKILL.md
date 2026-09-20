@@ -45,7 +45,13 @@ self=본인)로 문서화만 되어 있다. **실제 온톨로지 상의 formal 
 
 - [ ] `care-domain.ttl`에 `care:ServiceDomain` 개체 추가 + `care:hasRequestMode`로 Proxy/Self 지정 +
   `care:code "new_domain"`으로 DB 코드와 연결
-- [ ] Fuseki(`caren` 데이터셋)에 재적재, `ontology.reset_cache()` 또는 `careand-ai` 재시작
+- [ ] `careand-ai-service/ontology/load.sh --schema-only` 로 재적재
+  (2026-09-20 r2.0 부터 `caren` 데이터셋은 named graph 두 개다 — 수동 POST 로 밀어넣으면
+  그래프가 어긋난다. 업무객체까지 다시 뽑으려면 인자 없이 `load.sh`)
+- [ ] `check.py` 의 **'어휘 미등록 서비스 도메인 = 0'** 확인 — `caregivers.service_domains`,
+  `match_requests.service_domain`, `service_categories.domain` 세 곳의 실제 값을 전부 본다.
+  도메인을 DB 에만 넣고 TTL 에 안 넣으면 여기서 FAIL 난다
+- [ ] `careand-deploy ai`(또는 `ontology.reset_cache()`)로 프로세스 캐시 무효화
   (상세는 [[matching-ontology]])
 
 ## 3. Frontend 별도 SSOT: `careand-member-web/lib/caregiverType.ts`

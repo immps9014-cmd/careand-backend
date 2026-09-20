@@ -40,11 +40,20 @@ careand-ai-service의 매칭 스코어링(`main.py`/`l2r.py`)과 backend 가격 
   - `clampToBand()` / `isOutOfBand()` / `minHourly()` — 입찰가를 적정가 밴드 안으로 제한. 밴드 이탈 여부
     판정과 최저 시급 하한을 갖는 구조이므로, 가격 관련 버그는 대개 이 세 함수의 경계값 처리를 먼저 의심.
 
-## 온톨로지 (`ontology/care-domain.ttl`, Fuseki 데이터셋 `caren`, TDB2)
+## 온톨로지 (`ontology/`, Fuseki 데이터셋 `caren`, TDB2) — r2.0(2026-09-20)
 
-**moai-fuseki 인스턴스 공유** — 같은 Fuseki 프로세스에 `caren`/`moai` 데이터셋이 분리돼 있음
-(`fuseki:name "caren"`, TDB2 location `/fuseki/databases/caren`). 서비스 간 데이터 오염 걱정은 없지만,
-Fuseki 자체가 죽으면 두 서비스 모두 영향받는다.
+**moai-fuseki 인스턴스 공유** — 같은 Fuseki 프로세스에 `caren`/`moai`/`kcro`/`tx-mes` 데이터셋이
+분리돼 있다. 전용 컨테이너를 새로 띄우지 말 것(RAM 3.6GB). Fuseki 가 죽으면 다 같이 영향받는다.
+
+**2026-09-20 부터 3사 MES 온톨로지(TX-ONT-DESIGN)와 같은 운영 구조다.** 스키마만 있던 PoC 가
+아니라 DB 업무객체를 매시 투영한다 — 상세는 `careand-ai-service/ontology/README.md`.
+
+| | |
+|---|---|
+| 그래프 | `…/graph/schema`(care-domain.ttl) · `…/graph/caren`(DB 투영 ~6.9천 트리플) |
+| 파이프라인 | `ontology/load.sh` = 스키마 PUT → `etl_caren.py` → 그래프 PUT → `check.py` |
+| 주기 | cron 매시 :10 `reload.cron.sh`(2초), 로그 `/var/log/caren-ontology.log`, `out/status.json` |
+| 점검 | `check.py` 53항목 — FAIL 0 유지가 기준. WARN 은 원천 DB 사실 |
 
 핵심 클래스/프로퍼티:
 
@@ -53,11 +62,14 @@ Fuseki 자체가 죽으면 두 서비스 모두 영향받는다.
 | 서비스 도메인 | `care:ServiceDomain` (senior/nursing/childcare/mental_care/postpartum/housekeeping/living_support) |
 | **대리형/본인형** | `care:RequestMode` = `care:ProxyRequest` \| `care:SelfRequest`, 도메인마다 `care:hasRequestMode`로
   고정 매핑됨 — **[[careand-domain-target-logic]]에서 코드로 분기하던 규칙이 여기선 온톨로지 사실로 존재**.
-  신규 도메인 추가 시 TTL에도 `hasRequestMode` 트리플을 넣어야 코드와 온톨로지가 어긋나지 않는다. |
+  신규 도메인 추가 시 TTL에도 `hasRequestMode` 트리플을 넣어야 코드와 온톨로지가 어긋나지 않는다.
+  ⚠ `match_requests.mode`(normal/urgent)는 **다른 축**이다 — 그건 `care:urgency` 속성. |
 | 질병→필요 특기 | `care:requiresSpecialty` (`Disease`→`Specialty`) |
-| 특기 계층 | `care:broaderSpecialty` (`owl:TransitiveProperty` — 상위 특기로 전이 추론 가능) |
+| 특기 계층 | `care:broaderSpecialty` (`owl:TransitiveProperty`) |
 | 질병→연관 관찰 용어 | `care:associatedTerm` (STT 어휘 부스팅에 사용) |
-| DB 코드 매핑 | `care:code` (온톨로지 개체 ↔ DB 컬럼값 연결, 예: `care:code "senior"`) |
+| DB 코드 매핑 | `care:code` — **DB 에 저장된 문자열 그대로**. 한 개념이 DB 값 둘이면 code 를 둘 단다 |
+| 업무객체 | `care:Caregiver/Guardian/Recipient/MatchRequest/MatchCandidate/Match/CareSession/…` (18클래스) |
+| 역할 상수 | `care:Role` 개체(`care:guardian` 등). ⚠ 사람 객체는 `care:Party` 하위다 — 섞지 말 것 |
 | 역할 별칭 | `care:aliasOf` (예: `postpartum_client`→`guardian` role-alias) |
 
 `ontology.py`가 SPARQL로 질의하는 함수: `related_specialty_labels()`, `associated_term_labels()`,
@@ -65,10 +77,22 @@ Fuseki 자체가 죽으면 두 서비스 모두 영향받는다.
 결과를 반환하는 fail-open 설계** — 이 패턴을 깨지 않을 것(매칭/STT가 온톨로지 하나 때문에 전체 장애로
 번지면 안 됨).
 
+세 가지 함정(전부 2026-09-20 실측으로 확인한 것):
+
+- **질의에 `FROM <…/graph/schema>` 가 있어야 한다.** named graph 로 나눈 뒤 기본그래프는 비어 있다 —
+  FROM 을 빼면 예외 없이 **빈 결과**가 오고 Fuseki 다운 폴백과 구분되지 않는다.
+- **`related_specialty_labels()`는 라벨과 `care:code` 를 둘 다 돌려줘야 한다.** l2r 이 결과를
+  `caregivers.specialties`(DB 원문)와 교집합하므로 코드값 특기(`hk_cleaning`)가 안 걸린다.
+- **근접 특기는 상·하위만.** `(broader|^broader)*` 로 섞으면 위로 갔다 내려오는 경로가 생겨
+  형제 특기까지 근접으로 인정된다(치매→가족상담). 상향·하향을 UNION 으로 따로 잇는다.
+
 ## 신규 질병/특기/용어 추가 시 체크리스트
 
 1. `care-domain.ttl`에 개체 추가 (`Disease`/`Specialty`/`CareTerm` 서브클래스 중 적절한 것)
-2. `requiresSpecialty`/`associatedTerm`/`broaderSpecialty` 관계 연결
-3. Fuseki에 TTL 재적재 (데이터셋 `caren`)
-4. `ontology.reset_cache()` 호출 또는 `careand-ai` 재시작으로 캐시 무효화
-5. STT 어휘에 반영되는지 `care_term_vocabulary()` 결과로 확인
+2. **`care:code` 를 DB 실제 저장 문자열로** 단다 — 라벨을 예쁘게 다듬는 것과 별개 문제다.
+   이게 어긋나면 어휘는 있는데 매칭이 0 인 상태가 된다(2026-07-30 PoC 가 그랬다)
+3. `requiresSpecialty`/`associatedTerm`/`broaderSpecialty` 관계 연결
+4. `ontology/load.sh` 실행 (스키마만 고쳤으면 `--schema-only`)
+5. `check.py` 의 '어휘 미등록 …' 항목이 전부 0 인지 확인
+6. `careand-deploy ai` (또는 `ontology.reset_cache()`)로 프로세스 캐시 무효화
+7. STT 어휘에 반영되는지 `care_term_vocabulary()` 결과로 확인
