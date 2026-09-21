@@ -183,11 +183,11 @@
       결과와 검증은 §08 에 있다.
     </p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.1</span></div>
+      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.2</span></div>
       <div><span class="k">작성 · 반영</span><span class="v">2026-09-21 · 같은 날 실행</span></div>
       <div><span class="k">근거</span><span class="v">infurs_db 전수 질의 · 소스 코드 실측</span></div>
       <div><span class="k">상위</span><span class="v">TX-ONT-TERMS r1.1 §7.1 F1</span></div>
-      <div><span class="k">상태</span><span class="v">F1-a 완료 · F1-b 결정됨</span></div>
+      <div><span class="k">상태</span><span class="v">F1-a·b·e 완료 · c·d·f 판단 대기</span></div>
     </div>
   </header>
 
@@ -518,8 +518,105 @@
     </p>
   </section>
 
+  <section id="s9">
+    <div class="sec-head"><span class="sec-no">§ 09</span><h2 class="sec-title">후속 조사 — 중복의 진짜 규모와 원인</h2></div>
+    <p>
+      F1-c(ITM-* 정리)와 F1-e(식별번호 점검)를 파 보니 <b>둘이 같은 원인</b>이었고,
+      규모도 처음 본 <q>12쌍</q>이 아니었다.
+    </p>
+
+    <h3>원인 — 조달 식별번호는 품목의 속성이 아니다</h3>
+    <p>
+      같은 물건인데 <b>조달 건마다 번호가 새로 발급</b>된다. 제품 마스터에 그 증거가 그대로 남아 있다 —
+      <q>응접탁자1</q>이 <code>22885097</code>과 <code>25022135</code> 두 번호로, <q>식탁1</q>이
+      <code>22346977</code>과 <code>25131671</code>로 각각 두 벌 있다.
+    </p>
+    <p>
+      그런데 품목 마스터는 번호를 <b>한 칸(<code>item_identify_no</code>)에 하나만</b> 들고 있다.
+      그래서 재등록이 일어날 때마다 <b>품목이 통째로 한 벌 더 생겼고</b>, 브리지로 짝지어진 661쌍 중
+      <b>8건에서 제품의 번호와 품목의 번호가 어긋난다</b>. 번호로 이어 붙이면 어긋나는 것이 당연하다 —
+      <b>「식별번호로 연결하지 않는다」는 판정이 구조적으로도 맞다.</b>
+    </p>
+
+    <h3>규모 — 31그룹 62행, 그중 52행은 쓰인 적이 없다</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>코드 체계</th><th class="num">행수</th><th class="num">미사용</th><th class="num">사용중</th><th>성격</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">IFS-M* · IFCA-* · IFS-Q* · IFS-T* · IFS-O*</td><td class="num">29</td><td class="num ok">29</td><td class="num">0</td>
+              <td><b>구형 한 벌</b> — 옛 번호(21·22로 시작)로 등록된 것. 단가도 0이다</td></tr>
+          <tr><td class="mono">ITM-*</td><td class="num">4</td><td class="num">1</td><td class="num warn">3</td>
+              <td>주문 파싱이 만든 품목. 동명 신형 품목과 겹친다</td></tr>
+          <tr><td>신형(IFS-N* 등)</td><td class="num">29</td><td class="num">22</td><td class="num">7</td>
+              <td>지금 쓰는 벌. 단가·작업지시·원장이 여기 붙어 있다</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      즉 <b>동명 31그룹 중 30그룹은 한쪽만 쓰이고 있다.</b> 양쪽이 다 쓰인 <b>진짜 병합 대상은 두 건뿐</b>이다.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>품명</th><th class="mono">쓰이는 쪽</th><th class="mono">겹치는 쪽</th><th>걸림돌</th></tr></thead>
+        <tbody>
+          <tr><td>책상</td><td class="mono">ITM-0004 (작업지시 1 · 원장 2)</td><td class="mono">IFS-NA01 (BOM 1 · 제품 1)</td>
+              <td><b class="warn">단가가 다르다</b> — 285,000 / 214,000</td></tr>
+          <tr><td>이동형파일서랍</td><td class="mono">ITM-0006 (작업지시 1 · 원장 2)</td><td class="mono">IFS-NC02-1 (BOM 1 · 제품 1)</td>
+              <td>단가는 같다(165,000)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout note">
+      <span class="tag">왜 둘로 갈렸나</span>
+      <p>
+        주문 파싱이 <q>책상</q>(식별번호 25068279)을 새 품목 <code>ITM-0004</code> 로 만들었다.
+        같은 번호의 제품은 <q>책상8</q>이고 그 제품은 메모로 <code>IFS-NA08</code> 을 가리킨다.
+        <b>도면·BOM 은 IFS 쪽에, 작업지시·원장은 ITM 쪽에 붙어 있다</b> — 한 물건의 이력이 두 품목으로 쪼개졌다.
+      </p>
+    </div>
+
+    <h3>정리 방안 — 위험이 다른 세 덩이로 나눈다</h3>
+    <div class="opts">
+      <div class="opt pick">
+        <h4>가 · 구형 29행을 비활성화 <span class="badge">먼저</span> <span class="cost">저위험 · 되돌리기 한 줄</span></h4>
+        <p>
+          <code>status = 0</code> 으로 내린다. 쓰인 적이 없으니 <b>원장·작업지시·BOM 을 건드리지 않는다.</b>
+          화면 목록에서 사라지고 검색이 조용해진다. 되돌리기는 <code>status = 1</code>.
+        </p>
+      </div>
+      <div class="opt">
+        <h4>나 · 사용 중 2건 병합 <span class="cost">중위험 · 원장을 건드린다</span></h4>
+        <p>
+          <code>ITM-0004 → IFS-NA01</code>, <code>ITM-0006 → IFS-NC02-1</code> 로 작업지시·원장·재고의
+          품목을 옮긴다. <b>책상은 단가가 달라 어느 값이 맞는지부터 정해야 한다</b>(285,000 / 214,000).
+        </p>
+      </div>
+      <div class="opt">
+        <h4>다 · 주문 등록이 품목을 새로 만들지 않게 <span class="cost">근본 · 별건</span></h4>
+        <p>
+          지금은 주문서의 식별번호로 품목을 찾고 없으면 <code>ITM-*</code> 를 만든다. 번호가 조달 건마다
+          바뀌므로 <b>계속 새 품목이 생긴다.</b> 주문 등록 화면에서 <b>사람이 품목을 고르게</b> 하고
+          그 <code>item_id</code> 를 주문라인에 저장하면 이 재발이 끝난다.
+        </p>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th class="mono">#</th><th>판단</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">F1-c1</td><td>구형 29행 비활성화(가)</td><td><b>승인 필요</b> — 화면에서 품목이 사라진다</td></tr>
+          <tr><td class="mono">F1-c2</td><td>사용 중 2건 병합(나) · 책상 단가 확정</td><td><b>승인 필요</b> — 원장을 옮긴다</td></tr>
+          <tr><td class="mono">F1-e</td><td>식별번호 점검</td><td><b class="ok">완료</b> — 원인은 번호 체계, 점검 F1-5 상시화</td></tr>
+          <tr><td class="mono">F1-d</td><td>t_product 폐지</td><td>보류 — 브리지로 급한 문제는 해소됐다</td></tr>
+          <tr><td class="mono">F1-f</td><td>주문 등록이 품목을 만들지 않게(다)</td><td><b>신규</b> — 재발 방지, 별건 작업</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <footer>
-    <span>TX-F1-ITEM r1.1 · 2026-09-21 · infurs_db 전수 질의 · 실행 결과 반영</span>
+    <span>TX-F1-ITEM r1.2 · 2026-09-21 · infurs_db 전수 질의 · 후속 조사 반영</span>
     <span class="mono">t_item 687 · t_product 661 · 연결 661/661</span>
   </footer>
 </div>
