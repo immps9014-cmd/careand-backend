@@ -183,11 +183,11 @@
       결과와 검증은 §08 에 있다.
     </p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.2</span></div>
+      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.3</span></div>
       <div><span class="k">작성 · 반영</span><span class="v">2026-09-21 · 같은 날 실행</span></div>
       <div><span class="k">근거</span><span class="v">infurs_db 전수 질의 · 소스 코드 실측</span></div>
       <div><span class="k">상위</span><span class="v">TX-ONT-TERMS r1.1 §7.1 F1</span></div>
-      <div><span class="k">상태</span><span class="v">F1-a·b·e 완료 · c·d·f 판단 대기</span></div>
+      <div><span class="k">상태</span><span class="v">F1-a·b·c1·e 완료 · c2·d·f 대기</span></div>
     </div>
   </header>
 
@@ -578,11 +578,23 @@
     <h3>정리 방안 — 위험이 다른 세 덩이로 나눈다</h3>
     <div class="opts">
       <div class="opt pick">
-        <h4>가 · 구형 29행을 비활성화 <span class="badge">먼저</span> <span class="cost">저위험 · 되돌리기 한 줄</span></h4>
+        <h4>가 · 구형 품목 비활성화 <span class="badge">완료 2026-09-21</span> <span class="cost">저위험 · 되돌리기 한 줄</span></h4>
         <p>
-          <code>status = 0</code> 으로 내린다. 쓰인 적이 없으니 <b>원장·작업지시·BOM 을 건드리지 않는다.</b>
-          화면 목록에서 사라지고 검색이 조용해진다. 되돌리기는 <code>status = 1</code>.
+          <code>status = 0</code> 으로 내렸다. 쓰인 적이 없어 <b>원장·작업지시·BOM 을 건드리지 않았다.</b>
+          되돌리기 문장은 <code>/root/backups/infurs/f1c1-rollback.sql</code> 에 그대로 있다.
         </p>
+        <p>
+          <b>29행이 아니라 27행을 내렸다.</b> <q>실험기구진열장</q> 두 행(<code>IFS-O01</code>·<code>IFS-O02</code>)은
+          <b>서로가 서로의 동명 품목</b>이라 둘 다 내리면 그 이름의 품목이 하나도 남지 않는다 —
+          세대 중복이 아니라 <b>이름만 같은 다른 물건</b>일 수 있어 건드리지 않았다.
+        </p>
+        <ul>
+          <li>동명 그룹 <b>31 → 4</b>(남은 것: 실험기구진열장 · 의자 · 이동형파일서랍 · 책상)</li>
+          <li>활성 품목 687 → <b>660</b></li>
+          <li>검증: E2E 140/140 · 화면·API 14/14 · 불변식 전 항목 통과 · 온톨로지 재적재 정상</li>
+          <li><b>비활성 품목에 붙은 제품 27개(도면 25장)는 그대로 살아 있다</b> — 도면 자료는 남기는 것이 맞다고 보고
+              제품 쪽은 내리지 않았다. 도면관리 화면에는 계속 보인다</li>
+        </ul>
       </div>
       <div class="opt">
         <h4>나 · 사용 중 2건 병합 <span class="cost">중위험 · 원장을 건드린다</span></h4>
@@ -605,7 +617,7 @@
       <table>
         <thead><tr><th class="mono">#</th><th>판단</th><th>상태</th></tr></thead>
         <tbody>
-          <tr><td class="mono">F1-c1</td><td>구형 29행 비활성화(가)</td><td><b>승인 필요</b> — 화면에서 품목이 사라진다</td></tr>
+          <tr><td class="mono">F1-c1</td><td>구형 품목 비활성화(가)</td><td><b class="ok">완료</b> — 27행(실험기구진열장 2행은 제외)</td></tr>
           <tr><td class="mono">F1-c2</td><td>사용 중 2건 병합(나) · 책상 단가 확정</td><td><b>승인 필요</b> — 원장을 옮긴다</td></tr>
           <tr><td class="mono">F1-e</td><td>식별번호 점검</td><td><b class="ok">완료</b> — 원인은 번호 체계, 점검 F1-5 상시화</td></tr>
           <tr><td class="mono">F1-d</td><td>t_product 폐지</td><td>보류 — 브리지로 급한 문제는 해소됐다</td></tr>
@@ -616,7 +628,7 @@
   </section>
 
   <footer>
-    <span>TX-F1-ITEM r1.2 · 2026-09-21 · infurs_db 전수 질의 · 후속 조사 반영</span>
+    <span>TX-F1-ITEM r1.3 · 2026-09-21 · infurs_db 전수 질의 · F1-c1 실행 반영</span>
     <span class="mono">t_item 687 · t_product 661 · 연결 661/661</span>
   </footer>
 </div>
