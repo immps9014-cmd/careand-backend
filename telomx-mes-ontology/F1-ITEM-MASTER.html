@@ -183,11 +183,11 @@
       결과와 검증은 §08 에 있다.
     </p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.3</span></div>
+      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.4</span></div>
       <div><span class="k">작성 · 반영</span><span class="v">2026-09-21 · 같은 날 실행</span></div>
       <div><span class="k">근거</span><span class="v">infurs_db 전수 질의 · 소스 코드 실측</span></div>
       <div><span class="k">상위</span><span class="v">TX-ONT-TERMS r1.1 §7.1 F1</span></div>
-      <div><span class="k">상태</span><span class="v">F1-a·b·c1·e 완료 · c2·d·f 대기</span></div>
+      <div><span class="k">상태</span><span class="v">F1-a·b·c1·c2·e 완료 · d·f 대기</span></div>
     </div>
   </header>
 
@@ -596,11 +596,47 @@
               제품 쪽은 내리지 않았다. 도면관리 화면에는 계속 보인다</li>
         </ul>
       </div>
-      <div class="opt">
-        <h4>나 · 사용 중 2건 병합 <span class="cost">중위험 · 원장을 건드린다</span></h4>
+      <div class="opt pick">
+        <h4>나 · 사용 중 2건 병합 <span class="badge">완료 2026-09-21</span> <span class="cost">원장 10행 재지정</span></h4>
         <p>
-          <code>ITM-0004 → IFS-NA01</code>, <code>ITM-0006 → IFS-NC02-1</code> 로 작업지시·원장·재고의
-          품목을 옮긴다. <b>책상은 단가가 달라 어느 값이 맞는지부터 정해야 한다</b>(285,000 / 214,000).
+          <b>병합 방향이 조사에서 바뀌었고, 걱정하던 단가 충돌은 착시였다.</b>
+          주문라인의 <b>규격 필드에 모델코드가 그대로 적혀 있었다</b> —
+          <code>"책상, IFS-NA08, 1600×1200×718mm"</code> · <code>"이동형파일서랍, IFS-NC02-1, 400×580×600mm"</code>.
+          작업지시 도면도 <code>책상 IFS-NA08.tif</code> 였다.
+        </p>
+        <p>
+          즉 <code>ITM-0004</code> 의 실체는 동명인 <code>IFS-NA01</code>(책상, 1200×750×720, 214,000)이 아니라
+          <b><code>IFS-NA08</code></b>(1600×1200×718)이다. 두 단가는 <b>서로 다른 물건의 값</b>이었다 —
+          <code>IFS-NA01</code> 은 그대로 두고 주문 단가 285,000 을 <code>IFS-NA08</code>(당시 0)에 실었다.
+        </p>
+        <ul>
+          <li>옮긴 행 <b>10행</b> — 작업지시 2 · 원장 4 · 재고 2 · 배송품목 2. <b>수량·건수는 그대로</b>(재지정만)</li>
+          <li><code>ITM-0004</code>·<code>ITM-0006</code> 은 지우지 않고 <code>status=0</code></li>
+          <li>동명 그룹 <b>4 → 2</b> · 활성 품목 660 → <b>658</b></li>
+          <li>검증: E2E 140/140 · 화면 14/14 · 불변식 통과 · 온톨로지 재적재 정상</li>
+        </ul>
+      </div>
+
+      <div class="opt">
+        <h4>나-2 · 남은 「의자」 그룹 <span class="cost">준비 완료 · 실행 대기</span></h4>
+        <p>
+          <code>ITM-0014</code>(의자, 작업지시1·원장2·배송1)의 주문 규격은 <code>"FS-NY06 480×555mm"</code> 인데
+          <b><code>IFS-NY06</code> 은 칠판보조장6</b>(7005x18x400)이다 — <b>주문서의 코드가 오기</b>다.
+          480×555 는 <code>IFS-NV06</code> 작업용의자(480x555x825)의 규격이고 단가도 94,500 으로 같다.
+          제품 25184200(<q>작업용의자6</q>)도 같은 품목을 가리킨다.
+        </p>
+        <p>
+          <code>ITM-0014 → IFS-NV06</code>(5행) · <code>ITM-0015</code>(빈 행)는 비활성화.
+          실행 스크립트 <code>/root/backups/infurs/f1c2b-run.sh</code> 에 준비해 뒀다.
+        </p>
+      </div>
+
+      <div class="opt">
+        <h4>나-3 · 실험기구진열장은 병합하지 않는다 <span class="cost">이름만 같다</span></h4>
+        <p>
+          <code>IFS-O01</code>(950×510×1910)과 <code>IFS-O02</code>(930×290×1860)는 <b>규격이 다른 별개 물건</b>이다.
+          합칠 대상이 아니라 <b>이름을 구분해 주는 것</b>이 맞다(실험기구진열장1 / 2).
+          F1-c1 에서 이 둘을 건드리지 않은 판단이 여기서 확인됐다.
         </p>
       </div>
       <div class="opt">
@@ -618,7 +654,8 @@
         <thead><tr><th class="mono">#</th><th>판단</th><th>상태</th></tr></thead>
         <tbody>
           <tr><td class="mono">F1-c1</td><td>구형 품목 비활성화(가)</td><td><b class="ok">완료</b> — 27행(실험기구진열장 2행은 제외)</td></tr>
-          <tr><td class="mono">F1-c2</td><td>사용 중 2건 병합(나) · 책상 단가 확정</td><td><b>승인 필요</b> — 원장을 옮긴다</td></tr>
+          <tr><td class="mono">F1-c2</td><td>사용 중 2건 병합(나)</td><td><b class="ok">완료</b> — 단가 충돌은 착시였다(다른 물건)</td></tr>
+          <tr><td class="mono">F1-c2b</td><td>「의자」 그룹 정리 · 실험기구진열장 이름 구분</td><td>스크립트 준비 완료 — 실행만 남음</td></tr>
           <tr><td class="mono">F1-e</td><td>식별번호 점검</td><td><b class="ok">완료</b> — 원인은 번호 체계, 점검 F1-5 상시화</td></tr>
           <tr><td class="mono">F1-d</td><td>t_product 폐지</td><td>보류 — 브리지로 급한 문제는 해소됐다</td></tr>
           <tr><td class="mono">F1-f</td><td>주문 등록이 품목을 만들지 않게(다)</td><td><b>신규</b> — 재발 방지, 별건 작업</td></tr>
@@ -628,7 +665,7 @@
   </section>
 
   <footer>
-    <span>TX-F1-ITEM r1.3 · 2026-09-21 · infurs_db 전수 질의 · F1-c1 실행 반영</span>
+    <span>TX-F1-ITEM r1.4 · 2026-09-21 · infurs_db 전수 질의 · F1-c1·c2 실행 반영</span>
     <span class="mono">t_item 687 · t_product 661 · 연결 661/661</span>
   </footer>
 </div>
