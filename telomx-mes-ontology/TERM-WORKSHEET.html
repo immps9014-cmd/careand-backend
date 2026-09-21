@@ -1,0 +1,832 @@
+<title>용어 대조표 확정 워크시트</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* 팔레트·서체는 TX-ONT-TERMS r1.0 원본 문서와 같은 것을 쓴다 — 같은 문서 식구로 읽혀야 한다. */
+  :root {
+    --ground: #F2F4F1;  --surface: #FFFFFF;  --surface-2: #E9ECE7;
+    --ink: #15191A;     --ink-2: #39423F;    --muted: #64706C;
+    --line: #D4D9D2;    --line-2: #BFC6BD;
+    --accent: #1C5871;  --accent-soft: #DCE8EC;
+    --signal: #9C5A06;  --signal-soft: #F4E7D3;
+    --good: #2A6349;    --good-soft: #DCEAE2;
+    --on-accent: #FFFFFF;
+    --shadow: 0 1px 2px rgba(21, 25, 26, .05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1213;  --surface: #171C1D;  --surface-2: #1E2425;
+      --ink: #E7EAE6;     --ink-2: #C3CAC6;    --muted: #8D9894;
+      --line: #2B3233;    --line-2: #3B4344;
+      --accent: #7CB6CE;  --accent-soft: #17313B;
+      --signal: #DDA35A;  --signal-soft: #33260F;
+      --good: #6FB392;    --good-soft: #153024;
+      --on-accent: #0E1213;
+      --shadow: none;     color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1213;  --surface: #171C1D;  --surface-2: #1E2425;
+    --ink: #E7EAE6;     --ink-2: #C3CAC6;    --muted: #8D9894;
+    --line: #2B3233;    --line-2: #3B4344;
+    --accent: #7CB6CE;  --accent-soft: #17313B;
+    --signal: #DDA35A;  --signal-soft: #33260F;
+    --good: #6FB392;    --good-soft: #153024;
+    --on-accent: #0E1213;
+    --shadow: none;     color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink); margin: 0;
+    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    font-size: 14px; line-height: 1.62; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px 80px; }
+  [hidden] { display: none !important; }   /* .chips 의 display:flex 가 hidden 을 이기지 못하게 */
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .86em;
+    background: var(--surface-2); padding: 1px 5px; border-radius: 3px; color: var(--ink-2);
+  }
+
+  /* ── 머리말 ── */
+  header.doc { padding-block: 30px 18px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 9px;
+  }
+  h1 {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: clamp(23px, 4.4vw, 31px); line-height: 1.3; margin: 0 0 10px; text-wrap: balance;
+  }
+  header.doc p.lede { margin: 0; color: var(--ink-2); max-width: 64ch; font-size: 14.5px; }
+  header.doc p.lede b { color: var(--ink); }
+
+  /* ── 기록자·진행률 바 ── */
+  .bar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: color-mix(in srgb, var(--ground) 93%, transparent);
+    backdrop-filter: blur(7px);
+    border-bottom: 1px solid var(--line); margin-bottom: 26px;
+  }
+  .bar-in {
+    max-width: 1120px; margin: 0 auto; padding: 10px 16px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  }
+  .who { display: flex; align-items: center; gap: 7px; }
+  .who label { font-size: 11.5px; color: var(--muted); letter-spacing: .04em; }
+  .who input {
+    font: inherit; font-size: 13px; padding: 4px 8px; width: 108px;
+    border: 1px solid var(--line-2); border-radius: 3px;
+    background: var(--surface); color: var(--ink);
+  }
+  .who input[type="date"] { width: 142px; }
+  .prog { display: flex; align-items: center; gap: 9px; margin-left: auto; }
+  .prog .track { width: 132px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+  .prog .fill { height: 100%; width: 0%; background: var(--accent); transition: width .28s ease; }
+  .prog .n { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .save { font-size: 11.5px; color: var(--muted); min-width: 74px; text-align: right; }
+  .save[data-state="saving"] { color: var(--signal); }
+  .save[data-state="saved"] { color: var(--good); }
+  .save[data-state="off"] { color: var(--signal); }
+
+  /* ── 구역 ── */
+  section { margin-top: 38px; }
+  .sechead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .secnum {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .14em;
+    color: var(--accent); text-transform: uppercase;
+  }
+  h2 {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: 19px; margin: 0; letter-spacing: -.01em;
+  }
+  .seccount {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .sechow { color: var(--ink-2); font-size: 13.5px; margin: 6px 0 16px; max-width: 72ch; }
+
+  /* ── 항목 행 ── */
+  .rows { display: grid; gap: 10px; }
+  .row {
+    display: grid; grid-template-columns: minmax(0, 1fr) 246px; gap: 4px 20px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+    padding: 13px 15px; box-shadow: var(--shadow);
+    border-left: 3px solid var(--line-2);
+  }
+  .row[data-v="same"], .row[data-v="yes"], .row[data-v="agree"] { border-left-color: var(--good); }
+  .row[data-v="diff"], .row[data-v="no"] { border-left-color: var(--signal); }
+  .row[data-v="hold"] { border-left-color: var(--accent); }
+  .term { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .term b { font-size: 15px; font-weight: 600; }
+  .def { margin: 3px 0 9px; color: var(--ink-2); font-size: 13.5px; }
+  .def b { color: var(--ink); font-weight: 600; }
+  .sites { display: grid; gap: 3px; margin: 0; }
+  .sites div { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 10px; font-size: 12.5px; }
+  .sites dt {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted);
+    letter-spacing: .04em; padding-top: 1px;
+  }
+  .sites dd { margin: 0; color: var(--ink-2); }
+  .sites dd em { font-style: normal; color: var(--muted); }
+
+  /* ── 판정 컨트롤 ── */
+  .ctl { display: grid; gap: 8px; align-content: start; }
+  .seg { display: flex; gap: 0; border: 1px solid var(--line-2); border-radius: 3px; overflow: hidden; }
+  .seg button {
+    flex: 1; font: inherit; font-size: 12.5px; padding: 6px 4px; cursor: pointer;
+    background: var(--surface); color: var(--ink-2); border: 0;
+    border-right: 1px solid var(--line); transition: background .12s, color .12s;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: var(--surface-2); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .seg button[aria-pressed="true"][data-v="same"],
+  .seg button[aria-pressed="true"][data-v="yes"],
+  .seg button[aria-pressed="true"][data-v="agree"] { background: var(--good); }
+  .seg button[aria-pressed="true"][data-v="diff"],
+  .seg button[aria-pressed="true"][data-v="no"] { background: var(--signal); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chips button {
+    font: inherit; font-size: 11.5px; padding: 3px 9px; cursor: pointer;
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--line-2); border-radius: 11px;
+  }
+  .chips button[aria-pressed="true"] {
+    background: var(--signal-soft); color: var(--signal); border-color: var(--signal); font-weight: 600;
+  }
+  .chips .lbl { font-size: 11px; color: var(--muted); align-self: center; margin-right: 2px; }
+  textarea {
+    font: inherit; font-size: 12.5px; width: 100%; box-sizing: border-box;
+    min-height: 48px; resize: vertical; padding: 6px 8px;
+    border: 1px solid var(--line-2); border-radius: 3px;
+    background: var(--surface); color: var(--ink);
+  }
+  textarea::placeholder { color: var(--muted); }
+
+  /* ── 쟁점 카드 ── */
+  .issue {
+    display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 0 16px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+    padding: 15px 17px; box-shadow: var(--shadow); border-left: 3px solid var(--line-2);
+  }
+  .issue[data-decided="1"] { border-left-color: var(--good); }
+  .tid {
+    font-family: "IBM Plex Mono", monospace; font-size: 16px; font-weight: 500; color: var(--accent);
+    border-right: 1px solid var(--line); padding-right: 12px;
+  }
+  .issue h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .why { font-size: 13px; color: var(--ink-2); margin: 0 0 11px; }
+  .why b { color: var(--ink); font-weight: 600; }
+  .opts { display: grid; gap: 5px; margin-bottom: 10px; }
+  .opt {
+    display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: start;
+    font-size: 13px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 3px;
+    background: var(--surface); cursor: pointer; text-align: left;
+  }
+  .opt:hover { background: var(--surface-2); }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt .k { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--accent); font-weight: 500; }
+  .opt .t { color: var(--ink-2); }
+  .opt[aria-pressed="true"] .t { color: var(--ink); }
+  .opt .base-tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .08em;
+    color: var(--good); border: 1px solid var(--good); border-radius: 2px;
+    padding: 0 4px; margin-left: 6px; white-space: nowrap;
+  }
+  .base {
+    font-size: 12.5px; color: var(--ink-2); border-left: 2px solid var(--good);
+    padding: 2px 0 2px 10px; margin-bottom: 11px;
+  }
+  .base b { color: var(--good); }
+
+  /* ── 추가 항목 ── */
+  .addbox {
+    background: var(--surface); border: 1px dashed var(--line-2); border-radius: 4px; padding: 14px 15px;
+    display: grid; gap: 8px;
+  }
+  .addrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .addrow input {
+    font: inherit; font-size: 13px; padding: 6px 9px; flex: 1 1 190px; min-width: 0;
+    border: 1px solid var(--line-2); border-radius: 3px; background: var(--surface); color: var(--ink);
+  }
+  .btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 7px 15px; cursor: pointer;
+    background: var(--accent); color: var(--on-accent); border: 0; border-radius: 3px;
+  }
+  .btn.ghost { background: var(--surface); color: var(--ink-2); border: 1px solid var(--line-2); font-weight: 400; }
+  .extras { display: grid; gap: 8px; margin-bottom: 12px; }
+  .extra-item {
+    display: flex; gap: 10px; align-items: flex-start; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    border-radius: 4px; padding: 10px 13px; font-size: 13.5px;
+  }
+  .extra-item .meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .extra-item button {
+    font: inherit; font-size: 11.5px; color: var(--muted); background: none;
+    border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; cursor: pointer;
+  }
+
+  /* ── 집계 ── */
+  .tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px; background: var(--line);
+           border: 1px solid var(--line); border-radius: 4px; overflow: hidden; margin-top: 14px; }
+  .tally div { background: var(--surface); padding: 11px 13px; }
+  .tally .l { font-size: 11.5px; color: var(--muted); }
+  .tally .v { font-family: "IBM Plex Mono", monospace; font-size: 21px; font-variant-numeric: tabular-nums; }
+  .note {
+    background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 3px 3px 0;
+    padding: 11px 14px; font-size: 13px; color: var(--ink-2); margin-top: 22px;
+  }
+  .note b { color: var(--ink); }
+  footer {
+    margin-top: 54px; border-top: 2px solid var(--ink); padding-top: 14px;
+    font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 22px; justify-content: space-between;
+  }
+  @media (max-width: 760px) {
+    .row { grid-template-columns: minmax(0, 1fr); }
+    .ctl { margin-top: 10px; }
+    .sites div { grid-template-columns: 70px minmax(0, 1fr); }
+    .issue { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .tid { border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 7px; }
+    .prog { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="who">
+      <label for="decidedBy">결정자</label>
+      <input id="decidedBy" type="text" placeholder="이름" autocomplete="off">
+      <label for="decidedOn">날짜</label>
+      <input id="decidedOn" type="date">
+    </div>
+    <div class="prog">
+      <span class="n" id="progN">0 / 46</span>
+      <div class="track"><div class="fill" id="progFill"></div></div>
+      <span class="save" id="saveState" data-state="idle">불러오는 중</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="doc">
+    <div class="eyebrow">TX-ONT-TERMS r1.0 · 확정 워크시트</div>
+    <h1>용어 대조표를 확정한다</h1>
+    <p class="lede">
+      원본 대조표의 <b>객체 16 · 관계 16 · 쟁점 10 · 판정 기준 4</b>를 그대로 항목으로 폈다.
+      각 줄에 표시하고 필요하면 한 줄 적으면 된다. 표시는 <b>바로 저장</b>되고, 이 기록이
+      대조표 r1.1의 <b>§6 결정 기록란</b>과 온톨로지 <code>rdfs:label</code>의 입력이 된다.
+      빠진 말이 있으면 맨 아래에서 항목을 <b>추가</b>할 수 있다.
+    </p>
+  </header>
+
+  <section id="sec-obj">
+    <div class="sechead">
+      <span class="secnum">§ 02</span><h2>객체 16개 — 무엇을 무엇이라 부르는가</h2>
+      <span class="seccount" data-count="obj">0 / 16</span>
+    </div>
+    <p class="sechow">
+      각 사이트 칸은 2026-09-20 기준 <b>실제 메뉴·화면 라벨</b>이다. 현장에서 쓰는 말과 다르면 <b>다름</b>을
+      고르고 어느 사이트가 다른지 찍은 뒤, 실제로 부르는 말을 적어 달라. <b>없음</b>은 그 개념이 그 사이트에 없다는 뜻이다.
+    </p>
+    <div class="rows" id="rows-obj"></div>
+  </section>
+
+  <section id="sec-rel">
+    <div class="sechead">
+      <span class="secnum">§ 03</span><h2>관계 — 문장으로 읽어서 맞는지</h2>
+      <span class="seccount" data-count="rel">0 / 16</span>
+    </div>
+    <p class="sechow">관계는 이름을 볼 필요가 없다. <b>문장이 현장에서 참인지만</b> 봐 달라.</p>
+    <div class="rows" id="rows-rel"></div>
+  </section>
+
+  <section id="sec-issue">
+    <div class="sechead">
+      <span class="secnum">§ 04</span><h2>쟁점 T1~T10 — 고르면 결정이다</h2>
+      <span class="seccount" data-count="issue">0 / 10</span>
+    </div>
+    <p class="sechow">
+      <b>기본안</b>은 지금 온톨로지가 실제로 쓰고 있는 규칙이다 — 기본안대로 가면 추가 작업이 없고,
+      다른 것을 고르면 그 항목이 Phase 4 작업으로 올라간다.
+    </p>
+    <div class="rows" id="rows-issue"></div>
+  </section>
+
+  <section id="sec-judge">
+    <div class="sechead">
+      <span class="secnum">§ 05</span><h2>판단에 쓰는 말 — 사고가 잦은 구간</h2>
+      <span class="seccount" data-count="judge">0 / 4</span>
+    </div>
+    <p class="sechow">질의가 답을 내는 기준이다. 여기가 갈리면 화면마다 다른 수가 나온다.</p>
+    <div class="rows" id="rows-judge"></div>
+  </section>
+
+  <section id="sec-extra">
+    <div class="sechead">
+      <span class="secnum">§ 06</span><h2>추가 항목</h2>
+      <span class="seccount" data-count="extra">0건</span>
+    </div>
+    <p class="sechow">
+      표에 없는데 현장에서 쓰는 말, 또는 여기서 새로 생긴 쟁점을 적는다.
+      <b>없는 개념을 만들어 달라</b>는 요청이면 용어가 아니라 기능 요청이니 그렇게 적어 달라.
+    </p>
+    <div class="extras" id="rows-extra"></div>
+    <div class="addbox">
+      <div class="addrow">
+        <input id="addTerm" type="text" placeholder="용어 또는 쟁점 (예: 재공품)" autocomplete="off">
+        <input id="addNote" type="text" placeholder="무엇을 가리키는지 · 왜 문제인지" autocomplete="off">
+      </div>
+      <div class="addrow">
+        <div class="chips" id="addSites">
+          <span class="lbl">해당 사이트</span>
+          <button type="button" data-site="infurs">infurs</button>
+          <button type="button" data-site="hisense">hisense</button>
+          <button type="button" data-site="naturefood">naturefood</button>
+        </div>
+        <button class="btn" id="addBtn" type="button" style="margin-left:auto">항목 추가</button>
+      </div>
+    </div>
+
+    <div class="tally">
+      <div><div class="l">같다 · 맞다 · 합의</div><div class="v" id="tSame">0</div></div>
+      <div><div class="l">다름 · 아니다</div><div class="v" id="tDiff">0</div></div>
+      <div><div class="l">보류</div><div class="v" id="tHold">0</div></div>
+      <div><div class="l">쟁점 결정</div><div class="v" id="tIssue">0</div></div>
+      <div><div class="l">추가 항목</div><div class="v" id="tExtra">0</div></div>
+    </div>
+
+    <div class="note" id="noteBox">
+      표시한 내용은 이 페이지에 <b>저장</b>된다. 다 찍은 뒤 알려주면 Claude가 읽어
+      <b>대조표 r1.1</b>(§6 결정 기록란 반영)로 개정하고, PMS 문서
+      <code>OPS-2026-01-SPEC-002</code>에 v2로 올린 뒤 상태를 <b>확정</b>으로 바꾼다.
+      <b>다름</b>으로 찍힌 줄은 화면 라벨 정리 과제로, 기본안과 다르게 고른 쟁점은 Phase 4 작업으로 따로 모인다.
+    </div>
+  </section>
+
+  <footer>
+    <span>TX-ONT-TERMS r1.0 워크시트 · 짝 문서 TX-ONT-DESIGN r1.1 §3·§4</span>
+    <span class="mono">3사 286,057 트리플 · 2026-09-20 기준</span>
+  </footer>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   원본 대조표(TX-ONT-TERMS r1.0)의 내용. 문구는 문서에서 그대로 옮겼다.
+   ───────────────────────────────────────────────────────────── */
+const OBJECTS = [
+  ['partner','거래처','tx:Partner','물건을 주문하거나 공급하는 <b>조직 1곳</b>',
+   '기준정보 &gt; 거래처관리 — 발주기관/수요기관 구분','수주 화면 안의 기관명 — 발주기관=조달청 / 수요기관','기준정보 &gt; 거래처등록 — 거래처·대리점 / 판매·구매'],
+  ['order','수주','tx:Order','고객 주문 <b>1건</b>(문서 1장)',
+   '수주관리 — 납품요구번호','총무 &gt; 수주 — 납품요구','영업관리 &gt; 판매수주서 + 자체생산요청'],
+  ['orderline','수주 라인','tx:OrderLine','수주의 <b>품목별 한 줄</b> — 잔량·납기를 세는 단위',
+   '수주 상세의 품목 행','수주 상세의 품목 행','판매수주서의 품목 행'],
+  ['item','품목','tx:Item','제품·반제품·원자재·부자재를 <b>한 종류로</b> 본 것',
+   '기준정보 &gt; 품목관리 화면은 제품 마스터다 — 수주·재고가 쓰는 마스터는 따로 있다 → T1','기준정보 &gt; 품목관리','기준정보 &gt; 품목등록 — 제품·반제품·부품'],
+  ['bomline','BOM 구성','tx:BomLine','1개를 만들 때 <b>필요한 하위 품목과 소요량</b> 한 줄',
+   '기준정보 &gt; BOM관리 — 품목에 달림','기준정보 BOM — 품목에 달림','기준정보 &gt; 공정BOM — 작업에 달림 → T8'],
+  ['workorder','작업지시','tx:WorkOrder','<b>무엇을 몇 개 만들라</b>는 지시 1건',
+   '생산관리 &gt; 생산일정·생산실적 — 메뉴엔 없고 화면 안에서 “작업지시”','총무 &gt; 작업지시','생산관리 &gt; 생산입고·현장생산등록 — 공정별 작업 → T2'],
+  ['processrun','공정 실적','tx:ProcessRun','공정별 <b>진척·양품·불량</b> 기록',
+   '생산관리 &gt; 생산실적 · 작업현장','생산 &gt; 생산입고 — 공정 진척 기록','생산관리 &gt; 작업일보 · 현장생산등록'],
+  ['lot','로트','tx:Lot','같이 만들어져 <b>같이 추적되는 묶음</b>',
+   '<em>없음</em> — 로트 테이블 0행','로트 — 화면에서 가장 많이 쓰는 말','QR코드 · 바코드 — 작업지시와 연결 없음 → T7'],
+  ['package','포장 묶음','tx:Package','QR 라벨 한 장이 붙는 <b>포장 단위</b>',
+   '<em>없음</em>','포장·출하 &gt; 완성품 포장','<em>없음</em>'],
+  ['shipment','출하','tx:Shipment','고객에게 <b>한 번에 나간 건</b>(문서 1장)',
+   '배송관리 + 재고관리 &gt; 판매출고','포장·출하 &gt; 출하실적 · 배송','재고관리 &gt; 판매출하 — 출하지시서'],
+  ['shipmentline','출하 라인','tx:ShipmentLine','출하 1건의 <b>품목별 수량</b> 한 줄',
+   '배송 품목 행','배송지시 품목 · 포장 내역서 행','출하 실적 행 — 실제 출고수량'],
+  ['stock','재고 위치','tx:StockPosition','<b>창고 × 품목</b>의 현재 수량',
+   '재고관리 &gt; 창고재고','재고 &gt; 창고재고','재고관리 &gt; 창고재고'],
+  ['warehouse','창고','tx:Warehouse','물건을 <b>두는 곳</b>',
+   '완제품 창고 · 자재 창고 · 출하 대기장','제품창고 · 자재창고','제품창고 · 원료창고'],
+  ['equipment','설비','tx:Equipment','일하는 <b>기계 1대</b>',
+   '기준정보 &gt; 설비관리 — 등록 0대','기준정보 &gt; 설비관리 — 등록 0대','기준정보 &gt; 설비등록 — 11대'],
+  ['sensor','센서 채널','tx:SensorChannel','설비에서 <b>무엇을 재는지</b>와 가동 판정 기준값',
+   '<em>없음</em>','<em>없음</em>','공정데이터 · 생산모니터링 — 6채널'],
+  ['document','도면·제품사진','tx:Document','품목에 붙는 <b>그림·도면 파일</b>',
+   '기준정보 &gt; 도면관리 · 제품사진관리 — 927건','품목 첨부파일 — 등록 0건','품목에 붙는 파일 없음'],
+];
+
+const RELATIONS = [
+  ['places','places','<b>발주기관</b>이 이 <b>수주</b>를 냈다 — 조달 건은 조달청'],
+  ['customer','customer','이 <b>수주</b>의 물건을 <b>수요기관</b>이 받는다 — 납기 늦으면 연락할 곳'],
+  ['hasline','hasLine','이 <b>수주</b>는 이 <b>품목 줄</b>들로 되어 있다 / 이 <b>출하</b>는 이 <b>품목 줄</b>들을 담았다'],
+  ['ofitem','ofItem','이 줄은 이 <b>품목</b>에 대한 것이다'],
+  ['hasbom','hasBom / consumes','이 <b>품목</b>을 만들려면 이 <b>자재</b>가 필요하다 — 거꾸로 타면 “이 자재가 없으면 못 만드는 제품”'],
+  ['fulfills','fulfills','이 <b>작업지시</b>는 이 <b>수주 줄</b>을 만들기 위한 것이다'],
+  ['steps','steps','이 <b>작업지시</b>는 이 <b>공정들</b>을 거쳤다'],
+  ['producedby','producedBy','이 <b>로트</b>는 이 <b>작업지시</b>로 만들어졌다'],
+  ['packedinto','packedInto / shipsPackage','이 <b>로트</b>는 이 <b>포장</b>에 담겼고, 그 포장이 이 <b>출하</b>로 나갔다'],
+  ['shipslot','shipsLot','이 <b>출하</b>로 실제 나간 <b>로트</b>는 이것이다 — 출고 기록에서 거꾸로 찾은 것'],
+  ['settles','settles','이 <b>출하</b>가 이 <b>수주 줄</b>의 납기를 이행했다 — “다 납품됐나”를 답하는 변'],
+  ['fororder','forOrder / shipsTo','이 <b>출하</b>는 이 <b>수주</b>의 것이고, 이 <b>기관</b>이 받는다'],
+  ['storedat','storedAt','이 재고는 이 <b>창고</b>에 있다'],
+  ['ranon','ranOn / measures','이 공정은 이 <b>설비</b>에서 돌았고, 그 설비는 이 <b>채널</b>로 측정한다'],
+  ['depicts','depicts','이 <b>도면·사진</b>은 이 <b>품목</b>을 나타낸다'],
+  ['sameas','sameAs','세 공장이 쓰는 이 자재는 <b>같은 물건</b>이다 — 아직 연결 안 함(Phase 4)'],
+];
+
+const ISSUES = [
+  ['t1','T1','<b>품목</b>이 가리키는 것',
+   'infurs는 품목 마스터가 <b>둘</b>이다. 수주·재고·BOM이 참조하는 것(687건)과 도면·사진이 참조하는 것(661건)인데, 메뉴의 <b>품목관리</b>는 뒤쪽을 연다. 둘은 연결 키가 없어 메모의 <code>모델명:</code> 문자열로만 이어진다(온톨로지에서는 한 객체로 합쳐 661/661 연결됨).',
+   [['가','수주·재고가 쓰는 쪽을 <b>품목</b>, 도면·사진 쪽을 <b>제품(도면용)</b>으로 부른다'],
+    ['나','반대로 부른다 — 현장이 이미 <b>제품</b>을 품목이라 부르고 있다면'],
+    ['다','한쪽을 폐지한다(DB 통합 — 별건 작업, 영향 범위 큼)']],
+   '가','온톨로지는 이미 둘을 한 객체로 합쳤으니 말만 정하면 된다. 화면 라벨 수정은 별건으로 잡는다.'],
+  ['t2','T2','<b>작업지시 1건</b>의 단위',
+   '세 사이트가 다르다. hisense는 <b>수주 단위로 번호를 발급</b>하고 품목별로 행이 나뉘며, infurs도 같은 번호가 라인마다 반복된다(<code>WO-260727-004</code>가 2행). naturefood는 <b>공정마다</b> 작업이 따로 생긴다. “작업지시 몇 건이냐”의 답이 사이트마다 다른 수가 된다.',
+   [['가','<b>수주 라인 단위</b> 1건 = 작업지시 1건, 공정별 기록은 <b>공정 실적</b>'],
+    ['나','수주 단위 1건 = 작업지시 1건, 품목별은 <b>지시 품목</b>'],
+    ['다','사이트마다 다르게 두고 세는 질의를 따로 만든다']],
+   '가','지금 그래프가 그렇게 세고 있다(3사 57건). <b>지시번호</b>는 사이트가 발급한 그대로 속성으로 싣는다.'],
+  ['t3','T3','출하 · 출고 · 배송 · 납품 — 네 낱말의 경계',
+   'infurs는 <b>판매출고</b>와 <b>배송관리</b>가 따로 있고, hisense는 <b>출하실적</b>과 <b>배송</b>이, naturefood는 <b>판매출하</b>가 있다. 같은 일을 셋이 다르게 부르는데, <b>수량이 어긋나는 지점이 정확히 여기</b>다.',
+   [['가','<b>출고</b>=창고에서 빠진 것(재고 기록) · <b>출하</b>=고객에게 보낸 건(문서) · <b>배송</b>=실어 옮기는 일 · <b>납품완료</b>=받는 쪽이 확인한 것'],
+    ['나','출하·출고를 한 낱말로 합친다']],
+   '가','네 낱말이 실제로 서로 다른 사건이고, 온톨로지도 그렇게 나눠 싣는다(출하 객체 + 경로 + 실제 출고수량).'],
+  ['t4','T4','<b>거래처</b>에 기관까지 넣을지',
+   'infurs·hisense는 조달 납품이라 <b>발주기관(조달청)</b>과 <b>수요기관(실제 받는 곳)</b>이 다르고, naturefood는 사고파는 <b>거래처</b>다. 한편 naturefood 거래처 구분값은 8,494건 중 8,490건이 같은 값으로 <b>사실상 구분 없이</b> 들어가 있다.',
+   [['가','<b>한 낱말 거래처</b> + 역할(발주기관·수요기관·고객사·공급업체)'],
+    ['나','기관과 거래처를 아예 다른 것으로 부른다']],
+   '가','지금 그래프가 그렇다(3사 18,205곳, 역할 속성으로 구분). naturefood 구분값 정리는 데이터 작업으로 따로 잡는다.'],
+  ['t5','T5','수주 · 납품요구 · 판매수주서 · 자체생산',
+   '조달 건은 <b>납품요구</b>가 정확한 말이고(번호 체계도 그쪽), naturefood는 <b>판매수주서</b>에 <b>자체생산요청</b>까지 같은 테이블에 들어 있다 — 자체생산은 거래처가 없는 게 정상이다.',
+   [['가','통칭은 <b>수주</b>, 조달 건의 납품요구번호는 <b>수주번호</b>로 싣고, 자체생산은 <b>유형</b>으로 구분'],
+    ['나','조달 건만 <b>납품요구</b>로 따로 부른다']],
+   '가','지금 그래프가 그렇다(수주 38건 중 자체생산 유형 포함).'],
+  ['t6','T6','수량을 부르는 이름 셋',
+   '이번 개정에서 <b>판정 기준이 실제로 바뀐</b> 대목이다. hisense 품목 85는 <b>문서 21 / 실제 출고 20</b>이었다 — 출하 경로가 겹치면 문서 합계가 주문수량을 넘는다. 그래서 잔량은 문서가 아니라 <b>재고 기록</b>으로 센다. 취소분을 빼지 않으면 <b>초과출고</b>라는 틀린 결론도 난다.',
+   [['가','<b>주문수량</b>(수주 줄) · <b>지시수량</b>(배송지시·포장 문서) · <b>실출고수량</b>(재고 기록), 잔량 = 주문수량 − 실출고수량'],
+    ['나','지시수량을 <b>출하수량</b>으로 부른다(현재 화면 다수가 이렇게 쓴다)']],
+   '가','낱말이 셋이어야 사고가 안 난다. 나)를 택하면 화면끼리 같은 말로 다른 수를 보여주는 상태가 유지된다.'],
+  ['t7','T7','<b>로트</b>를 세 곳에서 같은 뜻으로 쓰는가',
+   'hisense는 로트로 추적(180건)하고, naturefood는 <b>QR·바코드</b>가 있지만 작업지시와 연결이 없고, infurs는 로트 자체를 쓰지 않는다(0건). 식품은 유통기한이 붙어 사실상 로트 개념이 필요하다.',
+   [['가','naturefood 바코드를 <b>로트로 승격</b>한다(작업지시 연결 추가 — 개발 필요)'],
+    ['나','지금처럼 hisense만 로트를 쓰고, naturefood는 <b>바코드</b>로 둔다']],
+   '나','오늘은 말만 맞춘다. 가)는 Phase 4 개발 항목이라 별도 판단이 필요하다.'],
+  ['t8','T8','공정 이름을 표준화할지',
+   '세 공장의 공정이 실제로 다르다 — infurs <b>재단·엣지·가공·조립</b>, hisense <b>조립/포장</b>, naturefood <b>교반·추출농축·가열·세병·충진·포장·발효</b>. 게다가 naturefood는 BOM이 <b>공정</b>에 달려 있어 <b>공정BOM</b>이라 부른다.',
+   [['가','표준화하지 않는다 — 공정 이름은 사이트 것을 그대로 싣고, 온톨로지는 <b>공정</b>을 객체로 만들지 않는다'],
+    ['나','상위 공정군(가공·조립·포장·검사)을 만들어 사이트 공정을 그 아래로 분류한다']],
+   '가','지금 그렇게 싣고 있다. 나)는 KPI를 사이트 간에 비교하려 할 때 필요해지는데, 비교가 실제로 필요한지부터 확인이 필요하다.'],
+  ['t9','T9','재고 기준값 낱말 — 안전재고 · 발주점 · 적정재고 · 재공재고',
+   '네 낱말이 사이트마다 섞여 쓰인다(infurs 안전재고·발주점 컬럼, naturefood <b>적정재고관리</b>·<b>재공재고관리</b> 메뉴). 이 값들은 <b>경고를 띄우는 기준</b>이라 뜻이 갈리면 경고가 갈린다.',
+   [['가','<b>안전재고</b>=이 아래로 내려가면 위험 · <b>발주점</b>=여기서 주문을 건다 · <b>재공</b>=만들고 있는 중간 물량. <b>적정재고</b>는 쓰지 않는다'],
+    ['나','사이트별 현행 낱말을 유지한다']],
+   '가','다만 <b>값을 어디가 소유할지</b>(DB냐 온톨로지냐)는 설계서 미결 D5로 남아 있다 — 오늘은 낱말만 정한다.'],
+  ['t10','T10','품목 구분 값 체계',
+   'infurs·hisense는 <b>제품·반제품·원자재·부자재</b> 넷이고, naturefood는 <b>제품·반제품·부품·원자재·세트·상품·기타</b> 일곱(영문 코드)이다. 온톨로지는 사람이 읽는 뜻과 원본 코드를 <b>둘 다</b> 싣고 있다.',
+   [['가','공통 구분은 <b>제품·반제품·원자재·부자재</b> 넷으로 보고, 나머지는 사이트 고유 값으로 둔다'],
+    ['나','일곱으로 통일한다(세 사이트 화면·코드 수정 필요)']],
+   '가','사이트 고유 값을 없애지 않고도 공통 질의가 돌아간다.'],
+];
+
+const JUDGES = [
+  ['j1','이 수주는 다 납품됐나','주문수량 = <b>실출고수량 합계</b>면 완료. 문서 수량으로 세지 않는다',
+   '3경로가 겹치면 문서 합계가 주문수량을 넘는다(문서 21 / 원장 20). 취소분 제외 필수'],
+  ['j2','이 자재가 없으면 위험한 수주','BOM을 <b>몇 단이든</b> 거꾸로 타서 걸리는 수주 줄 전부. 납기 이른 순',
+   'hisense에서 화면으로 동작(~10ms). infurs는 BOM 등록이 9품목뿐이라 답이 비어 있다'],
+  ['j3','납기가 위험하다','기준을 오늘 정한다 — 남은 일수, 남은 수량, 진행 공정 중 <b>무엇으로</b> 판정할지',
+   '현재 사이트별로 다르게 계산한다(설계서 §5 사이트별 산재)'],
+  ['j4','설비가 돌고 있다','측정값이 <b>기준값을 넘는 구간</b>만 가동. 온도는 멈춰도 계속 측정되므로 0 초과로는 판정 불가',
+   'naturefood 교반·가열 85℃ 기준. 이 값의 원본은 화면 코드에 있다(설계서 미결 D5)'],
+];
+
+const SITES = ['infurs', 'hisense', 'naturefood'];
+const TOTAL = OBJECTS.length + RELATIONS.length + ISSUES.length + JUDGES.length;
+
+/* ── 화면 짓기 ───────────────────────────────────────────── */
+const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+const esc = (s) => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+
+function segHtml(opts) {
+  return '<div class="seg" role="group" aria-label="판정">' +
+    opts.map(([v, label]) => `<button type="button" data-v="${v}" aria-pressed="false">${label}</button>`).join('') +
+    '</div>';
+}
+function siteChipsHtml() {
+  return '<div class="chips sitechips" hidden><span class="lbl">다른 곳</span>' +
+    SITES.map(s => `<button type="button" data-site="${s}" aria-pressed="false">${s}</button>`).join('') + '</div>';
+}
+
+function buildObjects() {
+  const box = document.getElementById('rows-obj');
+  for (const [key, ko, iri, def, a, b, c] of OBJECTS) {
+    box.appendChild(el(`
+      <article class="row" data-id="obj-${key}" data-kind="obj">
+        <div class="ref">
+          <div class="term"><b>${ko}</b><code>${iri}</code></div>
+          <p class="def">${def}</p>
+          <dl class="sites">
+            <div><dt>infurs</dt><dd>${a}</dd></div>
+            <div><dt>hisense</dt><dd>${b}</dd></div>
+            <div><dt>naturefood</dt><dd>${c}</dd></div>
+          </dl>
+        </div>
+        <div class="ctl">
+          ${segHtml([['same', '같다'], ['diff', '다름'], ['hold', '보류']])}
+          ${siteChipsHtml()}
+          <textarea hidden placeholder="현장에서 부르는 말 · 메모"></textarea>
+        </div>
+      </article>`));
+  }
+}
+function buildRelations() {
+  const box = document.getElementById('rows-rel');
+  for (const [key, name, sentence] of RELATIONS) {
+    box.appendChild(el(`
+      <article class="row" data-id="rel-${key}" data-kind="rel">
+        <div class="ref">
+          <div class="term"><code>${name}</code></div>
+          <p class="def" style="margin-bottom:0">${sentence}</p>
+        </div>
+        <div class="ctl">
+          ${segHtml([['yes', '맞다'], ['no', '아니다'], ['hold', '보류']])}
+          ${siteChipsHtml()}
+          <textarea hidden placeholder="현장에서는 어떻게 이어지는지"></textarea>
+        </div>
+      </article>`));
+  }
+}
+function buildIssues() {
+  const box = document.getElementById('rows-issue');
+  for (const [key, tid, title, why, opts, baseKey, baseWhy] of ISSUES) {
+    const optHtml = opts.map(([k, t]) => `
+      <button type="button" class="opt" data-choice="${k}" aria-pressed="false">
+        <span class="k">${k})</span>
+        <span class="t">${t}${k === baseKey ? '<span class="base-tag">기본안</span>' : ''}</span>
+      </button>`).join('');
+    box.appendChild(el(`
+      <article class="issue" data-id="issue-${key}" data-kind="issue" data-decided="0">
+        <div class="tid">${tid}</div>
+        <div>
+          <h3>${title}</h3>
+          <p class="why">${why}</p>
+          <div class="opts">${optHtml}</div>
+          <p class="base"><b>기본안 ${baseKey})</b> ${baseWhy}</p>
+          <textarea hidden placeholder="단서 · 조건 · 다르게 가는 이유"></textarea>
+        </div>
+      </article>`));
+  }
+}
+function buildJudges() {
+  const box = document.getElementById('rows-judge');
+  for (const [key, title, criterion, evidence] of JUDGES) {
+    box.appendChild(el(`
+      <article class="row" data-id="judge-${key}" data-kind="judge">
+        <div class="ref">
+          <div class="term"><b>${title}</b></div>
+          <p class="def">${criterion}</p>
+          <dl class="sites"><div><dt>실측 근거</dt><dd>${evidence}</dd></div></dl>
+        </div>
+        <div class="ctl">
+          ${segHtml([['agree', '합의'], ['hold', '보류']])}
+          <textarea hidden placeholder="다르게 가야 한다면 그 기준"></textarea>
+        </div>
+      </article>`));
+  }
+}
+buildObjects(); buildRelations(); buildIssues(); buildJudges();
+
+/* ── 상태 ───────────────────────────────────────────────── */
+const state = {};          // id → {verdict|choice, sites[], note}
+const extras = new Map();  // id → {term, note, sites[]}
+let db = null, canWrite = true;
+
+const saveEl = document.getElementById('saveState');
+let savingCount = 0;
+function mark(s) {
+  if (s === 'saving') { savingCount++; saveEl.dataset.state = 'saving'; saveEl.textContent = '저장 중'; return; }
+  if (s === 'saved') {
+    savingCount = Math.max(0, savingCount - 1);
+    if (savingCount === 0) { saveEl.dataset.state = 'saved'; saveEl.textContent = '저장됨'; }
+    return;
+  }
+  saveEl.dataset.state = s === 'off' ? 'off' : 'idle';
+  saveEl.textContent = s === 'off' ? '저장 불가' : '표시하면 저장됨';
+}
+
+function paint(id) {
+  const row = document.querySelector(`[data-id="${CSS.escape(id)}"]`);
+  if (!row) return;
+  const s = state[id] || {};
+  if (row.dataset.kind === 'issue') {
+    row.querySelectorAll('.opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.choice === s.choice)));
+    row.dataset.decided = s.choice ? '1' : '0';
+  } else {
+    row.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === s.verdict)));
+    if (s.verdict) row.dataset.v = s.verdict; else row.removeAttribute('data-v');
+    const chips = row.querySelector('.sitechips');
+    if (chips) {
+      chips.hidden = !(s.verdict === 'diff' || s.verdict === 'no');
+      chips.querySelectorAll('button').forEach(b =>
+        b.setAttribute('aria-pressed', String((s.sites || []).includes(b.dataset.site))));
+    }
+  }
+  const ta = row.querySelector('textarea');
+  if (ta) {
+    ta.hidden = !(s.verdict || s.choice || s.note);
+    if (document.activeElement !== ta) ta.value = s.note || '';
+  }
+  tally();
+}
+
+function tally() {
+  let same = 0, diff = 0, hold = 0, issue = 0;
+  const per = { obj: 0, rel: 0, issue: 0, judge: 0 };
+  for (const [id, s] of Object.entries(state)) {
+    const kind = id.split('-')[0];
+    if (kind === 'issue') { if (s.choice) { issue++; per.issue++; } continue; }
+    if (!s.verdict) continue;
+    per[kind] = (per[kind] || 0) + 1;
+    if (s.verdict === 'same' || s.verdict === 'yes' || s.verdict === 'agree') same++;
+    else if (s.verdict === 'diff' || s.verdict === 'no') diff++;
+    else if (s.verdict === 'hold') hold++;
+  }
+  const done = same + diff + hold + issue;
+  document.getElementById('progN').textContent = `${done} / ${TOTAL}`;
+  document.getElementById('progFill').style.width = (done / TOTAL * 100) + '%';
+  document.getElementById('tSame').textContent = same;
+  document.getElementById('tDiff').textContent = diff;
+  document.getElementById('tHold').textContent = hold;
+  document.getElementById('tIssue').textContent = issue;
+  document.getElementById('tExtra').textContent = extras.size;
+  const caps = { obj: OBJECTS.length, rel: RELATIONS.length, issue: ISSUES.length, judge: JUDGES.length };
+  for (const k of Object.keys(caps)) {
+    const n = document.querySelector(`[data-count="${k}"]`);
+    if (n) n.textContent = `${per[k] || 0} / ${caps[k]}`;
+  }
+  const ex = document.querySelector('[data-count="extra"]');
+  if (ex) ex.textContent = extras.size + '건';
+}
+
+async function save(id) {
+  const s = state[id];
+  if (!db || !canWrite || !s) return;
+  mark('saving');
+  try {
+    await db.doc('decisions/' + id).set({
+      id, kind: id.split('-')[0],
+      verdict: s.verdict || null, choice: s.choice || null,
+      sites: s.sites || [], note: s.note || '',
+      by: document.getElementById('decidedBy').value || '',
+      on: document.getElementById('decidedOn').value || '',
+      at: new Date().toISOString(),
+    });
+    mark('saved');
+  } catch (e) {
+    savingCount = Math.max(0, savingCount - 1);
+    if (e && e.code === 'invalid_argument') { canWrite = false; mark('off'); }
+    else { saveEl.dataset.state = 'off'; saveEl.textContent = '저장 실패'; }
+  }
+}
+
+const timers = {};
+function saveSoon(id) { clearTimeout(timers[id]); timers[id] = setTimeout(() => save(id), 600); }
+
+/* ── 입력 받기 (한 번만 건다) ───────────────────────────── */
+document.addEventListener('click', (e) => {
+  const seg = e.target.closest('.seg button');
+  if (seg) {
+    const row = seg.closest('[data-id]'); const id = row.dataset.id;
+    const s = state[id] || (state[id] = {});
+    s.verdict = s.verdict === seg.dataset.v ? null : seg.dataset.v;   // 다시 누르면 해제
+    if (s.verdict !== 'diff' && s.verdict !== 'no') s.sites = [];
+    paint(id); save(id);
+    if (s.verdict) { const ta = row.querySelector('textarea'); if (ta) ta.hidden = false; }
+    return;
+  }
+  const chip = e.target.closest('.sitechips button');
+  if (chip) {
+    const row = chip.closest('[data-id]'); const id = row.dataset.id;
+    const s = state[id] || (state[id] = {});
+    s.sites = s.sites || [];
+    const i = s.sites.indexOf(chip.dataset.site);
+    if (i === -1) s.sites.push(chip.dataset.site); else s.sites.splice(i, 1);
+    paint(id); save(id);
+    return;
+  }
+  const opt = e.target.closest('.opt');
+  if (opt) {
+    const row = opt.closest('[data-id]'); const id = row.dataset.id;
+    const s = state[id] || (state[id] = {});
+    s.choice = s.choice === opt.dataset.choice ? null : opt.dataset.choice;
+    paint(id); save(id);
+    if (s.choice) { const ta = row.querySelector('textarea'); if (ta) ta.hidden = false; }
+  }
+});
+
+document.addEventListener('input', (e) => {
+  const ta = e.target.closest('.row textarea, .issue textarea');
+  if (!ta) return;
+  const id = ta.closest('[data-id]').dataset.id;
+  const s = state[id] || (state[id] = {});
+  s.note = ta.value;
+  saveSoon(id);
+});
+
+/* ── 추가 항목 ──────────────────────────────────────────── */
+const addSites = new Set();
+document.getElementById('addSites').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-site]'); if (!b) return;
+  const on = b.getAttribute('aria-pressed') === 'true';
+  b.setAttribute('aria-pressed', String(!on));
+  if (on) addSites.delete(b.dataset.site); else addSites.add(b.dataset.site);
+});
+
+function renderExtras() {
+  const box = document.getElementById('rows-extra');
+  box.textContent = '';
+  for (const [id, x] of [...extras.entries()].sort((a, b) => (a[1].at || '').localeCompare(b[1].at || ''))) {
+    const item = el(`
+      <div class="extra-item" data-extra="${esc(id)}">
+        <div>
+          <b>${esc(x.term)}</b>
+          <div>${esc(x.note || '')}</div>
+          <div class="meta">${(x.sites || []).join(' · ') || '사이트 미지정'}${x.by ? ' · ' + esc(x.by) : ''}</div>
+        </div>
+        <button type="button" class="del">지우기</button>
+      </div>`);
+    box.appendChild(item);
+  }
+  tally();
+}
+document.getElementById('rows-extra').addEventListener('click', async (e) => {
+  const b = e.target.closest('.del'); if (!b) return;
+  const id = b.closest('[data-extra]').dataset.extra;
+  extras.delete(id); renderExtras();
+  if (db && canWrite) { try { await db.doc('extras/' + id).delete(); } catch (_) {} }
+});
+document.getElementById('addBtn').addEventListener('click', async () => {
+  const term = document.getElementById('addTerm').value.trim();
+  const note = document.getElementById('addNote').value.trim();
+  if (!term) { document.getElementById('addTerm').focus(); return; }
+  const id = 'x' + Date.now().toString(36);
+  const body = {
+    term, note, sites: [...addSites], at: new Date().toISOString(),
+    by: document.getElementById('decidedBy').value || '',
+  };
+  extras.set(id, body); renderExtras();
+  document.getElementById('addTerm').value = ''; document.getElementById('addNote').value = '';
+  addSites.clear();
+  document.querySelectorAll('#addSites button').forEach(b => b.setAttribute('aria-pressed', 'false'));
+  if (db && canWrite) { mark('saving'); try { await db.doc('extras/' + id).set(body); mark('saved'); } catch (_) { mark('off'); } }
+});
+
+/* ── 기록자·날짜 ────────────────────────────────────────── */
+const byEl = document.getElementById('decidedBy'), onEl = document.getElementById('decidedOn');
+onEl.value = new Date().toISOString().slice(0, 10);
+let metaTimer;
+function saveMeta() {
+  clearTimeout(metaTimer);
+  metaTimer = setTimeout(async () => {
+    if (!db || !canWrite) return;
+    try { await db.doc('meta/session').set({ by: byEl.value, on: onEl.value, at: new Date().toISOString() }); } catch (_) {}
+  }, 600);
+}
+byEl.addEventListener('input', saveMeta);
+onEl.addEventListener('change', saveMeta);
+
+/* ── 저장소 붙이기 (없으면 표시만 되는 화면으로 남는다) ── */
+tally();
+(async () => {
+  db = window.claude?.use ? await window.claude.use('db') : null;
+  if (!db) { mark('off'); saveEl.textContent = '저장 안 됨'; return; }
+  mark('idle');
+  db.collection('decisions').onSnapshot((snap) => {
+    for (const d of snap.docs) {
+      const v = d.data() || {};
+      if (!v.id) continue;
+      // 지금 그 줄에 타자 중이면 서버 값으로 덮지 않는다(paint 도 포커스 중인 칸은 건드리지 않는다).
+      const typing = document.activeElement?.closest?.(`[data-id="${CSS.escape(v.id)}"]`);
+      const prev = state[v.id] || {};
+      state[v.id] = {
+        verdict: v.verdict || null, choice: v.choice || null,
+        sites: v.sites || [], note: typing ? (prev.note || '') : (v.note || ''),
+      };
+      paint(v.id);
+    }
+    tally();
+  }, () => { mark('off'); });
+  db.collection('extras').onSnapshot((snap) => {
+    extras.clear();
+    for (const d of snap.docs) extras.set(d.id, d.data() || {});
+    renderExtras();
+  }, () => {});
+  try {
+    const m = await db.doc('meta/session').get();
+    if (m.exists) {
+      const v = m.data() || {};
+      if (v.by && document.activeElement !== byEl) byEl.value = v.by;
+      if (v.on) onEl.value = v.on;
+    }
+  } catch (_) {}
+})();
+</script>

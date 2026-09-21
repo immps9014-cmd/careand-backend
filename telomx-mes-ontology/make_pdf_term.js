@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 
 const SRC = '/root/telomx-mes-ontology/TERM-MAP.html';
-const OUT = '/root/telomx-mes-ontology/pdf/텔롬엑스-MES-용어대조표-r1.0.pdf';
+const OUT = '/root/telomx-mes-ontology/pdf/텔롬엑스-MES-용어대조표-r1.1.pdf';
 
 // 아티팩트 호스트가 붙이는 껍데기 + 인쇄용 CSS
 const PRINT_CSS = `
@@ -71,7 +71,7 @@ const PRINT_CSS = `
     displayHeaderFooter: true,
     headerTemplate: '<div></div>',
     footerTemplate: `<div style="width:100%;font-size:7pt;color:#64706C;font-family:'IBM Plex Mono',monospace;padding:0 12mm;display:flex;justify-content:space-between">
-      <span>텔롬엑스 MES 용어 대조표 · TX-ONT-TERMS r1.0 · 2026-09-20</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`,
+      <span>텔롬엑스 MES 용어 대조표 · TX-ONT-TERMS r1.1 확정본 · 2026-09-21</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`,
     margin: { top: '15mm', bottom: '17mm', left: '12mm', right: '12mm' },
   });
   await browser.close();

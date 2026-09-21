@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 온톨로지 산출물을 telomx PMS(프로젝트 OPS-2026-01) 문서관리에 올린다.
 //
-//   새 문서:   node pms_push.js new  <파일> --title "..." [--cat spec|report|meet|etc] [--status draft|review|final] [--note "..."]
+//   새 문서:   node pms_push.js new  <파일> --title "..." [--cat spec|report|meet|etc] [--status draft|review|final] [--note "..."] [--url <아티팩트 주소>]
 //   개정본:    node pms_push.js rev  <문서번호|문서id> <파일> --note "r1.2 — 무엇을 고쳤는지"
 //   목록:      node pms_push.js list
 //
@@ -71,7 +71,9 @@ async function findDoc(key) {
       project_id: PROJECT_ID, task_id: DOCS_TASK_ID,
       category: opt('cat', 'report'), status: opt('status', 'draft'),
       title: opt('title') || path.basename(file, path.extname(file)),
-      tags: opt('tags', '온톨로지'), note: opt('doc-note'),
+      tags: opt('tags', '온톨로지'),
+      // 아티팩트에서 나온 문서는 원본 주소를 비고에 남긴다 — PMS 가 아티팩트 목록 역할을 한다.
+      note: [opt('doc-note'), opt('url') && '아티팩트 ' + opt('url')].filter(Boolean).join(' · ') || null,
       change_note: opt('note', '최초 등록'),
     }, file);
     console.log('등록', d.doc_no, d.title);
