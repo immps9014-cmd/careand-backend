@@ -183,11 +183,11 @@
       결과와 검증은 §08 에 있다.
     </p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.6</span></div>
+      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.7</span></div>
       <div><span class="k">작성 · 반영</span><span class="v">2026-09-21 · 같은 날 실행</span></div>
       <div><span class="k">근거</span><span class="v">infurs_db 전수 질의 · 소스 코드 실측</span></div>
       <div><span class="k">상위</span><span class="v">TX-ONT-TERMS r1.1 §7.1 F1</span></div>
-      <div><span class="k">상태</span><span class="v">F1-a·b·c·e·f 완료 · d·g 대기</span></div>
+      <div><span class="k">상태</span><span class="v">F1-a·b·c·e·f·g 완료 · d 보류</span></div>
     </div>
   </header>
 
@@ -646,12 +646,19 @@
         </div>
       </div>
 
-      <div class="opt">
-        <h4>나-3 · 실험기구진열장은 병합하지 않는다 <span class="cost">이름만 같다</span></h4>
+      <div class="opt pick">
+        <h4>나-3 · 실험기구진열장은 병합하지 않는다 <span class="badge">완료 2026-09-21</span> <span class="cost">이름만 바꿈</span></h4>
         <p>
           <code>IFS-O01</code>(950×510×1910)과 <code>IFS-O02</code>(930×290×1860)는 <b>규격이 다른 별개 물건</b>이다.
-          합칠 대상이 아니라 <b>이름을 구분해 주는 것</b>이 맞다(실험기구진열장1 / 2).
+          합칠 대상이 아니라 <b>이름을 구분해 주는 것</b>이 맞다.
           F1-c1 에서 이 둘을 건드리지 않은 판단이 여기서 확인됐다.
+        </p>
+        <p>
+          처음 적어 둔 이름 <q>실험기구진열장1 / 2</q>는 <b>이미 신형 <code>IFS-NK01</code>·<code>NK02</code> 가 쓰고 있었다</b> —
+          그대로 붙였으면 동명 그룹이 오히려 둘 늘었다. 메모의 상세규격을 따라
+          <b><code>IFS-O01</code> → 실험기구진열장(이중)</b> · <b><code>IFS-O02</code> → 실험기구진열장(일반)</b> 으로 바꿨고
+          제품(도면용) 이름도 같이 맞췄다. 두 품목 모두 사용 이력 0건 · 도면 각 1장은 그대로다.
+          <b>동명 그룹 1 → 0</b> — 점검 F1-6 이 처음으로 <q>없음</q>이 됐다.
         </p>
       </div>
       <div class="opt">
@@ -671,7 +678,7 @@
           <tr><td class="mono">F1-c1</td><td>구형 품목 비활성화(가)</td><td><b class="ok">완료</b> — 27행(실험기구진열장 2행은 제외)</td></tr>
           <tr><td class="mono">F1-c2</td><td>사용 중 2건 병합(나)</td><td><b class="ok">완료</b> — 단가 충돌은 착시였다(다른 물건)</td></tr>
           <tr><td class="mono">F1-c2b</td><td>「의자」 그룹 정리</td><td><b class="ok">완료</b> — 동명 그룹 1개만 남았다</td></tr>
-          <tr><td class="mono">F1-g</td><td>실험기구진열장 이름 구분(1 / 2)</td><td><b>신규</b> — 병합이 아니라 이름 문제다</td></tr>
+          <tr><td class="mono">F1-g</td><td>실험기구진열장 이름 구분</td><td><b class="ok">완료</b> — (이중) / (일반), 동명 그룹 0</td></tr>
           <tr><td class="mono">F1-e</td><td>식별번호 점검</td><td><b class="ok">완료</b> — 원인은 번호 체계, 점검 F1-5 상시화</td></tr>
           <tr><td class="mono">F1-d</td><td>t_product 폐지</td><td>보류 — 브리지로 급한 문제는 해소됐다</td></tr>
           <tr><td class="mono">F1-f</td><td>주문 등록이 품목을 만들지 않게(다)</td><td><b class="ok">완료</b> — 못 찾으면 「품목 미연결」, §10</td></tr>
@@ -733,7 +740,7 @@
   </section>
 
   <footer>
-    <span>TX-F1-ITEM r1.6 · 2026-09-21 · infurs_db 전수 질의 · F1-c·f 실행 반영</span>
+    <span>TX-F1-ITEM r1.7 · 2026-09-21 · infurs_db 전수 질의 · F1-c·f·g 실행 반영</span>
     <span class="mono">t_item 687 · t_product 661 · 연결 661/661</span>
   </footer>
 </div>
