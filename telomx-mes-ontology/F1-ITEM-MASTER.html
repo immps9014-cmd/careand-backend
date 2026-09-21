@@ -183,11 +183,11 @@
       결과와 검증은 §08 에 있다.
     </p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.4</span></div>
+      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.5</span></div>
       <div><span class="k">작성 · 반영</span><span class="v">2026-09-21 · 같은 날 실행</span></div>
       <div><span class="k">근거</span><span class="v">infurs_db 전수 질의 · 소스 코드 실측</span></div>
       <div><span class="k">상위</span><span class="v">TX-ONT-TERMS r1.1 §7.1 F1</span></div>
-      <div><span class="k">상태</span><span class="v">F1-a·b·c1·c2·e 완료 · d·f 대기</span></div>
+      <div><span class="k">상태</span><span class="v">F1-a·b·c·e 완료 · d·f·g 대기</span></div>
     </div>
   </header>
 
@@ -617,8 +617,8 @@
         </ul>
       </div>
 
-      <div class="opt">
-        <h4>나-2 · 남은 「의자」 그룹 <span class="cost">준비 완료 · 실행 대기</span></h4>
+      <div class="opt pick">
+        <h4>나-2 · 남은 「의자」 그룹 <span class="badge">완료 2026-09-21</span> <span class="cost">5행 재지정</span></h4>
         <p>
           <code>ITM-0014</code>(의자, 작업지시1·원장2·배송1)의 주문 규격은 <code>"FS-NY06 480×555mm"</code> 인데
           <b><code>IFS-NY06</code> 은 칠판보조장6</b>(7005x18x400)이다 — <b>주문서의 코드가 오기</b>다.
@@ -626,9 +626,24 @@
           제품 25184200(<q>작업용의자6</q>)도 같은 품목을 가리킨다.
         </p>
         <p>
-          <code>ITM-0014 → IFS-NV06</code>(5행) · <code>ITM-0015</code>(빈 행)는 비활성화.
-          실행 스크립트 <code>/root/backups/infurs/f1c2b-run.sh</code> 에 준비해 뒀다.
+          <code>ITM-0014 → IFS-NV06</code>(작업지시1·원장2·재고1·배송1) · <code>ITM-0015</code>(빈 행) 비활성화 완료.
+          <code>IFS-NV06</code> 은 이제 작업지시 3 · 원장 6 · 배송 3 을 가진다 — 한 품목에 조달 건이 둘 붙은 정상 상태다.
+          활성 품목 658 → <b>656</b>, 동명 그룹 <b>2 → 1</b>(실험기구진열장만 남았고 그것은 병합 대상이 아니다).
         </p>
+        <div class="callout note">
+          <span class="tag">이때 E2E 가 2건 깨졌다 — 앱이 아니라 시험의 전제였다</span>
+          <p>
+            자재불출 시험이 <code>ORDER BY 없는 LIMIT 1</code> 로 작업지시를 고르고 <b>기불출이 0 이라고 가정</b>했다.
+            병합으로 <b>BOM 이 걸린 작업지시가 늘자</b> 다른 행이 잡혔고, 그 작업지시는 이미 21개를 불출한 상태였다
+            (21 + 1 = 22 로 <b>앱은 정확히 동작했다</b>). 다른 하나는 <code>15.079999999999998 ≠ 15.08</code> 인
+            소수 동등비교였다.
+          </p>
+          <p>
+            시험을 <b>정확하게</b> 고쳤다 — 작업지시를 <code>ORDER BY</code> 로 결정적으로 고르고, 기불출은
+            <b>관측한 기준선 + 1</b> 로 비교하며, 잔여는 소수 둘째 자리로 맞춘다. 다시 140/140.
+            <b>데이터를 정리하면 데이터에 기대던 시험이 먼저 흔들린다</b> — 정리 작업에서 같이 봐야 하는 자리다.
+          </p>
+        </div>
       </div>
 
       <div class="opt">
@@ -655,7 +670,8 @@
         <tbody>
           <tr><td class="mono">F1-c1</td><td>구형 품목 비활성화(가)</td><td><b class="ok">완료</b> — 27행(실험기구진열장 2행은 제외)</td></tr>
           <tr><td class="mono">F1-c2</td><td>사용 중 2건 병합(나)</td><td><b class="ok">완료</b> — 단가 충돌은 착시였다(다른 물건)</td></tr>
-          <tr><td class="mono">F1-c2b</td><td>「의자」 그룹 정리 · 실험기구진열장 이름 구분</td><td>스크립트 준비 완료 — 실행만 남음</td></tr>
+          <tr><td class="mono">F1-c2b</td><td>「의자」 그룹 정리</td><td><b class="ok">완료</b> — 동명 그룹 1개만 남았다</td></tr>
+          <tr><td class="mono">F1-g</td><td>실험기구진열장 이름 구분(1 / 2)</td><td><b>신규</b> — 병합이 아니라 이름 문제다</td></tr>
           <tr><td class="mono">F1-e</td><td>식별번호 점검</td><td><b class="ok">완료</b> — 원인은 번호 체계, 점검 F1-5 상시화</td></tr>
           <tr><td class="mono">F1-d</td><td>t_product 폐지</td><td>보류 — 브리지로 급한 문제는 해소됐다</td></tr>
           <tr><td class="mono">F1-f</td><td>주문 등록이 품목을 만들지 않게(다)</td><td><b>신규</b> — 재발 방지, 별건 작업</td></tr>
@@ -665,7 +681,7 @@
   </section>
 
   <footer>
-    <span>TX-F1-ITEM r1.4 · 2026-09-21 · infurs_db 전수 질의 · F1-c1·c2 실행 반영</span>
+    <span>TX-F1-ITEM r1.5 · 2026-09-21 · infurs_db 전수 질의 · F1-c 전체 실행 반영</span>
     <span class="mono">t_item 687 · t_product 661 · 연결 661/661</span>
   </footer>
 </div>
