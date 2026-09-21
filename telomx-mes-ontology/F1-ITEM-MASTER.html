@@ -1,0 +1,525 @@
+<title>품목 마스터 둘을 하나로</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* 토큰·서체는 TX-ONT 문서 계열과 같은 한 벌 — 같은 식구로 읽혀야 한다. */
+  :root {
+    --ground: #F2F4F1;  --surface: #FFFFFF;  --surface-2: #E9ECE7;
+    --ink: #15191A;     --ink-2: #39423F;    --muted: #64706C;
+    --line: #D4D9D2;    --line-2: #BFC6BD;
+    --accent: #1C5871;  --accent-soft: #DCE8EC;
+    --signal: #9C5A06;  --signal-soft: #F4E7D3;
+    --good: #2A6349;    --good-soft: #DCEAE2;
+    --danger: #8C2F2A;  --danger-soft: #F6E2E0;
+    --shadow: 0 1px 2px rgba(21, 25, 26, .05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1213;  --surface: #171C1D;  --surface-2: #1E2425;
+      --ink: #E7EAE6;     --ink-2: #C3CAC6;    --muted: #8D9894;
+      --line: #2B3233;    --line-2: #3B4344;
+      --accent: #7CB6CE;  --accent-soft: #17313B;
+      --signal: #DDA35A;  --signal-soft: #33260F;
+      --good: #6FB392;    --good-soft: #153024;
+      --danger: #E08B84;  --danger-soft: #331B19;
+      --shadow: none;     color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1213;  --surface: #171C1D;  --surface-2: #1E2425;
+    --ink: #E7EAE6;     --ink-2: #C3CAC6;    --muted: #8D9894;
+    --line: #2B3233;    --line-2: #3B4344;
+    --accent: #7CB6CE;  --accent-soft: #17313B;
+    --signal: #DDA35A;  --signal-soft: #33260F;
+    --good: #6FB392;    --good-soft: #153024;
+    --danger: #E08B84;  --danger-soft: #331B19;
+    --shadow: none;     color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink); margin: 0;
+    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    font-size: 16px; line-height: 1.7; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 0 72px; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .875em; background: var(--surface-2);
+    padding: .1em .36em; border-radius: 3px; border: 1px solid var(--line); white-space: nowrap;
+  }
+
+  .mast { padding-block: 52px 30px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: clamp(28px, 5.4vw, 42px); line-height: 1.22; letter-spacing: -.02em; margin: 0; text-wrap: balance;
+  }
+  .lede { font-size: clamp(15.5px, 2.1vw, 18px); color: var(--ink-2); max-width: 64ch; margin: 18px 0 0; }
+  .lede b { color: var(--ink); }
+  .docmeta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 2px 28px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px;
+  }
+  .docmeta div { display: flex; flex-direction: column; gap: 3px; }
+  .docmeta .k {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .docmeta .v { font-size: 14px; font-weight: 500; }
+
+  section { margin-top: 56px; }
+  .sec-head { border-top: 1px solid var(--line-2); padding-top: 13px; margin-bottom: 20px; }
+  .sec-no {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .1em;
+    color: var(--accent); display: block; margin-bottom: 7px;
+  }
+  h2.sec-title {
+    font-family: "Noto Serif KR", Georgia, serif; font-weight: 700;
+    font-size: clamp(21px, 3.2vw, 27px); line-height: 1.3; letter-spacing: -.015em; margin: 0; text-wrap: balance;
+  }
+  h3 { font-size: 16.5px; font-weight: 600; margin: 30px 0 10px; }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  ul, ol { max-width: 70ch; padding-left: 21px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+
+  .scroll { overflow-x: auto; margin: 18px 0 22px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--surface-2); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  td.mono, th.mono { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+  .bad { color: var(--danger); font-weight: 600; }
+  .ok { color: var(--good); font-weight: 600; }
+  .warn { color: var(--signal); font-weight: 600; }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--surface);
+    padding: 15px 17px; margin: 20px 0; box-shadow: var(--shadow);
+  }
+  .callout.rule { border-left-color: var(--good); }
+  .callout.risk { border-left-color: var(--danger); background: var(--danger-soft); }
+  .callout.note { border-left-color: var(--signal); background: var(--signal-soft); }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+  .callout .tag {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px;
+  }
+
+  /* 두 마스터 구조 — 표가 아니라 두 기둥으로 나란히 보여야 "둘"이라는 게 읽힌다 */
+  .pillars { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 22px 0; }
+  .pillar {
+    border: 1px solid var(--line); border-radius: 4px; background: var(--surface);
+    padding: 15px 17px; box-shadow: var(--shadow);
+  }
+  .pillar.left { border-top: 3px solid var(--accent); }
+  .pillar.right { border-top: 3px solid var(--signal); }
+  .pillar h4 { margin: 0 0 3px; font-size: 15.5px; }
+  .pillar .tbl { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); margin-bottom: 11px; }
+  .pillar .rowcount { font-family: "IBM Plex Mono", monospace; font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .pillar .rowcount span { font-size: 12px; color: var(--muted); margin-left: 5px; }
+  .pillar ul { padding-left: 17px; margin: 10px 0 0; font-size: 13px; }
+  .pillar li { margin-bottom: 4px; color: var(--ink-2); }
+  .link-note {
+    text-align: center; font-size: 13px; color: var(--signal); margin: -8px 0 22px;
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  .opts { display: grid; gap: 12px; margin: 22px 0; }
+  .opt {
+    border: 1px solid var(--line); border-left: 3px solid var(--line-2); border-radius: 4px;
+    background: var(--surface); padding: 15px 17px; box-shadow: var(--shadow);
+  }
+  .opt.pick { border-left-color: var(--good); background: var(--good-soft); }
+  .opt h4 { margin: 0 0 6px; font-size: 15.5px; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .opt .badge {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .1em;
+    border: 1px solid var(--good); color: var(--good); border-radius: 2px; padding: 1px 5px;
+  }
+  .opt .cost { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); }
+  .opt p { font-size: 13.5px; margin-bottom: 8px; max-width: none; }
+  .opt ul { font-size: 13.5px; max-width: none; margin-bottom: 0; }
+
+  .steps { counter-reset: st; list-style: none; padding: 0; margin: 20px 0; display: grid; gap: 1px; max-width: none; }
+  .steps li {
+    counter-increment: st; display: grid; grid-template-columns: 28px 1fr; gap: 0 14px;
+    border-top: 1px solid var(--line); padding-block: 13px; margin: 0;
+  }
+  .steps li::before {
+    content: counter(st); font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--accent); padding-top: 2px;
+  }
+  .steps li > b, .steps li > span { grid-column: 2; }
+  .steps b { font-weight: 600; margin-bottom: 2px; }
+  .steps span { color: var(--ink-2); font-size: 14px; }
+
+  footer {
+    margin-top: 66px; border-top: 2px solid var(--ink); padding-top: 16px;
+    font-size: 12.5px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 6px 24px; justify-content: space-between;
+  }
+  @media (max-width: 680px) { .pillars { grid-template-columns: 1fr; } }
+  @media print { .scroll { overflow: visible; } .callout, .opt, .pillar, tr, thead { break-inside: avoid; } }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">TelomX · infurs MES · 후속 과제 F1</p>
+    <h1>품목 마스터 둘을 하나로</h1>
+    <p class="lede">
+      용어 대조표 확정(T1)에서 <b>말은 정리됐다</b> — 수주·재고가 쓰는 쪽이 <b>품목</b>, 도면·사진 쪽이 <b>제품(도면용)</b>이다.
+      남은 것은 <b>DB를 실제로 합칠지</b>다. 실측해 보니 합치기 전에 사람이 판정해야 할 것이 있었다 —
+      두 마스터를 잇는 키가 <b>하나가 아니라 둘</b>이고, <b>7건에서 서로 다른 품목을 가리킨다.</b>
+    </p>
+    <p class="lede" style="margin-top:14px">
+      <b>2026-09-21 결정 · 실행 완료</b> — 브리지 컬럼을 넣었고(F1-a), 충돌 7건은
+      <b>메모 모델명을 정본</b>으로 판정했다(F1-b). 조달 식별번호는 <b>제품↔품목 연결에 쓰지 않는다.</b>
+      결과와 검증은 §08 에 있다.
+    </p>
+    <div class="docmeta">
+      <div><span class="k">문서</span><span class="v">TX-F1-ITEM r1.1</span></div>
+      <div><span class="k">작성 · 반영</span><span class="v">2026-09-21 · 같은 날 실행</span></div>
+      <div><span class="k">근거</span><span class="v">infurs_db 전수 질의 · 소스 코드 실측</span></div>
+      <div><span class="k">상위</span><span class="v">TX-ONT-TERMS r1.1 §7.1 F1</span></div>
+      <div><span class="k">상태</span><span class="v">F1-a 완료 · F1-b 결정됨</span></div>
+    </div>
+  </header>
+
+  <div class="callout rule" style="margin-top:26px">
+    <span class="tag">r1.1 개정 요약 · 2026-09-21</span>
+    <p>
+      <b>F1-a 「한다」</b> → <code>t_product.item_id</code> 신설·적용 완료(661/661 연결).
+      <b>F1-b 판정</b> → 충돌 7건은 <b>메모 모델명</b>이 맞는 짝이다. 조달 식별번호
+      (<code>product_code</code> = <code>item_identify_no</code>)는 <b>제품↔품목 연결에 쓰지 않는다</b> —
+      다만 <b>주문라인 → 품목</b>은 식별번호가 유일한 키라 그대로 둔다
+      (<code>t_order_item.item_id</code> 는 마스터 참조가 아니라 <b>주문라인 자신의 PK</b>였다).
+      <b>F1-c · F1-d 는 아직 열려 있다.</b>
+    </p>
+  </div>
+
+  <section id="s0">
+    <div class="sec-head"><span class="sec-no">§ 00</span><h2 class="sec-title">결론</h2></div>
+    <div class="callout rule">
+      <span class="tag">권고 — 2026-09-21 그대로 채택·실행됨</span>
+      <p>
+        <b>지금 t_product 를 폐지하지 않는다.</b> 먼저 <b>브리지 컬럼</b>(<code>t_product.item_id</code>)을 넣어
+        메모 문자열 조인을 없애고, 그 컬럼이 <b>7건의 어긋난 짝</b>을 화면에 드러내게 한다.
+        그 7건을 사람이 판정한 뒤에야 폐지(전면 통합)가 안전하다.
+      </p>
+      <p>
+        근거는 셋이다. ① 어느 키가 맞는지 <b>데이터로는 판정할 수 없다</b>(§2). ②
+        t_product 에만 있는 값은 <b>사실상 없다</b> — 합칠 때 잃을 것이 없다(§3). ③ 같은 문제를
+        infurs 에서 <b>이미 브리지 컬럼으로 푼 선례</b>가 있다(<code>t_work_order.master_item_id</code>) —
+        의미를 바꾸는 방식은 hisense 에서 읽는 쪽 회귀를 냈다.
+      </p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>실측</th><th>수치</th><th>뜻</th></tr></thead>
+        <tbody>
+          <tr><td>메모 <code>모델명:</code> 로 이어지는 쌍</td><td class="num ok">661 / 661</td><td>전건 연결된다. 중복 모델명 0건</td></tr>
+          <tr><td>제품코드 = 품목 식별번호로 이어지는 쌍</td><td class="num warn">655 / 661</td><td><b>키가 둘이다</b> — 아무도 이걸 키라고 부른 적이 없다</td></tr>
+          <tr><td>두 키가 <b>다른 품목</b>을 가리키는 쌍</td><td class="num bad">7</td><td>도면·사진이 엉뚱한 품목에 붙어 있을 수 있다</td></tr>
+          <tr><td>t_product 에만 있는 값</td><td class="num ok">0</td><td>단가는 16건이 0, 식별번호는 661건 전부 빈값</td></tr>
+          <tr><td>t_product 를 참조하는 DB 테이블</td><td class="num">2 (929행)</td><td>도면 563 · 사진 366. 그 외엔 없다</td></tr>
+          <tr><td>t_product 를 읽는 PHP 파일</td><td class="num">6 (61곳)</td><td>+ 모델명 정규식 <b>3가지 변종</b> 10곳</td></tr>
+          <tr><td>품목 마스터 <b>안</b>의 동명이인</td><td class="num warn">12쌍</td><td>통합 범위가 2마스터가 아니라 그 이상일 수 있다</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s1">
+    <div class="sec-head"><span class="sec-no">§ 01</span><h2 class="sec-title">지금 무엇이 둘인가</h2></div>
+    <div class="pillars">
+      <div class="pillar left">
+        <h4>품목 — 업무가 쓰는 마스터</h4>
+        <p class="tbl">t_item · PK item_id</p>
+        <p class="rowcount">687<span>행</span></p>
+        <ul>
+          <li>수주·BOM·재고·작업지시·출하가 전부 이 쪽을 참조한다(10개 테이블)</li>
+          <li>31개 컬럼 — 단가·안전재고·리드타임·재질·치수까지</li>
+          <li>화면: <code>기준정보 &gt; 품목관리</code>가 <b>아니다</b> → <code>/item</code></li>
+        </ul>
+      </div>
+      <div class="pillar right">
+        <h4>제품(도면용) — 그림이 붙는 마스터</h4>
+        <p class="tbl">t_product · PK product_id</p>
+        <p class="rowcount">661<span>행</span></p>
+        <ul>
+          <li>참조하는 것은 도면(563)·제품사진(366) 둘뿐</li>
+          <li>13개 컬럼 — 품명·규격·단위·단가·메모</li>
+          <li>화면: 메뉴의 <code>품목관리</code>가 여는 쪽 → <code>/master/products</code></li>
+        </ul>
+      </div>
+    </div>
+    <p class="link-note">두 기둥을 잇는 것은 FK 가 아니라 &nbsp;<code>t_product.memo = "모델명: {item_code}"</code>&nbsp; 자유 텍스트뿐이다</p>
+    <p>
+      메뉴에서 <q>품목관리</q>를 누르면 오른쪽 기둥이 열린다. 수주를 넣고 재고를 세는 것은 왼쪽 기둥이다.
+      <b>한 낱말이 두 테이블을 가리킨다</b>는 것이 T1 의 출발점이었고, 온톨로지는 이미 둘을 한 객체로 합쳐 두었다
+      (<code>tx:Item</code> 687개, <code>tx:mergedFrom</code> 로 흔적 보존).
+    </p>
+  </section>
+
+  <section id="s2">
+    <div class="sec-head"><span class="sec-no">§ 02</span><h2 class="sec-title">실측하다 나온 것 — 키가 둘이다</h2></div>
+    <p>
+      메모의 모델명이 유일한 연결이라고 알고 있었다. 전수로 대조해 보니 <b>두 번째 연결</b>이 있었다:
+      <code>t_product.product_code</code>(예 <code>25018829</code>)는 제품 코드가 아니라
+      <b>조달 물품식별번호</b>이고, 같은 번호가 <code>t_item.item_identify_no</code> 에 들어 있다.
+      661건 중 655건이 이 번호로도 이어진다.
+    </p>
+    <p>
+      두 키가 같은 짝을 가리키면 문제가 없다. <b>648건은 일치하고, 7건은 서로 다른 품목을 가리킨다.</b>
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th class="mono">제품코드</th><th>제품명</th><th class="mono">메모 모델명 → 품목</th><th class="mono">식별번호 → 품목</th><th>붙어 있는 그림</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">25068279</td><td>책상8</td><td class="mono">IFS-NA08 · 책상8</td><td class="mono">ITM-0004 · 책상</td><td>도면 1 · 사진 1</td></tr>
+          <tr><td class="mono">25028227</td><td>이동형파일서랍2</td><td class="mono">IFS-NC02-1 · 이동형파일서랍</td><td class="mono">ITM-0006 · 이동형파일서랍</td><td>도면 1 · 사진 1</td></tr>
+          <tr><td class="mono">25143290</td><td>회의용탁자37</td><td class="mono">IFS-NT37 · 회의용탁자37</td><td class="mono">ITM-0002 · <b class="bad">칠판보조장</b></td><td>도면 1 · 사진 1</td></tr>
+          <tr><td class="mono">25059038</td><td>수강용탁자2</td><td class="mono">IFS-NE01-1 · 수강용탁자2</td><td class="mono">IFS-NM06 · <b class="bad">회의용탁자</b></td><td>도면 1 · 사진 1</td></tr>
+          <tr><td class="mono">25181220</td><td>작업용의자2</td><td class="mono">IFS-NV02 · 작업용의자2</td><td class="mono">IFS-NV06 · 작업용의자</td><td>사진 1</td></tr>
+          <tr><td class="mono">25184200</td><td>작업용의자6</td><td class="mono">IFS-NV06 · 작업용의자</td><td class="mono">ITM-0014 · 의자</td><td>사진 1</td></tr>
+          <tr><td class="mono">25179710</td><td>접이식의자6</td><td class="mono">IFS-NX06 · 접이식의자6</td><td class="mono">ITM-0003 · <b class="bad">캐비닛</b></td><td>사진 1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout risk">
+      <span class="tag">이것이 왜 통합을 막는가</span>
+      <p>
+        지금 도면·사진 화면은 <b>메모 모델명</b> 쪽을 따른다. 제품명과 품목명을 나란히 놓고 보면
+        모델명 경로가 대체로 맞아 보이지만(<q>회의용탁자37</q>↔<q>회의용탁자37</q>),
+        <b>제품명과 품목명이 아예 다른 줄도 섞여 있다</b>(<q>작업용의자6</q>↔<q>작업용의자</q>).
+        둘 중 무엇이 맞는지는 <b>도면을 열어 실물과 맞춰 봐야</b> 안다 — 데이터로는 판정이 안 된다.
+      </p>
+      <p>
+        통합은 이 짝을 <b>영구히 고정</b>하는 작업이다. 지금 잘못 고정하면 그 뒤로는
+        <q>도면이 원래 그 품목 것</q>이 되어 되짚을 근거가 사라진다.
+      </p>
+    </div>
+    <h3>왜 식별번호가 엉뚱한 곳을 가리키나</h3>
+    <p>
+      품목 마스터에 <b>주문에서 자동 생성된 품목</b> 15건(<code>ITM-0001</code>~<code>ITM-0015</code>)이 있다.
+      조달 주문서를 파싱해 없는 품목을 만들면서 그 <b>식별번호를 그대로 달아</b> 둔 것들이다.
+      원래의 모델 품목(<code>IFS-*</code>)에는 그 번호가 없거나 다른 번호가 들어 있어,
+      식별번호로 찾으면 <code>ITM-*</code> 쪽이 잡힌다.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>품목 코드 체계</th><th class="num">행수</th><th class="num">식별번호 있음</th><th>성격</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">IFS-*</td><td class="num">597</td><td class="num">592</td><td>모델 코드가 붙은 정규 품목</td></tr>
+          <tr><td class="mono">ITM-*</td><td class="num">15</td><td class="num">12</td><td><b>주문 파싱이 만든 품목</b> — 3건만 작업지시·재고에 쓰였다</td></tr>
+          <tr><td>그 외</td><td class="num">75</td><td class="num">64</td><td>자재·부자재 등</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      그래서 <b>품목 마스터 안에도 동명이인이 있다</b> — 12쌍. <code>책상</code>(IFS-NA01 / ITM-0004),
+      <code>이동형파일서랍</code>(IFS-NC02-1 / ITM-0006), <code>의자</code>(ITM-0014 / ITM-0015),
+      <code>응접탁자1~5</code>(IFS-NQ0n / IFS-Q0n) 등이다.
+      <b>통합의 범위는 <q>두 마스터</q>가 아니라 <q>두 마스터 + 마스터 안의 중복</q>이다.</b>
+    </p>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-no">§ 03</span><h2 class="sec-title">합치면 무엇을 잃나 — 아무것도 없다</h2></div>
+    <p>
+      통합의 비용은 보통 <q>한쪽에만 있는 값</q>을 어디에 둘지에서 나온다. 여기서는 그 문제가 없다.
+      제품 마스터 13개 컬럼을 품목 마스터와 전건 대조한 결과다.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>제품 마스터 컬럼</th><th>품목 마스터의 짝</th><th class="num">다른 건수</th><th>판정</th></tr></thead>
+        <tbody>
+          <tr><td>product_name</td><td>item_name</td><td class="num">9</td><td>제품 쪽이 옛 이름(<q>캐비닛12</q>) — 품목이 정본</td></tr>
+          <tr><td>product_spec</td><td>item_spec</td><td class="num">9</td><td>표기만 다름(<code>1200x750</code> / <code>1200×750</code>)</td></tr>
+          <tr><td>unit</td><td>item_unit</td><td class="num">9</td><td><code>EA</code> / <code>개</code> — 같은 뜻</td></tr>
+          <tr><td>unit_price</td><td>standard_price</td><td class="num">16</td><td><b>16건 전부 제품 쪽이 0</b> — 미입력이지 다른 값이 아니다</td></tr>
+          <tr><td>identify_no</td><td>item_identify_no</td><td class="num">661</td><td><b>661건 전부 빈값</b> — 번호는 product_code 에 들어 있다</td></tr>
+          <tr><td>category_no</td><td>item_category_no</td><td class="num">0</td><td>완전 일치</td></tr>
+          <tr><td>drawing_path</td><td>drawing_path</td><td class="num">10</td><td>품목 쪽이 555건으로 더 많다</td></tr>
+          <tr><td>status</td><td>status</td><td class="num">0</td><td>완전 일치</td></tr>
+          <tr><td>memo</td><td>—</td><td class="num">661</td><td><b>연결 키가 여기 있다</b> — 통합하면 역할이 끝난다</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      제품 마스터가 지금 하는 일은 <b>도면·사진을 매다는 고리</b> 하나뿐이다. 그 고리를 품목으로 옮기면
+      테이블 자체가 할 일이 없어진다. 품목 쪽엔 이미 <code>image_path</code> 364건 ·
+      <code>drawing_path</code> 555건이 채워져 있다 — 2026-08-07에 같은 매칭으로 한 번 옮겨 둔 흔적이다.
+    </p>
+  </section>
+
+  <section id="s4">
+    <div class="sec-head"><span class="sec-no">§ 04</span><h2 class="sec-title">건드려야 하는 범위</h2></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>대상</th><th class="num">규모</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td>DB — 자식 테이블</td><td class="num">2 · 929행</td><td><code>t_drawing.product_id</code> 563 · <code>t_product_picture.product_id</code> 366</td></tr>
+          <tr><td>PHP — 제품 마스터를 읽는 파일</td><td class="num">6 · 61곳</td><td>Master · Drawing · DrawingMemo · ProductPicture · Production · views/master/products</td></tr>
+          <tr><td>모델명 정규식</td><td class="num">10곳 · <b class="warn">3변종</b></td><td><code>(.+)</code> 5 · <code>(\S+)</code> 3 · <code>([^\s\/]+)</code> 2 — 결과가 서로 다르다</td></tr>
+          <tr><td>온톨로지 ETL</td><td class="num">1</td><td><code>etl_infurs.php</code> 가 같은 정규식으로 병합 중(매시 :55)</td></tr>
+          <tr><td>화면 메뉴</td><td class="num">1</td><td><q>기준정보 &gt; 품목관리</q>가 여는 대상 정리(T1 가 정한 낱말 반영)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout note">
+      <span class="tag">정규식 3변종이 왜 문제인가</span>
+      <p>
+        <code>모델명: IFS-NC02-1 / 구형</code> 같은 메모에서 <code>(.+)</code> 는 <q>IFS-NC02-1 / 구형</q>을,
+        <code>([^\s\/]+)</code> 는 <q>IFS-NC02-1</q>을 집는다. <b>화면마다 다른 품목을 찾는다</b>는 뜻이고,
+        지금 도면 화면과 사진 화면이 서로 다른 변종을 쓰고 있다. 통합의 부수 효과로 이 열 곳이 전부 사라진다.
+      </p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <div class="sec-head"><span class="sec-no">§ 05</span><h2 class="sec-title">선택지</h2></div>
+    <div class="opts">
+      <div class="opt pick">
+        <h4>B · 브리지 컬럼을 먼저 넣는다 <span class="badge">권고</span> <span class="cost">반나절 · 되돌릴 수 있음</span></h4>
+        <p>
+          <code>t_product.item_id</code> 를 추가하고 지금의 매칭 결과를 <b>값으로 고정</b>한다.
+          코드 10곳의 정규식은 이 컬럼을 읽는 것으로 바꾸고, 테이블 구조와 화면은 그대로 둔다.
+        </p>
+        <ul>
+          <li>7건 충돌은 <b>컬럼을 비워 두고</b> 화면에 <q>확인 필요</q>로 띄운다 — 판정이 끝나면 값만 채운다</li>
+          <li>infurs 선례와 같은 방식이다(<code>t_work_order.master_item_id</code>) — 그때도 의미를 바꾸지 않고 컬럼을 더해 풀었다</li>
+          <li>되돌리기 = 컬럼 삭제. 기존 동작은 하나도 바뀌지 않는다</li>
+        </ul>
+      </div>
+      <div class="opt">
+        <h4>A · 제품 마스터를 폐지한다 <span class="cost">2~3일 · 되돌리기 어려움</span></h4>
+        <p>
+          도면·사진의 <code>product_id</code> 를 <code>item_id</code> 로 이행하고 <code>t_product</code> 를 없앤다.
+          <b>B 를 먼저 하면 A 는 그 다음 단계가 된다</b> — 브리지 컬럼이 그대로 이행 대조표가 된다.
+        </p>
+        <ul>
+          <li>7건 판정이 <b>끝나기 전에는 하면 안 된다</b>(§2)</li>
+          <li>품목 마스터 안 중복 12쌍 처리 방침이 함께 정해져야 한다</li>
+        </ul>
+      </div>
+      <div class="opt">
+        <h4>C · 그대로 둔다 <span class="cost">0 · 비용은 계속 나간다</span></h4>
+        <p>
+          메모 문자열 조인이 남는다. 정규식 변종 3가지가 화면마다 다른 답을 내는 상태도 남고,
+          메모를 손으로 고치는 순간 도면이 통째로 떨어진다. <b>T1 이 <q>말만 정한다</q>고 했을 때의 기본 상태</b>다.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-no">§ 06</span><h2 class="sec-title">B 를 한다면 — 실행 순서</h2></div>
+    <ol class="steps">
+      <li><b>컬럼 추가 · 값 채우기</b><span><code>ALTER TABLE t_product ADD item_id INT NULL</code> 후
+        메모 모델명으로 654건을 채운다. 두 키가 어긋나는 7건은 <b>NULL 로 남긴다</b>.
+        MariaDB 10.3 에서 <code>AFTER</code> 절과 INSTANT 알고리즘은 쓰지 않는다(다른 사이트에서 실패한 조합).</span></li>
+      <li><b>읽는 쪽을 바꾼다</b><span>도면·사진·생산 화면 10곳의 정규식을 <code>item_id</code> 조인으로 교체한다.
+        <b>읽는 쪽과 쓰는 쪽을 함께 훑는다</b> — hisense 에서 쓰는 쪽만 고쳐 읽는 쪽 12개 파일이 깨진 적이 있다.</span></li>
+      <li><b>확인 필요 7건을 화면에 띄운다</b><span>제품 목록에 <q>품목 미확정</q> 배지를 달아 사람이 도면을 열어 판정하게 한다.
+        판정 결과는 <code>item_id</code> 에 값으로 들어간다.</span></li>
+      <li><b>점검을 상시화한다</b><span><code>item_id</code> 가 빈 제품 수 · 한 품목에 제품이 둘 붙은 경우 ·
+        메모 모델명과 <code>item_id</code> 가 어긋난 경우를 세는 점검을 기존
+        <code>check_invariants.php</code> 에 붙인다.</span></li>
+      <li><b>온톨로지 ETL 을 같은 키로 바꾼다</b><span><code>etl_infurs.php</code> 가 정규식 대신 <code>item_id</code> 를 읽게 한다.
+        점검의 <code>mergedFrom 합계 = DB 행수</code> 불변식이 이행 실수를 잡는다.</span></li>
+    </ol>
+    <div class="callout">
+      <span class="tag">되돌리기</span>
+      <p>
+        1단계는 컬럼 삭제로 즉시 되돌아간다. 2단계 이후는 코드 되돌리기(커밋 단위)로 충분하다 —
+        <b>기존 데이터를 지우거나 덮어쓰는 단계가 없다.</b> A(폐지)에 들어가기 전까지는 파괴적 변경이 없다.
+      </p>
+    </div>
+  </section>
+
+  <section id="s7">
+    <div class="sec-head"><span class="sec-no">§ 07</span><h2 class="sec-title">정해 주셔야 하는 것</h2></div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th class="mono">#</th><th>판단</th><th>왜 사람이 정해야 하나</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">F1-a</td><td><b>B 진행</b> — 브리지 컬럼 추가</td>
+              <td><b class="ok">완료(2026-09-21)</b> — 661/661 연결. 검증은 §08</td></tr>
+          <tr><td class="mono">F1-b</td><td><b>충돌 7건</b>을 어느 쪽으로 붙일까</td>
+              <td><b class="ok">결정</b> — <b>메모 모델명이 맞는 짝</b>이다. 조달 식별번호는 제품↔품목 연결에 쓰지 않는다
+                  (주문라인→품목은 식별번호가 유일한 키라 유지)</td></tr>
+          <tr><td class="mono">F1-c</td><td><code>ITM-*</code> 15건과 동명 품목을 <b>합칠까</b></td>
+              <td>3건은 이미 작업지시·재고에 쓰였다. 합치면 그 기록의 품목이 바뀐다 — 통합 범위 결정</td></tr>
+          <tr><td class="mono">F1-d</td><td>A(폐지)까지 갈까, B 에서 멈출까</td>
+              <td>B 만으로도 <q>화면마다 다른 답</q>은 사라진다. A 는 화면·메뉴 정리까지 포함한 별도 결정</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--muted)">
+      F1-a 에 <q>한다</q>가 나오면 1~2단계는 당일 가능하다. F1-b 는 현장 판정이라 기한을 따로 잡아야 한다.
+    </p>
+  </section>
+
+  <section id="s8">
+    <div class="sec-head"><span class="sec-no">§ 08</span><h2 class="sec-title">실행 결과 (2026-09-21)</h2></div>
+    <p>
+      <b>연결을 메모 모델명으로 고정</b>했다. 충돌 7건은 제품명이 모델명 쪽과 맞아떨어졌고
+      (<q>회의용탁자37</q>↔<q>회의용탁자37</q>), 조달 식별번호 쪽은 주문 파싱이 만든
+      <code>ITM-*</code> 품목을 가리키고 있었다. 그래서 식별번호는 <b>제품↔품목 연결에서 뺐다.</b>
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>단계</th><th>한 일</th><th>검증</th></tr></thead>
+        <tbody>
+          <tr><td>1 · 컬럼</td><td><code>t_product.item_id</code> 추가(인덱스 포함) · 메모 모델명으로 전건 채움</td>
+              <td class="ok">661 / 661 연결 · 미확정 0</td></tr>
+          <tr><td>2 · 읽는 쪽</td><td>정규식 10곳을 헬퍼 <code>product_model_name()</code> 하나로 모음
+              (<code>application/helpers/item_link_helper.php</code> 신설)</td>
+              <td class="ok">남은 정규식 0곳</td></tr>
+          <tr><td>3 · 조인</td><td>거래명세서 사진 조회가 메모 <code>LIKE</code> 대신 브리지를 탄다(<code>Production.php</code>)</td>
+              <td class="ok">사진 해결 9건 = 종전과 동일</td></tr>
+          <tr><td>4 · 화면</td><td>제품 목록·도면 목록에 <b>품목 미확정</b> 배지 · 검색 API 3종이 <code>model_name</code> 을 내려준다</td>
+              <td class="ok">화면 4종 · API 3종 점검 14/14</td></tr>
+          <tr><td>5 · 점검</td><td><code>check_invariants.php</code> 에 F1-1~F1-4 추가</td>
+              <td class="ok">전 항목 통과 · 미확정 0건</td></tr>
+          <tr><td>6 · 온톨로지</td><td><code>etl_infurs.php</code> 가 정규식 대신 브리지를 읽는다(매시 :55)</td>
+              <td class="ok">180,337 트리플 재적재 · 점검 통과</td></tr>
+          <tr><td>회귀</td><td>기존 E2E 하네스 전량</td><td class="ok">140 / 140 통과</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout note">
+      <span class="tag">부수 소득 — 틀린 사진을 한 장 걷어냈다</span>
+      <p>
+        브리지 전후로 거래명세서 사진 해결 건수를 대조하다 <b>옛 경로가 다른 모델의 사진을 붙이고 있던 사례</b>를 찾았다.
+        주문 식별번호 <code>25181220</code>(작업용의자)에 <b>작업용의자6</b>의 사진이 붙고 있었다 —
+        제품 <code>25184200</code> 것이다. 메모 <code>LIKE</code> 조인이 <q>모델명: IFS-NV06</q> 하나만 보고 골랐기 때문이다.
+      </p>
+      <p>
+        지금은 품목 <code>IFS-NV06</code> 에 연결된 제품의 사진만 나간다. 남은 의문은
+        <b>품목 <code>IFS-NV06</code> 에 식별번호 25181220 이 달려 있는 것이 맞나</b>인데,
+        이건 제품 마스터가 아니라 <b>품목 마스터의 식별번호 문제</b>라 F1 밖이다 — 별도로 볼 일이다.
+      </p>
+    </div>
+    <h3>되돌리려면</h3>
+    <p>
+      DB 는 <code>ALTER TABLE t_product DROP COLUMN item_id</code> 하나로 원상복구된다(백업
+      <code>/root/backups/infurs/f1-before-*.sql</code>). 코드는 커밋 되돌리기로 충분하다 —
+      <b>기존 데이터를 지우거나 덮어쓴 단계가 없다.</b>
+    </p>
+  </section>
+
+  <footer>
+    <span>TX-F1-ITEM r1.1 · 2026-09-21 · infurs_db 전수 질의 · 실행 결과 반영</span>
+    <span class="mono">t_item 687 · t_product 661 · 연결 661/661</span>
+  </footer>
+</div>

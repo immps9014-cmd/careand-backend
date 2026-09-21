@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 온톨로지 산출물을 telomx PMS(프로젝트 OPS-2026-01) 문서관리에 올린다.
 //
-//   새 문서:   node pms_push.js new  <파일> --title "..." [--cat spec|report|meet|etc] [--status draft|review|final] [--note "..."] [--url <아티팩트 주소>]
+//   새 문서:   node pms_push.js new  <파일> --title "..." [--cat spec|report|meet|etc] [--status draft|review|final] [--note "..."] [--url <아티팩트 주소>] [--task <업무 id>]
 //   개정본:    node pms_push.js rev  <문서번호|문서id> <파일> --note "r1.2 — 무엇을 고쳤는지"
 //   목록:      node pms_push.js list
 //
@@ -68,7 +68,8 @@ async function findDoc(key) {
   if (cmd === 'new') {
     const file = positional[1];
     const d = await send('/documents', {
-      project_id: PROJECT_ID, task_id: DOCS_TASK_ID,
+      // 산출물이 특정 업무의 것이면 --task 로 그 업무에 매단다(기본은 설계·문서화)
+      project_id: PROJECT_ID, task_id: opt('task', DOCS_TASK_ID),
       category: opt('cat', 'report'), status: opt('status', 'draft'),
       title: opt('title') || path.basename(file, path.extname(file)),
       tags: opt('tags', '온톨로지'),
