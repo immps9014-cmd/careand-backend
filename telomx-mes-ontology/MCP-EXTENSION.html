@@ -1,0 +1,394 @@
+<title>온톨로지 MCP 확장안</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:#F2F4F1; --surface:#FFFFFF; --surface-2:#E9ECE7;
+    --ink:#15191A; --ink-2:#39423F; --muted:#64706C;
+    --line:#D4D9D2; --line-2:#BFC6BD;
+    --accent:#1C5871; --accent-soft:#DCE8EC;
+    --signal:#9C5A06; --signal-soft:#F4E7D3;
+    --good:#2A6349; --good-soft:#DCE9E2;
+    --dim:#8D9894;
+    --shadow:0 1px 2px rgba(21,25,26,.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1213; --surface:#171C1D; --surface-2:#1E2425;
+      --ink:#E7EAE6; --ink-2:#C3CAC6; --muted:#8D9894;
+      --line:#2B3233; --line-2:#3B4344;
+      --accent:#7CB6CE; --accent-soft:#17313B;
+      --signal:#DDA35A; --signal-soft:#33260F;
+      --good:#6FB392; --good-soft:#182E25;
+      --dim:#6E7975;
+      --shadow:none; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1213; --surface:#171C1D; --surface-2:#1E2425;
+    --ink:#E7EAE6; --ink-2:#C3CAC6; --muted:#8D9894;
+    --line:#2B3233; --line-2:#3B4344;
+    --accent:#7CB6CE; --accent-soft:#17313B;
+    --signal:#DDA35A; --signal-soft:#33260F;
+    --good:#6FB392; --good-soft:#182E25;
+    --dim:#6E7975;
+    --shadow:none; color-scheme: dark;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    font-size:16px; line-height:1.75; -webkit-text-size-adjust:100%;
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding-inline:20px; padding-block:0 72px; counter-reset: sec; }
+  .mono { font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+  .mast { padding-block:56px 36px; border-bottom:2px solid var(--ink); }
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 18px; }
+  h1 { font-family:"Noto Serif KR",Georgia,serif; font-weight:700;
+    font-size:clamp(30px,6vw,46px); line-height:1.22; letter-spacing:-.02em; margin:0; text-wrap:balance; }
+  .lede { font-size:clamp(16px,2.2vw,18.5px); color:var(--ink-2); max-width:62ch; margin:20px 0 0; }
+  .docmeta { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:2px 28px; margin-top:32px; border-top:1px solid var(--line); padding-top:20px; }
+  .docmeta div { display:flex; flex-direction:column; gap:3px; }
+  .docmeta .k { font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .docmeta .v { font-size:14px; font-weight:500; }
+
+  .toc { margin-block:40px 0; }
+  .toc h2 { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em;
+    text-transform:uppercase; color:var(--muted); font-weight:500; margin:0 0 14px; }
+  .toc ol { list-style:none; margin:0; padding:0; display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(238px,1fr)); gap:1px 24px; counter-reset:toc; }
+  .toc li { counter-increment:toc; border-top:1px solid var(--line); }
+  .toc a { display:flex; gap:12px; align-items:baseline; padding-block:9px;
+    color:var(--ink-2); text-decoration:none; font-size:14.5px; }
+  .toc a::before { content:"§" counter(toc); font-family:"IBM Plex Mono",monospace;
+    font-size:11.5px; color:var(--accent); flex:none; min-width:22px; }
+  .toc a:hover { color:var(--accent); }
+
+  section { margin-top:68px; counter-increment:sec; }
+  .sec-head { border-top:1px solid var(--line-2); padding-top:14px; margin-bottom:26px; }
+  .sec-no { font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.1em;
+    color:var(--accent); display:block; margin-bottom:8px; }
+  h2.sec-title { font-family:"Noto Serif KR",Georgia,serif; font-weight:700;
+    font-size:clamp(22px,3.4vw,29px); line-height:1.3; letter-spacing:-.015em; margin:0; text-wrap:balance; }
+  h3 { font-size:17px; font-weight:600; margin:38px 0 12px; letter-spacing:-.005em; }
+  h4 { font-size:14.5px; font-weight:600; margin:24px 0 8px; color:var(--ink-2); }
+  p { margin:0 0 15px; max-width:68ch; }
+  ul, ol.body { max-width:68ch; padding-left:22px; margin:0 0 16px; }
+  li { margin-bottom:7px; }
+  strong { font-weight:600; }
+  em { font-style:normal; box-shadow:inset 0 -.42em var(--accent-soft); border-radius:1px; }
+  code { font-family:"IBM Plex Mono",monospace; font-size:.875em; background:var(--surface-2);
+    padding:.1em .36em; border-radius:3px; border:1px solid var(--line); overflow-wrap:anywhere; }
+  a { color:var(--accent); text-underline-offset:3px; }
+  a:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:2px; }
+
+  .scroll { overflow-x:auto; margin:20px 0 24px; border:1px solid var(--line);
+    border-radius:4px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  thead th { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--muted); font-weight:500; background:var(--surface-2); white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:0; }
+  td.mono { font-family:"IBM Plex Mono",monospace; font-size:12px; }
+  .num { font-variant-numeric:tabular-nums; white-space:nowrap; text-align:right; }
+
+  .callout { border-left:3px solid var(--accent); background:var(--surface);
+    padding:16px 18px; margin:22px 0; box-shadow:var(--shadow); }
+  .callout.warn { border-left-color:var(--signal); background:var(--signal-soft); }
+  .callout.rule { border-left-color:var(--good); }
+  .callout p:last-child { margin-bottom:0; }
+  .callout .tag { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:7px; }
+  .pull { font-family:"Noto Serif KR",Georgia,serif; font-weight:500;
+    font-size:clamp(17px,2.6vw,21px); line-height:1.6; color:var(--ink);
+    border-top:1px solid var(--line-2); border-bottom:1px solid var(--line-2);
+    padding-block:22px; margin:32px 0; max-width:54ch; }
+
+  /* 상태 칩 — 소비 여부를 형태로도 구분한다 */
+  .chip { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.06em;
+    padding:2px 7px; border-radius:2px; white-space:nowrap; border:1px solid transparent; }
+  .chip.on   { background:var(--good-soft);  color:var(--good);   border-color:var(--good); }
+  .chip.off  { background:var(--signal-soft);color:var(--signal); border-color:var(--signal); }
+  .chip.none { background:var(--surface-2);  color:var(--muted);  border-color:var(--line-2); }
+
+  /* 앱 카드 */
+  .app { display:grid; grid-template-columns:150px 1fr; gap:0 22px;
+    border:1px solid var(--line); border-radius:4px; background:var(--surface);
+    padding:20px 22px; box-shadow:var(--shadow); margin:22px 0; }
+  .app .aid { border-right:1px solid var(--line); padding-right:18px; }
+  .app .aid b { display:block; font-size:16px; letter-spacing:-.01em; margin-bottom:7px; }
+  .app .aid .meta { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted);
+    line-height:1.7; margin-top:9px; display:block; }
+  .app h3 { margin:0 0 10px; font-size:16.5px; }
+  .app p { font-size:14.5px; }
+  .app .uses { list-style:none; margin:0 0 4px; padding:0; max-width:none; }
+  .app .uses li { display:grid; grid-template-columns:auto 1fr; gap:0 12px;
+    border-top:1px solid var(--line); padding-block:12px; margin:0; font-size:14.5px; }
+  .app .uses .rank { font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--accent);
+    padding-top:5px; white-space:nowrap; }
+  .app .uses b { display:block; font-weight:600; margin-bottom:3px; }
+  .app .uses .why { color:var(--ink-2); font-size:14px; }
+  .app .q { display:block; font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+    color:var(--muted); margin-top:5px; overflow-wrap:anywhere; }
+  .app .pre { margin:14px 0 0; padding-top:11px; border-top:1px dashed var(--line);
+    font-size:13px; color:var(--ink-2); max-width:none; }
+  .app .pre b { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--signal); margin-right:8px; }
+  .app .pre.clear b { color:var(--good); }
+
+  figure { margin:28px 0; }
+  figure .fbox { background:var(--surface); border:1px solid var(--line); border-radius:4px;
+    padding:20px 18px; overflow-x:auto; }
+  figure svg { display:block; max-width:100%; height:auto; color:var(--ink); }
+  svg .s-lab  { fill:var(--muted); }
+  svg .s-name { fill:var(--ink); }
+  svg .s-warn { fill:var(--signal); }
+  svg .s-good { fill:var(--good); }
+  svg .s-dim  { fill:var(--line-2); }
+  svg .s-rule { stroke:var(--line-2); }
+  figcaption { font-size:13px; color:var(--muted); margin-top:11px; max-width:68ch; }
+  figcaption b { color:var(--ink-2); font-weight:600; }
+
+  .principles { list-style:none; padding:0; margin:24px 0 8px; max-width:none; display:grid; gap:1px; }
+  .principles li { display:grid; grid-template-columns:34px 1fr; gap:0 16px;
+    border-top:1px solid var(--line); padding-block:16px; margin:0; }
+  .principles .pn { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--accent); padding-top:3px; }
+  .principles b { display:block; font-weight:600; margin-bottom:4px; }
+  .principles span.d { color:var(--ink-2); font-size:14.5px; }
+
+  footer { margin-top:76px; border-top:2px solid var(--ink); padding-top:18px;
+    font-size:12.5px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px 24px; justify-content:space-between; }
+
+  @media (max-width:640px) {
+    .app { grid-template-columns:1fr; gap:14px; }
+    .app .aid { border-right:0; border-bottom:1px solid var(--line); padding:0 0 12px; }
+    .app .uses li { grid-template-columns:1fr; gap:3px; }
+    .principles li { grid-template-columns:1fr; gap:4px; }
+  }
+  @media (prefers-reduced-motion: no-preference) { a { transition:color .15s ease; } }
+  @media print { .sec-head, h3 { break-after:avoid; } .app, tr { break-inside:avoid; } }
+</style>
+
+<style>
+  .flow { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin:24px 0 8px; }
+  .flow .st { background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:14px 16px; }
+  .flow .st.key { border-color:var(--accent); background:var(--accent-soft); }
+  .flow .st .k { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+  .flow .st b { display:block; font-size:15px; margin-bottom:4px; }
+  .flow .st span.d { font-size:13px; color:var(--ink-2); line-height:1.6; display:block; }
+  @media print { .sec-head, h3 { break-after:avoid; } .app, tr { break-inside:avoid; } }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">TX-ONT-MCP r1.0 · 설계 제안</p>
+    <h1>온톨로지 MCP 확장안</h1>
+    <p class="lede">3사 MES 지식그래프(약 28.6만 트리플)를 MCP 서버로 감싸면, 지금은 hisense <code>/impact</code> 한 화면에서만 쓰는 온톨로지를 Claude가 도구로 직접 불러 쓸 수 있다. 무엇이 효과적인지, 어떤 선을 지켜야 하는지, 어떤 순서로 붙일지 정리한다.</p>
+    <div class="docmeta">
+      <div><span class="k">문서</span><span class="v">TX-ONT-MCP r1.0</span></div>
+      <div><span class="k">작성</span><span class="v">2026-09-23 · 텔롬엑스</span></div>
+      <div><span class="k">상위 문서</span><span class="v">TX-ONT-DESIGN r1.1 · Onto-Ask r1.0</span></div>
+      <div><span class="k">상태</span><span class="v">제안 — 구현 전</span></div>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="목차">
+    <h2>목차</h2>
+    <ol>
+      <li><a href="#s1">왜 MCP인가</a></li>
+      <li><a href="#s2">도구 카탈로그</a></li>
+      <li><a href="#s3">효과가 큰 활용 6가지</a></li>
+      <li><a href="#s4">지켜야 할 선</a></li>
+      <li><a href="#s5">단계별 도입</a></li>
+      <li><a href="#s6">결정이 필요한 항목</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <div class="sec-head"><span class="sec-no">§ 01</span><h2 class="sec-title">왜 MCP인가</h2></div>
+
+    <p>적재는 끝났지만 쓰는 곳이 적다. Fuseki <code>tx-mes</code> 데이터셋에 hisense·infurs·naturefood 세 그래프가 매시간(:25/:40/:55) 갱신되는데, 그래프를 읽는 화면은 hisense 영향분석 하나뿐이다. infurs 180,337 트리플과 naturefood 87,672 트리플은 쌓이기만 하고 읽히지 않는다.</p>
+
+    <div class="scroll"><table>
+      <thead><tr><th>지금의 막힘</th><th>MCP가 바꾸는 것</th></tr></thead>
+      <tbody>
+        <tr><td>새 질문마다 화면을 개발해야 함</td><td>검증된 질의를 <strong>도구</strong>로 한 번만 노출하면 Claude가 질문에 맞게 골라 호출</td></tr>
+        <tr><td>Onto-Ask 향후 계획 1번 — 자연어를 그래프 질의에 직접 연결하지 못함</td><td>Claude가 질문 해석기 역할을 맡고, 서버는 화이트리스트만 실행</td></tr>
+        <tr><td>LLM 크레딧 부족(D6) — hisense 자연어 검색·OCR Vision 경로가 실운영에서 검증되지 못함</td><td>LLM 비용이 <strong>사용자 쪽 Claude 구독</strong>으로 넘어감. MES 서버에 API 키가 필요 없음</td></tr>
+        <tr><td>3사 데이터를 한 번에 볼 수단이 없음</td><td><code>site</code> 파라미터 하나로 같은 도구가 세 그래프에 동작(재사용 판정 §11.2에서 이미 실측)</td></tr>
+        <tr><td>MES 데이터와 메일·일정·PMS가 따로 놂</td><td>Gmail·Calendar·PMS 등 다른 MCP와 한 대화 안에서 조합</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>구조</h3>
+    <div class="flow">
+      <div class="st"><span class="k">Client</span><b>Claude</b><span class="d">Claude Code · Desktop · claude.ai. 질문을 의도와 조건으로 해석</span></div>
+      <div class="st key"><span class="k">MCP 서버</span><b>tx-ontology</b><span class="d">도구·리소스 목록만 내놓음. 파라미터 검증, 타임아웃, 결과 상한</span></div>
+      <div class="st"><span class="k">질의 SSOT</span><b>Ontology::QUERIES</b><span class="d">hisense 라이브러리의 화이트리스트. MCP는 복사하지 않고 호출만</span></div>
+      <div class="st"><span class="k">저장소</span><b>Fuseki tx-mes</b><span class="d">graph/hisense · infurs · naturefood. 읽기 전용 투영</span></div>
+    </div>
+    <p class="wide" style="font-size:14px;color:var(--muted)">쓰기(Action)는 이 경로를 타지 않는다. 쓰기 도구를 붙이게 되면 기존 MES 엔드포인트를 호출한다(§04).</p>
+
+    <div class="callout rule">
+      <span class="tag">설계 원칙과의 대응</span>
+      <p>MCP는 새 원칙을 만들지 않는다. 설계서가 이미 정한 세 원칙이 그대로 MCP의 구성 요소가 된다. <strong>검증된 질의만 실행</strong>은 도구 목록이 되고, <strong>MES DB가 원본, 그래프는 읽기 투영</strong>은 읽기 전용 서버가 되며, <strong>쓰기는 MES 엔드포인트로만</strong>은 확인 절차가 붙은 별도 도구가 된다.</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <div class="sec-head"><span class="sec-no">§ 02</span><h2 class="sec-title">도구 카탈로그</h2></div>
+
+    <p>모든 도구는 <code>site</code>(hisense · infurs · naturefood)를 받고, 응답에 <strong>데이터 기준 시각</strong>(<code>out/status.json</code>)을 붙인다. 그래프는 매시간 찍는 스냅샷이므로, 기준 시각이 없으면 옛 수치를 최신으로 읽게 된다.</p>
+
+    <h3>추적 도구</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>도구</th><th>근거 자산</th><th>답하는 질문</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">impact_by_material</td><td><code>impact_by_material</code> · <code>material_reach</code></td><td>이 자재 입고가 늦으면 어느 수주·수요기관이 밀리나</td><td><span class="chip on">질의 있음</span></td></tr>
+        <tr><td class="mono">order_remaining</td><td><code>shipped_by_line</code> · <code>all_line_qty</code> (원장 기준 <code>tx:shippedQty</code>)</td><td>이 수주 아직 몇 개 남았나</td><td><span class="chip on">질의 있음</span></td></tr>
+        <tr><td class="mono">trace_lot</td><td>producedBy · shipsLot 관계</td><td>이 로트는 어느 작업지시에서 나와 어디로 출하됐나</td><td><span class="chip off">질의 신규</span></td></tr>
+        <tr><td class="mono">partner_360</td><td>infurs 병합 거래처 9,707개 · <code>tx:bizNo</code></td><td>이 거래처의 수주·출하·미납 이력</td><td><span class="chip off">질의 신규</span></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>품질 점검 도구</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>도구</th><th>근거 자산</th><th>답하는 질문</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">run_invariants</td><td>사이트별 <code>check.php</code> (25 / 25 / 34항목)</td><td>지금 그래프와 원장이 맞나, 어떤 경고가 있나</td><td><span class="chip on">점검 있음</span></td></tr>
+        <tr><td class="mono">doc_vs_ledger</td><td><code>Impact::verify_cli()</code> · <code>_reconcile()</code></td><td>문서랑 실제 출고가 다른 수주가 있나 (Onto-Ask “개발 목표”)</td><td><span class="chip on">hisense만</span></td></tr>
+        <tr><td class="mono">data_gaps</td><td>infurs 적재 부산물</td><td>도면·사진·문서 없는 품목, 두 마스터 단가 불일치 16건 같은 공백 목록</td><td><span class="chip off">질의 신규</span></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>이름 해소 도구</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>도구</th><th>동작</th><th>규칙</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">resolve_entity</td><td>현장에서 부르는 이름(품목·거래처)을 받아 IRI 후보를 돌려줌. <code>tx:aliasName</code> · 공백 정규화 사용</td><td>후보가 둘 이상이면 <strong>Claude가 고르지 않고 사용자에게 묻는다</strong>. infurs에는 “개별화물”이라는 이름의 서로 다른 사업체가 14곳 있다</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>리소스 (읽기 자료)</h3>
+    <ul>
+      <li><code>schema://mes-core</code> — <code>mes-core.ttl</code>(클래스 16 · 관계 20). hisense 레포 원본을 그대로 읽는다(복사본 금지).</li>
+      <li><code>terms://tx-ont-terms</code> — 확정된 용어 대조표 r1.1. 화면 라벨과 온톨로지 어휘의 대응.</li>
+      <li><code>pitfalls://{site}</code> — 사이트별 함정. item_id 공간이 hisense와 infurs에서 반대, 출하 원장 키가 다름, hisense 취소분 <code>status=9</code>.</li>
+      <li><code>status://{site}</code> — 마지막 적재 시각, 트리플 수, 마지막 점검 결과.</li>
+    </ul>
+  </section>
+
+  <section id="s3">
+    <div class="sec-head"><span class="sec-no">§ 03</span><h2 class="sec-title">효과가 큰 활용 6가지</h2></div>
+
+    <div class="app">
+      <div class="aid"><b>납기 위험 대응</b><span class="chip on">즉시 가능</span><span class="meta">hisense<br>impact · Gmail</span></div>
+      <div class="abody">
+        <p>자재 지연 한 건에서 연락 초안까지 한 대화로 끝낸다. 영향받는 수주를 찾고, 연락 대상은 발주기관(조달청)이 아니라 <strong>수요기관</strong>으로 잡는다. 이 구분은 Phase 3에서 온톨로지에 이미 들어가 있다.</p>
+        <span class="q">“알루미늄 프레임 입고가 1주 밀리면 영향 수주랑 수요기관 정리하고 연락 메일 초안 써줘”</span>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="aid"><b>자연어 질의</b><span class="chip on">즉시 가능</span><span class="meta">3사 공통<br>Onto-Ask 연결</span></div>
+      <div class="abody">
+        <p>Onto-Ask의 해석 단계를 Claude가 맡는다. 규칙 파서가 못 잡던 질문도 도구 선택으로 처리되고, 답에는 어떤 도구를 어떤 조건으로 불렀는지가 남는다. 기술개요서의 <strong>“자연어 질문 처리율” KPI</strong>를 도구 호출 로그로 잴 수 있다.</p>
+        <span class="q">“이 수주 몇 개 남았어?” → order_remaining(site=hisense, order_no=…)</span>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="aid"><b>데이터 정합성 점검</b><span class="chip on">즉시 가능</span><span class="meta">3사<br>check · verify</span></div>
+      <div class="abody">
+        <p>매일 돌던 검산 결과를 사람이 로그로 찾아볼 필요가 없어진다. 경고가 난 지점을 Claude가 원인 후보와 함께 설명한다. 취소분 함정처럼 잘못된 결론으로 가기 쉬운 경우는 <code>pitfalls</code> 리소스가 막는다.</p>
+        <span class="q">“3사 점검 돌려서 실패·경고만 요약해줘”</span>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="aid"><b>거래처 360</b><span class="chip off">선결 조건</span><span class="meta">infurs<br>partner_360</span></div>
+      <div class="abody">
+        <p>28,056행을 9,707개로 병합한 결과를 드디어 쓰게 된다. 같은 사업자번호 아래 지점·부서가 섞여 있으므로 <code>tx:bizNo</code>로 법인 단위와 지점 단위를 나눠 보여준다.</p>
+        <p class="pre"><b>선결</b>infurs <code>login.php</code> 평문 admin 비밀번호(D7) — 원격 공개 전에 해결</p>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="aid"><b>로트 역추적</b><span class="chip off">질의 신규</span><span class="meta">hisense<br>trace_lot</span></div>
+      <div class="abody">
+        <p>품질 문제가 생겼을 때 로트에서 작업지시와 출하처까지 거슬러 올라간다. <code>t_lot</code>에 작업지시 컬럼이 없어 원장(production_in)에서 역추적한다는 점이 그래프에 이미 반영돼 있다.</p>
+        <span class="q">“로트 L-… 어디로 나갔어? 같은 작업지시로 나온 로트도”</span>
+      </div>
+    </div>
+
+    <div class="app">
+      <div class="aid"><b>보고서 자동화</b><span class="chip on">즉시 가능</span><span class="meta">3사 · PMS<br>OPS-2026-01</span></div>
+      <div class="abody">
+        <p>3사 점검 결과, 미납 잔량, 데이터 공백과 PMS 진척을 한 번에 모아 주간보고를 쓴다. 수치는 모두 도구 응답에서 오므로 지어낸 숫자가 섞이지 않는다.</p>
+        <span class="q">“이번 주 온톨로지 운영 주간보고 써서 PMS에 올려줘”</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="s4">
+    <div class="sec-head"><span class="sec-no">§ 04</span><h2 class="sec-title">지켜야 할 선</h2></div>
+
+    <ol class="principles">
+      <li><span class="pn">G1</span><div><b>SPARQL 원문 도구는 기본으로 두지 않는다</b><span class="d">AI가 질의를 직접 만들지 않는다는 Onto-Ask 원칙을 스스로 깨게 된다. 필요하면 관리자 전용으로만 두고 읽기 전용, LIMIT, 타임아웃을 강제한다.</span></div></li>
+      <li><span class="pn">G2</span><div><b>Fuseki 메모리 한도를 지킨다</b><span class="d">moai-fuseki 컨테이너는 1GB 제한이다. 도구마다 타임아웃(현재 라이브러리 1.5초)과 결과 행 상한을 둔다. 컨테이너 안에서 JVM을 따로 띄우는 검증은 금지(과거 스래싱 사례).</span></div></li>
+      <li><span class="pn">G3</span><div><b>모든 응답에 데이터 기준 시각을 넣는다</b><span class="d"><code>/impact</code>의 “데이터 기준 hh:mm” 칩과 같은 이유다. 2시간 30분을 넘기면 응답에 경고를 붙인다.</span></div></li>
+      <li><span class="pn">G4</span><div><b>모호하면 고르지 않는다</b><span class="d">이름 해소 후보가 여럿이면 목록을 돌려주고 사용자 선택을 기다린다. 동명이인 거래처에 잘못 붙은 답은 납기 연락 대상을 틀리게 만든다.</span></div></li>
+      <li><span class="pn">G5</span><div><b>쓰기는 MES 엔드포인트로만, 사람 확인 후에만</b><span class="d">불변식을 우회하는 쓰기 경로를 만들지 않는다. 작업지시 생성은 <code>Order::pipeline_action</code> 재사용 원칙 그대로.</span></div></li>
+      <li><span class="pn">G6</span><div><b>외부 공개 전에 인증과 선결 과제를 끝낸다</b><span class="d">원격 MCP는 OAuth 또는 토큰 인증 필수. infurs 평문 비밀번호(D7) 해결이 먼저다. 개인정보는 그래프에 싣지 않는다는 원칙(caren)도 유지한다.</span></div></li>
+    </ol>
+  </section>
+
+  <section id="s5">
+    <div class="sec-head"><span class="sec-no">§ 05</span><h2 class="sec-title">단계별 도입</h2></div>
+
+    <p>순서가 중요하다. 외부 공개가 없는 단계부터 시작하면 보안 선결 조건 없이 효과를 먼저 확인할 수 있다.</p>
+
+    <div class="scroll"><table>
+      <thead><tr><th>단계</th><th>내용</th><th>사용처</th><th>선결 조건</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">M1</td><td>stdio MCP 서버 · 읽기 전용 도구 5~6개(impact · remaining · invariants · doc_vs_ledger · resolve_entity) + 리소스 4종</td><td>lt-server의 Claude Code</td><td>없음</td></tr>
+        <tr><td class="mono">M2</td><td>도구 호출 로그 적재 → “자연어 질문 처리율” KPI 산출. trace_lot · partner_360 · data_gaps 질의 추가</td><td>동일</td><td>신규 질의는 check로 검산 후 화이트리스트 등록</td></tr>
+        <tr><td class="mono">M3</td><td>HTTPS 원격 MCP로 전환(Streamable HTTP) · 사이트별 권한</td><td>claude.ai · Desktop</td><td>OAuth/토큰 인증 · D7 해결</td></tr>
+        <tr><td class="mono">M4</td><td>확인 절차가 붙은 쓰기 도구(예: 배송지시 발행 요청) — MES 엔드포인트 호출</td><td>현장 관리자</td><td>도구별 불변식 확인 · 사용자 결정</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="callout warn">
+      <span class="tag">서버 환경 제약</span>
+      <p>lt-server는 아웃바운드가 화이트리스트로 막혀 있다. MCP SDK는 npm 역터널(Verdaccio)로 Node SDK를 받거나, SDK 없이 stdio JSON-RPC를 직접 구현하는 두 길이 있다. 어느 쪽이든 질의 본문은 MCP 서버에 두지 않고 hisense <code>Ontology::QUERIES</code>를 호출한다. 3사 공용 화이트리스트를 한 곳에 두는 것은 <code>mes-core.ttl</code>을 hisense 레포에 두는 것과 같은 원칙이다.</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <div class="sec-head"><span class="sec-no">§ 06</span><h2 class="sec-title">결정이 필요한 항목</h2></div>
+
+    <div class="scroll"><table>
+      <thead><tr><th>번호</th><th>질문</th><th>선택지</th><th>기본안</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">M-1</td><td>구현 방식</td><td>가) Node SDK(역터널) · 나) SDK 없이 PHP stdio 직접 구현</td><td>나) — 질의 SSOT가 PHP에 있어 호출 경로가 가장 짧다</td></tr>
+        <tr><td class="mono">M-2</td><td>SPARQL 원문 도구</td><td>가) 두지 않음 · 나) 관리자 전용 · 다) 전체 허용</td><td>가) — 필요해지면 나)</td></tr>
+        <tr><td class="mono">M-3</td><td>원격 공개 범위</td><td>가) 내부(Claude Code)만 · 나) 텔롬엑스 직원 · 다) 고객사 담당자까지</td><td>M1~M2 동안 가)</td></tr>
+        <tr><td class="mono">M-4</td><td>쓰기 도구 도입 여부</td><td>가) 읽기 전용 유지 · 나) M4에서 도구별로 도입</td><td>가) — 읽기 효과 확인 후 재판단</td></tr>
+        <tr><td class="mono">M-5</td><td>caren 데이터셋 포함</td><td>가) 별도 MCP · 나) 같은 서버의 별도 도구군</td><td>가) — 도메인과 어휘가 다르다(tx: 코어 미사용)</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>
+    <span>TX-ONT-MCP r1.0 · 2026-09-23</span>
+    <span class="mono">Fuseki tx-mes · 3 graphs · ≈286k triples · 제안 문서</span>
+  </footer>
+
+</div>

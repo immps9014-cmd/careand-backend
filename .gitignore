@@ -58,6 +58,8 @@
 !/telomx-mes-ontology/F1-ITEM-MASTER.html
 !/telomx-mes-ontology/make_pdf_f1.js
 !/telomx-mes-ontology/TERM-WORKSHEET.html
+!/telomx-mes-ontology/MCP-EXTENSION.html
+!/telomx-mes-ontology/make_pdf_mcp.js
 !/telomx-mes-ontology/pdf/
 /telomx-mes-ontology/pdf/*
 !/telomx-mes-ontology/pdf/*.pdf
