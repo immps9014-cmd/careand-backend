@@ -3,6 +3,7 @@
 //
 //   새 문서:   node pms_push.js new  <파일> --title "..." [--cat spec|report|meet|etc] [--status draft|review|final] [--note "..."] [--url <아티팩트 주소>] [--task <업무 id>]
 //   개정본:    node pms_push.js rev  <문서번호|문서id> <파일> --note "r1.2 — 무엇을 고쳤는지"
+//   정보수정:  node pms_push.js meta <문서번호|문서id> [--title "..."] [--status draft|review|final]   (파일은 그대로)
 //   목록:      node pms_push.js list
 //
 // PMS API를 그대로 쓴다(문서번호 자동부여·버전 증가·활동이력을 서버에 맡긴다).
@@ -84,6 +85,17 @@ async function findDoc(key) {
     const doc = await findDoc(positional[1]);
     const v = await send(`/documents/${doc.id}/versions`, { change_note: opt('note') }, positional[2]);
     console.log('개정', doc.doc_no, `v${doc.current_version} → v${v.version}`);
+    return;
+  }
+  if (cmd === 'meta') {
+    // 개정판을 올린 뒤 제목의 판번호(r1.0 → r1.1)나 상태를 맞출 때 쓴다
+    const doc = await findDoc(positional[1]);
+    const body = {};
+    if (opt('title')) body.title = opt('title');
+    if (opt('status')) body.status = opt('status');
+    if (!Object.keys(body).length) throw new Error('--title 또는 --status 가 필요합니다');
+    await call('PATCH', `/documents/${doc.id}`, body);
+    console.log('수정', doc.doc_no, JSON.stringify(body));
     return;
   }
   console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(1, 9).map(l => l.replace(/^\/\/ ?/, '')).join('\n'));
