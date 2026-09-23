@@ -180,7 +180,7 @@
   .flow .st.key { border-color:var(--accent); background:var(--accent-soft); }
   .flow .st .k { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em;
     text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
-  .flow .st b { display:block; font-size:15px; margin-bottom:4px; }
+  .flow .st b { display:block; font-size:15px; margin-bottom:4px; overflow-wrap:anywhere; }
   .flow .st span.d { font-size:13px; color:var(--ink-2); line-height:1.6; display:block; }
   @media print { footer { margin-top:20px; break-before:avoid; } .wrap { padding-block-end:0; } }
   @media print { .sec-head, h3 { break-after:avoid; } .app, tr { break-inside:avoid; } }
@@ -189,18 +189,19 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">TX-ONT-MCP r1.2 · M2 구현 완료</p>
+    <p class="eyebrow">TX-ONT-MCP r1.3 · M3 원격 공개</p>
     <h1>온톨로지 MCP 확장안</h1>
     <p class="lede">3사 MES 지식그래프(약 28.6만 트리플)를 MCP 서버로 감싸면, 지금은 hisense <code>/impact</code> 한 화면에서만 쓰는 온톨로지를 Claude가 도구로 직접 불러 쓸 수 있다. 무엇이 효과적인지, 어떤 선을 지켜야 하는지, 어떤 순서로 붙일지 정리한다.</p>
     <div class="docmeta">
-      <div><span class="k">문서</span><span class="v">TX-ONT-MCP r1.2</span></div>
-      <div><span class="k">작성</span><span class="v">2026-09-23 · 텔롬엑스 (r1.1·r1.2 같은 날)</span></div>
+      <div><span class="k">문서</span><span class="v">TX-ONT-MCP r1.3</span></div>
+      <div><span class="k">작성</span><span class="v">2026-09-23 · 텔롬엑스 (r1.1~r1.3 같은 날)</span></div>
       <div><span class="k">상위 문서</span><span class="v">TX-ONT-DESIGN r1.1 · Onto-Ask r1.0</span></div>
-      <div><span class="k">상태</span><span class="v">M1·M2 가동 — M3 대기</span></div>
+      <div><span class="k">상태</span><span class="v">M1~M3 가동 — M4 미정</span></div>
     </div>
     <div class="callout rule" style="margin-top:28px">
-      <span class="tag">r1.2 개정 요약</span>
-      <p><strong>M2 완료.</strong> 로트 역추적·거래처 360·데이터 공백 도구와 자연어 질문 처리율 KPI를 붙였다(도구 10종). 새 질의는 3사 MES DB 직접 집계와 대조한 뒤에만 열었고, 그 대조가 naturefood 출하 누락 결함을 잡았다. 결과는 §08에 있다.</p>
+      <span class="tag">r1.3 개정 요약</span>
+      <p><strong>M3 완료.</strong> 같은 서버를 <code>https://telomx.aiclaude.kr/mcp</code>로 원격 공개했다(Streamable HTTP · 사내 토큰 인증). 선결 조건이던 D7(infurs·ssfc 로그인 화면의 관리자 평문 비밀번호)은 먼저 해소했다. 공개 범위 M-3은 “텔롬엑스 내부, 사내 전용 토큰”으로 다시 정했다. 결과는 §09에 있다.</p>
+      <p style="margin-top:10px"><strong>r1.2</strong> — <strong>M2 완료.</strong> 로트 역추적·거래처 360·데이터 공백 도구와 자연어 질문 처리율 KPI를 붙였다(도구 10종). 새 질의는 3사 MES DB 직접 집계와 대조한 뒤에만 열었고, 그 대조가 naturefood 출하 누락 결함을 잡았다. 결과는 §08에 있다.</p>
       <p style="margin-top:10px"><strong>r1.1</strong> — §06 결정 5건을 <strong>전부 기본안으로 확정</strong>하고 M1을 구현했다. 서버는 hisense 레포 <code>scripts/ontology/mcp/server.php</code>, 이 서버의 Claude Code에 <code>tx-ontology</code>로 등록돼 연결 상태다. 구현하면서 <code>material_reach</code> 질의가 출하 건수까지 수주로 세던 결함을 찾아 고쳤다. 결과와 실측은 §07에 있다.</p>
     </div>
   </header>
@@ -216,6 +217,7 @@
       <li><a href="#s6">결정 기록</a></li>
       <li><a href="#s7">M1 구현 결과</a></li>
       <li><a href="#s8">M2 구현 결과</a></li>
+      <li><a href="#s9">M3 구현 결과</a></li>
     </ol>
   </nav>
 
@@ -321,10 +323,10 @@
     </div>
 
     <div class="app">
-      <div class="aid"><b>거래처 360</b><span class="chip off">선결 조건</span><span class="meta">infurs<br>partner_360</span></div>
+      <div class="aid"><b>거래처 360</b><span class="chip on">M2 구현</span><span class="meta">infurs<br>partner_360</span></div>
       <div class="abody">
         <p>28,056행을 9,707개로 병합한 결과를 드디어 쓰게 된다. 같은 사업자번호 아래 지점·부서가 섞여 있으므로 <code>tx:bizNo</code>로 법인 단위와 지점 단위를 나눠 보여준다.</p>
-        <p class="pre"><b>선결</b>infurs <code>login.php</code> 평문 admin 비밀번호(D7) — 원격 공개 전에 해결</p>
+        <p class="pre clear"><b>해소</b>infurs <code>login.php</code> 평문 admin 비밀번호(D7) — 2026-09-23 코드 제거 + 비밀번호 교체(§09)</p>
       </div>
     </div>
 
@@ -368,7 +370,7 @@
       <tbody>
         <tr><td class="mono">M1 ✔</td><td>stdio MCP 서버 · 읽기 전용 도구 5~6개(impact · remaining · invariants · doc_vs_ledger · resolve_entity) + 리소스 4종</td><td>lt-server의 Claude Code</td><td>없음</td></tr>
         <tr><td class="mono">M2 ✔</td><td>도구 호출 로그 적재 → “자연어 질문 처리율” KPI 산출. trace_lot · partner_360 · data_gaps 질의 추가</td><td>동일</td><td>신규 질의는 check로 검산 후 화이트리스트 등록</td></tr>
-        <tr><td class="mono">M3</td><td>HTTPS 원격 MCP로 전환(Streamable HTTP) · 사이트별 권한</td><td>claude.ai · Desktop</td><td>OAuth/토큰 인증 · D7 해결</td></tr>
+        <tr><td class="mono">M3 ✔</td><td>HTTPS 원격 MCP 추가(Streamable HTTP, stdio 병행). 사이트별 권한은 보류 — 토큰 하나가 3사를 모두 본다</td><td>claude.ai · Desktop · 다른 서버의 Claude Code</td><td>토큰 인증 ✔ · D7 해결 ✔</td></tr>
         <tr><td class="mono">M4</td><td>확인 절차가 붙은 쓰기 도구(예: 배송지시 발행 요청) — MES 엔드포인트 호출</td><td>현장 관리자</td><td>도구별 불변식 확인 · 사용자 결정</td></tr>
       </tbody>
     </table></div>
@@ -387,7 +389,7 @@
       <tbody>
         <tr><td class="mono">M-1</td><td>구현 방식</td><td>가) Node SDK(역터널) · 나) SDK 없이 PHP stdio 직접 구현</td><td><strong>나)</strong> 기본안 채택 — 질의 SSOT가 PHP에 있어 호출 경로가 가장 짧다</td></tr>
         <tr><td class="mono">M-2</td><td>SPARQL 원문 도구</td><td>가) 두지 않음 · 나) 관리자 전용 · 다) 전체 허용</td><td><strong>가)</strong> 기본안 채택 — 필요해지면 나)</td></tr>
-        <tr><td class="mono">M-3</td><td>원격 공개 범위</td><td>가) 내부(Claude Code)만 · 나) 텔롬엑스 직원 · 다) 고객사 담당자까지</td><td><strong>가)</strong> 기본안 채택 — M1~M2 동안</td></tr>
+        <tr><td class="mono">M-3</td><td>원격 공개 범위</td><td>가) 내부(Claude Code)만 · 나) 텔롬엑스 직원 · 다) 고객사 담당자까지</td><td>M1~M2 동안 <strong>가)</strong>. M3에서 <strong>나)</strong>로 변경 — 사내 전용 토큰, 3사 읽기 전용. 고객사 담당자(다)는 사이트별 토큰이 있어야 한다</td></tr>
         <tr><td class="mono">M-4</td><td>쓰기 도구 도입 여부</td><td>가) 읽기 전용 유지 · 나) M4에서 도구별로 도입</td><td><strong>가)</strong> 기본안 채택 — 읽기 효과 확인 후 재판단</td></tr>
         <tr><td class="mono">M-5</td><td>caren 데이터셋 포함</td><td>가) 별도 MCP · 나) 같은 서버의 별도 도구군</td><td><strong>가)</strong> 기본안 채택 — 도메인과 어휘가 다르다(tx: 코어 미사용)</td></tr>
       </tbody>
@@ -483,16 +485,78 @@
       <li><strong>원칙 추가</strong> — 새 질의는 <code>QUERIES</code>에 넣고 <code>crosscheck.php</code>에 DB 대조를 더해 통과한 뒤에만 도구로 연다.</li>
     </ul>
 
-    <h3>다음 — M3</h3>
+    <p style="font-size:14px;color:var(--muted)">M3(원격 공개)는 §09에서 진행했다.</p>
+  </section>
+
+  <section id="s9">
+    <div class="sec-head"><span class="sec-no">§ 09</span><h2 class="sec-title">M3 구현 결과</h2></div>
+
+    <p>도구는 늘리지 않았다. 같은 10종을 <strong>HTTPS로도</strong> 부를 수 있게 했다. 서버 본체에서 도구·리소스·JSON-RPC 처리를 <code>core.php</code>로 떼고, 전송을 둘로 나눴다. 이 서버의 Claude Code는 종전대로 stdio를 쓰고, 다른 곳의 Claude는 HTTP를 쓴다. 도구 동작은 전송과 상관없이 같다.</p>
+
+    <div class="flow">
+      <div class="st"><span class="k">선결</span><b>D7 해소</b><span class="d">infurs·ssfc 로그인 화면 평문 비밀번호 제거, infurs admin 비밀번호 교체</span></div>
+      <div class="st"><span class="k">전송</span><b>core.php 분리</b><span class="d">server.php(stdio) · http.php(Streamable HTTP)가 같은 handle()을 부름</span></div>
+      <div class="st key"><span class="k">공개</span><b>telomx.aiclaude.kr/mcp</b><span class="d">Apache 프록시 → 127.0.0.1:8790, apache 권한 systemd 서비스</span></div>
+      <div class="st"><span class="k">인증</span><b>사내 토큰</b><span class="d">Bearer 헤더 또는 경로 토큰, 해시만 저장, 폐기 즉시 효력</span></div>
+    </div>
+
+    <h3>선결 조건 D7 — 먼저 해소</h3>
+    <p>infurs와 ssfc(sslnc)의 로그인 화면은 저장된 계정이 없으면 관리자 아이디·비밀번호를 평문으로 채워 넣고 있었다. 로그인 페이지 소스만 열면 누구나 총괄관리자로 들어올 수 있었다. hisense에서 먼저 고친 방식(<code>68adee7</code>)을 그대로 따랐다.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>사이트</th><th>코드</th><th>비밀번호</th><th>검증</th></tr></thead>
+      <tbody>
+        <tr><td>infurs</td><td>자동 채움 제거 → 입력칸 표시 (<code>58379ea</code>)</td><td>교체 — 노출된 값과 실제 비밀번호가 같았다</td><td>로그인 페이지 평문 0건 · 옛 값 로그인 거부 · 새 값 로그인 후 보호 화면 200</td></tr>
+        <tr><td>ssfc</td><td>같은 수정 (<code>9cb1d72</code>)</td><td>그대로 — 이미 다른 값이었다</td><td>로그인 페이지 평문 0건</td></tr>
+      </tbody>
+    </table></div>
+    <p>남은 것도 있다. 로그인에 성공하면 브라우저 <code>localStorage</code>에 아이디·비밀번호를 평문으로 저장하는 동작이 두 사이트에 그대로 있다. hisense는 서버 발급 토큰으로 바꿨다(<code>98ee231</code>). 이식은 별도 과제로 남긴다.</p>
+
+    <h3>원격 서버 구성</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>항목</th><th>내용 (hisense 레포 <code>f123de8</code>)</th></tr></thead>
+      <tbody>
+        <tr><td>주소</td><td><code>https://telomx.aiclaude.kr/mcp</code> — 텔롬엑스 자체 도메인, 기존 <code>*.aiclaude.kr</code> 인증서(11-01 만료) 사용. DNS 작업 없음</td></tr>
+        <tr><td>실행</td><td>systemd <code>tx-mcp-http</code> — <code>php -q -S 127.0.0.1:8790 http.php</code>, 워커 3, <strong>apache 권한</strong>(root 아님), ProtectSystem=strict, 메모리 상한 300MB. 실측 약 57MB</td></tr>
+        <tr><td>규약</td><td>Streamable HTTP. POST 한 번에 JSON 한 번으로 끝나고 SSE는 열지 않는다(GET 405). 서버가 먼저 보낼 알림이 없어서다. 배치·알림(202)·<code>Mcp-Session-Id</code> 지원, 서버는 무상태</td></tr>
+        <tr><td>인증</td><td>모든 요청에 토큰 필수(initialize 포함). <code>Authorization: Bearer</code> 또는 <code>/mcp/&lt;토큰&gt;</code> 경로. 경로 방식은 헤더를 넣을 수 없는 claude.ai 커넥터용이다</td></tr>
+        <tr><td>토큰 관리</td><td><code>mcp/token.php add|list|revoke</code>. <code>/etc/tx-mcp/tokens.json</code>(0640 root:apache)에 <strong>sha256만</strong> 저장. 원문은 발급할 때 한 번만 보여준다. 현재 <code>telomx-internal</code> 1개</td></tr>
+        <tr><td>보호</td><td>토큰마다 분당 120회(초과 시 429), 본문 256KB, 브라우저 Origin은 claude.ai·claude.com·telomx만 허용(그 밖 403, DNS 리바인딩 방지)</td></tr>
+        <tr><td>KPI</td><td>HTTP 호출은 <code>/var/lib/tx-mcp/mcp-calls.jsonl</code>에 <code>client=http:&lt;토큰 이름&gt;</code>으로 남는다. <code>kpi.php</code>가 stdio·HTTP 두 로그를 합산하고 <code>by_client</code>로 나눠 보여준다</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="callout warn">
+      <span class="tag">경로 토큰이 로그에 남지 않게</span>
+      <p>경로 방식은 토큰이 URL에 들어가므로 접근 로그에 그대로 쌓일 수 있다. 두 곳을 막았다. PHP 내장 서버는 <code>-q</code>로 요청 로그를 끄고, Apache는 <code>/mcp</code> 요청을 <code>"POST /mcp[path-hidden]"</code> 형식으로만 남긴다. 실측으로 access_log와 journal에서 토큰 원문 0건을 확인했다. 이 두 설정 중 하나를 빼면 토큰이 로그에 남는다.</p>
+    </div>
+
+    <h3>검증</h3>
     <ul>
-      <li>원격(HTTPS) 공개는 인증과 infurs 평문 비밀번호(D7) 해결이 먼저다(G6). 공개 범위(M-3)는 그때 다시 정한다.</li>
-      <li>실제 대화에서 도구를 쓰면서 KPI가 쌓이는지, 도구 설명 문구가 맞게 골라지는지 본다. 몇 주 쌓인 뒤 <code>nl_kpi</code>의 못 푼 질문 목록이 다음 도구의 근거가 된다.</li>
+      <li><strong>자체 시험 59항목</strong>(M2 46 → 59). HTTP 서버를 임시 포트와 임시 토큰 파일로 띄워 13항목을 더 본다. 무인증·폐기 토큰 401, 헤더·경로 토큰, 알림 202, stdio와 같은 답, 로그의 세션 id·토큰 이름, GET 405, 외부 Origin 403, 배치, <code>/mcp</code> 밖 경로 404, 분당 상한 429, 서버 로그에 토큰 원문 없음.</li>
+      <li><strong>운영 주소</strong> — 무인증 401, 토큰으로 initialize·<code>run_invariants</code>·<code>doc_vs_ledger</code> 200. 권한을 좁힌 서비스 안에서도 점검 스크립트가 돈다. 같은 vhost의 <code>/pms</code>와 홈페이지는 200 그대로다.</li>
+      <li><strong>아직 안 한 것</strong> — claude.ai·Desktop에서 실제 커넥터로 붙여 보는 시험. 이 서버는 헤어핀 NAT 때문에 자기 공개 도메인에 못 붙으므로 외부 클라이언트에서 확인해야 한다.</li>
+    </ul>
+
+    <h3>설계에서 달라진 점</h3>
+    <ul>
+      <li><strong>OAuth 대신 사내 토큰.</strong> 공개 범위가 텔롬엑스 내부라 토큰으로 충분하다고 판단했다. 고객사 담당자에게 열려면(M-3 다) 그때 OAuth나 사이트별 토큰을 붙인다.</li>
+      <li><strong>사이트별 권한은 보류.</strong> 토큰 하나가 3사를 모두 본다. 반쯤 만든 권한 분리가 오히려 위험해서 넣지 않았다. 고객사에 열 때 같이 설계한다.</li>
+      <li><strong>새 서브도메인 대신 경로.</strong> <code>*.aiclaude.kr</code>는 DNS 와일드카드가 아니라 새 이름마다 레코드가 필요하고, 인증서 갱신도 막혀 있다(certbot 차단). 이미 인증서와 PMS 프록시가 붙은 <code>telomx.aiclaude.kr</code> 아래에 두었다.</li>
+      <li><strong>root가 아닌 apache 권한.</strong> 앱 DB 설정과 점검 스크립트가 모두 apache로 읽히는 것을 확인했다. 외부에 열린 프로세스를 root로 돌리지 않는다.</li>
+    </ul>
+
+    <h3>다음</h3>
+    <ul>
+      <li>claude.ai(또는 Desktop)에 커넥터 <code>https://telomx.aiclaude.kr/mcp/&lt;토큰&gt;</code>를 등록해 실제 대화로 확인한다.</li>
+      <li>몇 주 쓰면서 KPI를 쌓는다. <code>nl_kpi</code>의 못 푼 질문 목록이 다음 도구를 정하는 근거가 된다.</li>
+      <li>M4(확인 절차가 붙은 쓰기 도구)는 읽기 효과를 본 뒤 도구별로 다시 판단한다(M-4).</li>
+      <li><code>*.aiclaude.kr</code> 인증서가 11월 1일에 만료된다. certbot 갱신이 막혀 있으므로 그 전에 갱신 경로를 확보해야 한다.</li>
     </ul>
   </section>
 
   <footer>
-    <span>TX-ONT-MCP r1.2 · 2026-09-23</span>
-    <span class="mono">Fuseki tx-mes · 3 graphs · ≈286k triples · M1·M2 가동</span>
+    <span>TX-ONT-MCP r1.3 · 2026-09-23</span>
+    <span class="mono">Fuseki tx-mes · 3 graphs · ≈286k triples · M1~M3 가동 · telomx.aiclaude.kr/mcp</span>
   </footer>
 
 </div>
