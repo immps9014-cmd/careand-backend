@@ -60,6 +60,8 @@
 !/telomx-mes-ontology/TERM-WORKSHEET.html
 !/telomx-mes-ontology/MCP-EXTENSION.html
 !/telomx-mes-ontology/make_pdf_mcp.js
+!/telomx-mes-ontology/ARCHITECTURE.html
+!/telomx-mes-ontology/make_pdf_arch.js
 !/telomx-mes-ontology/ONTO-ASK-OVERVIEW.html
 !/telomx-mes-ontology/make_pdf_ontoask.js
 !/telomx-mes-ontology/pdf/
