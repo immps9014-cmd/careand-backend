@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>Onto-Ask MES 기술 개요서</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  body { font-family: "NanumGothic","Nanum Gothic","Noto Sans CJK KR",sans-serif; font-size: 10pt; line-height: 1.6; color: #1d1d1b; margin: 0; }
+  h1 { font-size: 18pt; margin: 0 0 4pt; }
+  .by { color: #6b6b66; font-size: 9pt; margin-bottom: 14pt; border-bottom: 2px solid #1a2744; padding-bottom: 8pt; }
+  h2 { font-size: 12.5pt; color: #1a2744; margin: 16pt 0 6pt; break-after: avoid; }
+  p { margin: 4pt 0 6pt; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.8pt; margin: 6pt 0 8pt; }
+  th, td { border: 1px solid #cfd5e2; padding: 4pt 6pt; vertical-align: top; text-align: left; }
+  th { background: #eef2f9; }
+  tr, .flow { break-inside: avoid; }
+  ul, ol { margin: 4pt 0 6pt; padding-left: 18pt; }
+  .flow { display: flex; align-items: center; gap: 6pt; margin: 8pt 0 4pt; flex-wrap: wrap; font-size: 8.8pt; }
+  .box { border: 1.5px solid #1a2744; border-radius: 6px; padding: 5pt 8pt; text-align: center; background: #f6f8fc; }
+  .box.g { background: #1a2744; color: #fff; }
+  .arr { color: #1a2744; font-weight: 700; }
+  .note { font-size: 8.8pt; color: #555; }
+  .open { color: #9a5b00; }
+</style></head><body>
+
+<h1>자연어 질의형 온톨로지 스마트공장 기술 개요서</h1>
+<div class="by">2026-09-22 · 텔롬엑스(TelomX)</div>
+
+<h2>1. 기술 정의</h2>
+<p><b>기술명: 자연어 질의형 온톨로지 스마트공장 플랫폼 (Onto-Ask MES)</b></p>
+<p>현장 작업자와 관리자가 평소 말투로 질문하면, 공장의 모든 데이터를 연결한 의미모델(온톨로지)에서 근거가 있는 답을 찾아 보여주는 MES 기술이다. 수주·품목·BOM·작업지시·로트·출하를 하나의 지식그래프로 묶고, 자연어 질문을 미리 검증된 질의로 바꿔 실행한다.</p>
+<ul>
+  <li><b>공급기업</b>: 텔롬엑스(TelomX)</li>
+  <li><b>적용 대상</b>: 다품종 소량생산 제조기업(조달 납품·가구·식품 제조 MES에 적용함)</li>
+  <li><b>핵심 원칙</b>: AI는 질문을 해석만 하고, 답은 항상 실제 데이터에서 나온다</li>
+</ul>
+
+<h2>2. 해결하는 문제</h2>
+<p>소기업 MES는 데이터를 쌓기는 하지만, 화면 여러 개를 옮겨 다니며 맞춰 봐야 답이 나온다. 실제 고객사 3곳의 MES를 실측해 확인한 문제는 다음과 같다.</p>
+<table>
+  <tr><th style="width:26%">문제</th><th>현장에서 실제로 확인한 사례</th></tr>
+  <tr><td>같은 대상이 여러 벌 존재</td><td>품목 마스터 2개(687행 + 661행)가 문자열 메모로만 이어짐, 거래처 마스터 2개(합계 28,056행)</td></tr>
+  <tr><td>연결이 화면 속에만 있음</td><td>"이 자재가 늦으면 어느 수주가 밀리나"를 답하려면 자재 → BOM → 작업지시 → 수주 → 납품처를 사람이 차례로 조회</td></tr>
+  <tr><td>문서와 실물의 불일치</td><td>출하 문서 합계와 실제 출고 원장이 다름(예: 문서 21 / 원장 20)</td></tr>
+  <tr><td>검색이 정확한 이름을 요구</td><td>품목코드·거래처명을 정확히 알아야 찾음, 현장 작업자는 평소 부르는 이름으로 물음</td></tr>
+</table>
+<p>정해진 화면만 늘리는 방식으로는 새 질문이 생길 때마다 개발이 필요하다. 반대로 생성형 AI에 DB를 직접 맡기면, 틀린 조인이나 지어낸 수치가 생산·출하 판단에 섞일 위험이 있다.</p>
+
+<h2>3. 기술 구성</h2>
+<p>기존 MES를 고치지 않고, 그 위에 온톨로지 계층과 자연어 질의 계층을 얹는 3계층 구조다. 온톨로지는 읽기 전용 복사본이고, 데이터의 원본은 항상 MES DB다.</p>
+<div class="flow">
+  <div class="box">현장 질문<br>'이 자재 늦으면?'</div><span class="arr">→</span>
+  <div class="box">질문 해석기<br>규칙 파서 + LLM 보강</div><span class="arr">→</span>
+  <div class="box">검증된 질의 목록<br>(화이트리스트)</div><span class="arr">→</span>
+  <div class="box g">지식그래프<br>공용 제조 온톨로지</div><span class="arr">→</span>
+  <div class="box">답 + 근거<br>(해석 조건 공개)</div>
+</div>
+<p class="note">고객사 MES DB → (매시간 자동 변환) → 지식그래프 · 불변식 자동 검산 매일 실행</p>
+<table>
+  <tr><th style="width:20%">구성요소</th><th>역할</th><th style="width:26%">구현 기술</th></tr>
+  <tr><td>공용 제조 온톨로지</td><td>수주·품목·BOM·작업지시·로트·출하 등 클래스 16개, 관계 20개를 업체와 무관하게 정의</td><td>RDF/OWL(Turtle)</td></tr>
+  <tr><td>자동 변환기(ETL)</td><td>업체별 DB 구조를 공용 어휘로 바꿔 적재, 중복 마스터는 병합하고 근거를 남김</td><td>PHP, 매시간 스케줄</td></tr>
+  <tr><td>지식그래프 저장소</td><td>업체별 그래프를 분리 보관, 연결 추적 질의 실행</td><td>Apache Jena Fuseki, SPARQL</td></tr>
+  <tr><td>질문 해석기</td><td>한국어 질문을 의도 + 조건으로 분해</td><td>규칙 기반 파서 + Claude 도구호출(선택)</td></tr>
+  <tr><td>검증된 질의 목록</td><td>미리 검산한 질의만 실행, AI가 질의를 직접 만들지 않음</td><td>파라미터 바인딩</td></tr>
+  <tr><td>불변식 검산기</td><td>그래프와 원장이 어긋나면 즉시 적발(업체당 25~34항목)</td><td>매일 자동 실행</td></tr>
+</table>
+
+<h2>4. 작동 방식</h2>
+<p>질문 하나가 답이 되기까지 4단계를 거친다. AI가 판단하는 것은 1단계뿐이고, 나머지는 검증된 질의와 실제 데이터가 처리한다.</p>
+<ol>
+  <li><b>해석</b>: 질문을 의도(영향분석·재고·출하 등)와 조건(품목·기간·거래처)으로 나눈다. 규칙 파서가 먼저 처리하고, 의도를 못 찾은 질문만 LLM이 보강한다.</li>
+  <li><b>매핑</b>: 의도에 맞는 검증된 질의를 고르고 조건을 파라미터로 넣는다.</li>
+  <li><b>추적</b>: 지식그래프에서 관계를 따라가며 답을 찾는다(예: 자재 → BOM → 제품 → 수주 → 납품처). 실측 응답 약 10ms.</li>
+  <li><b>제시</b>: 답과 함께 "어떻게 해석했는지"를 화면에 공개한다. 후보가 여럿이면 AI가 고르지 않고 사람에게 선택을 맡긴다.</li>
+</ol>
+<table>
+  <tr><th style="width:32%">질문 예시</th><th>답이 나오는 경로</th><th style="width:24%">현황</th></tr>
+  <tr><td>"이 자재 입고가 늦으면 어느 수주가 밀려?"</td><td>자재 → BOM → 제품 → 수주 → 납기·수요기관</td><td>영향분석 화면으로 운영 중</td></tr>
+  <tr><td>"이 수주 아직 몇 개 남았어?"</td><td>수주 → 출하라인 → 실제 출고 원장</td><td>운영 중(SQL 집계와 23건 전부 일치)</td></tr>
+  <tr><td>"유통기한 30일 남은 재고 보여줘"</td><td>규칙 파서 → 재고 질의</td><td>식품 MES에서 운영 중</td></tr>
+  <tr><td>"안전재고 밑으로 떨어진 품목은?"</td><td>규칙 파서 → 품목 단위 재고 비교</td><td>식품 MES에서 운영 중</td></tr>
+  <tr><td>"OO유치원 납품할 거래명세서 출력해줘"</td><td>LLM이 거래처명만 추출 → 배송 건 조회 → 후보 선택</td><td>구현 완료, 실운영 검증 전</td></tr>
+  <tr><td>"문서랑 실제 출고가 다른 수주 있어?"</td><td>자연어 → 그래프 직접 질의</td><td>개발 목표(검산기는 매일 실행 중)</td></tr>
+</table>
+
+<h2>5. 차별성</h2>
+<p>온톨로지가 답의 정확성을, 자연어가 쓰기 쉬움을 맡는다. 두 가지를 함께 갖춘 것이 기존 방식과 다른 점이다.</p>
+<table>
+  <tr><th style="width:18%">비교 항목</th><th>기존 MES 검색</th><th>LLM 단독 (Text-to-SQL)</th><th>Onto-Ask MES</th></tr>
+  <tr><td>질문 방식</td><td>화면별 검색창, 정확한 코드 필요</td><td>자연어</td><td>자연어</td></tr>
+  <tr><td>여러 단계 연결 추적</td><td>화면을 옮겨 다니며 사람이 판단</td><td>조인 오류 위험</td><td>그래프 관계를 따라 한 번에</td></tr>
+  <tr><td>답의 근거</td><td>화면에 보이는 것만</td><td>설명이 어렵고 수치를 지어낼 수 있음</td><td>해석 조건과 추적 경로를 공개</td></tr>
+  <tr><td>데이터 신뢰성</td><td>점검 없음</td><td>점검 없음</td><td>불변식 매일 자동 검산</td></tr>
+  <tr><td>AI 비용·장애 의존</td><td>해당 없음</td><td>AI 없으면 작동 불가</td><td>규칙 파서만으로도 작동</td></tr>
+  <tr><td>다른 고객사 확장</td><td>화면 재개발</td><td>고객사마다 프롬프트·검증 재작업</td><td>공용 어휘 재사용, 변환기만 추가</td></tr>
+</table>
+<p>재사용성은 실제로 확인했다. 조달 납품 업체용으로 만든 영향분석 질의가, 그래프 이름만 바꿔 가구 업체와 식품 업체에서 수정 없이 돌았다.</p>
+
+<h2>6. 적용 실적</h2>
+<p>업종이 다른 제조기업 3곳의 운영 MES에 적용했고, 지식그래프 약 28.6만 건이 매시간 자동으로 갱신된다(2026년 9월 기준).</p>
+<table>
+  <tr><th>적용처</th><th>업종</th><th>연결관계(트리플)</th><th>자동 검산 항목</th><th>주요 성과</th></tr>
+  <tr><td>A사</td><td>조달 납품 칸막이 제조</td><td>약 1.8만</td><td>25</td><td>자재 영향분석 화면 운영, 발주기관과 실제 납품처(수요기관) 구분</td></tr>
+  <tr><td>B사</td><td>가구 제조</td><td>약 18.0만</td><td>34</td><td>중복 마스터 통합: 거래처 28,056행 → 9,707개(65.4% 감소), 품목 661/661건 연결</td></tr>
+  <tr><td>C사</td><td>발효식품 제조</td><td>약 8.8만</td><td>25</td><td>자연어 검색 운영(질문 유형 8종), 출하 원장 23,002 = 그래프 23,002 일치</td></tr>
+</table>
+<p>통합 과정에서 기존 MES로는 보이지 않던 문제도 드러났다.</p>
+<ul>
+  <li>B사에서 품목 마스터 두 개의 단가가 다른 품목 16건을 발견했다(통합 전에는 비교할 방법이 없었음).</li>
+  <li>A사에서 출하 문서와 실제 출고 원장이 다른 지점을 찾아, 잔량 판정을 원장 기준으로 바로잡았다.</li>
+  <li>같은 사업자번호 아래 지점·부서가 섞인 거래처를 구분해, 납기 연락 대상이 잘못 지정되는 것을 막았다.</li>
+</ul>
+
+<h2>7. 기대효과와 향후 계획</h2>
+<p>도입기업은 화면을 배우지 않고도 말로 물어 공장 데이터를 쓸 수 있고, 공급기업은 고객사가 늘어도 같은 어휘와 질의를 재사용한다.</p>
+<table>
+  <tr><th style="width:30%">성과지표</th><th>측정 방법</th></tr>
+  <tr><td>자재 지연 영향 파악 시간</td><td>영향받는 수주·납품처 목록을 얻기까지 걸리는 시간(도입 전후 비교)</td></tr>
+  <tr><td>데이터 정합성</td><td>자동 검산 항목 통과율, 문서·원장 불일치 건수</td></tr>
+  <tr><td>중복 기준정보 비율</td><td>통합 전후 품목·거래처 개체 수</td></tr>
+  <tr><td>자연어 질문 처리율</td><td>전체 질문 중 의도를 해석해 답한 비율</td></tr>
+</table>
+<p>목표치는 도입기업의 현재 값을 먼저 잰 뒤 정한다.</p>
+<p><b>향후 개발 계획</b></p>
+<ol>
+  <li>자연어 질문을 지식그래프 질의에 직접 연결한다. 현재 자연어 검색은 DB 질의를, 영향분석은 화면 버튼을 쓴다.</li>
+  <li>LLM 보강 해석을 실운영에서 검증하고 질문 유형을 늘린다.</li>
+  <li>영향분석 화면을 B사·C사로 확대한다. B사는 BOM 등록이 먼저 필요하다.</li>
+  <li>로트 단위 품질 추적과 공장 간 공통 자재 연결로 범위를 넓힌다.</li>
+</ol>
+<ul class="open">
+  <li>확인 필요: 적용처 실명 공개 여부(현재 A·B·C사로 익명 처리)</li>
+  <li>확인 필요: 영문 기술명 Onto-Ask의 상표 중복 여부(KIPRIS)</li>
+</ul>
+</body></html>
