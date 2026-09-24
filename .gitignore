@@ -80,4 +80,6 @@
 /hisense-docs/*
 !/hisense-docs/ORDER-WO-SCREENS.html
 !/hisense-docs/make_pdf_order.js
+!/hisense-docs/FIELD-CHECKLIST.html
+!/hisense-docs/make_pdf_checklist.js
 !/hisense-docs/*.pdf

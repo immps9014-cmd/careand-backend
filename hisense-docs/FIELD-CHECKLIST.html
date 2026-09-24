@@ -1,0 +1,843 @@
+<title>히센스 현장 점검표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#E9EDF2; --surface:#FFFFFF; --surface-2:#F3F6FA;
+    --ink:#16202E; --ink-soft:#56637A; --ink-faint:#8593A8;
+    --rule:#C6D0DD; --rule-soft:#DDE4EC;
+    --accent:#0F4C81; --accent-soft:#E1EBF5;
+    --pass:#17663F; --pass-bg:#E2F0E9;
+    --watch:#8A5309; --watch-bg:#F7EDDC;
+    --fail:#A82B2B; --fail-bg:#F8E5E5;
+    --shadow:0 1px 2px rgba(22,32,46,.06), 0 8px 24px -12px rgba(22,32,46,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#131920; --surface:#1B232E; --surface-2:#212B37;
+      --ink:#E2E9F2; --ink-soft:#9BA9BD; --ink-faint:#6E7D92;
+      --rule:#2E3A49; --rule-soft:#26313D;
+      --accent:#74AEDD; --accent-soft:#1E2E3E;
+      --pass:#5CBA8C; --pass-bg:#172A22;
+      --watch:#D9A441; --watch-bg:#2B2416;
+      --fail:#E38585; --fail-bg:#2E1B1B;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#131920; --surface:#1B232E; --surface-2:#212B37;
+    --ink:#E2E9F2; --ink-soft:#9BA9BD; --ink-faint:#6E7D92;
+    --rule:#2E3A49; --rule-soft:#26313D;
+    --accent:#74AEDD; --accent-soft:#1E2E3E;
+    --pass:#5CBA8C; --pass-bg:#172A22;
+    --watch:#D9A441; --watch-bg:#2B2416;
+    --fail:#E38585; --fail-bg:#2E1B1B;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans KR", system-ui, -apple-system, "Malgun Gothic", sans-serif;
+    font-size:15px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  code, .mono, .num{font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace}
+  .num{font-variant-numeric:tabular-nums}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px 96px}
+
+  /* ── 머리말 ─────────────────────────────── */
+  header{padding:56px 0 32px; border-bottom:2px solid var(--ink)}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:500;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px;
+  }
+  h1{
+    margin:0 0 14px; font-size:clamp(30px,4.6vw,44px); font-weight:700;
+    letter-spacing:-.02em; line-height:1.15; text-wrap:balance;
+  }
+  .lede{margin:0; max-width:62ch; color:var(--ink-soft); font-size:16px}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:8px 28px; margin-top:22px;
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-faint);
+  }
+  .meta b{color:var(--ink-soft); font-weight:500}
+
+  /* ── 진행 표시줄 ─────────────────────────── */
+  .tracker{
+    position:sticky; top:0; z-index:20; background:var(--ground);
+    border-bottom:1px solid var(--rule); margin-bottom:36px;
+    padding:12px 0;
+  }
+  .tracker-in{
+    max-width:1180px; margin:0 auto; padding:0 24px;
+    display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+  }
+  .bar{flex:1; min-width:180px; height:7px; background:var(--rule-soft); border-radius:4px; overflow:hidden}
+  .bar > i{display:block; height:100%; width:0; background:var(--pass); transition:width .25s ease}
+  .tally{
+    display:flex; gap:16px; font-family:"IBM Plex Mono",monospace;
+    font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .tally .ok{color:var(--pass); font-weight:600}
+  .tally .ng{color:var(--fail); font-weight:600}
+  .tally .rest{color:var(--ink-faint)}
+  .btn{
+    font:inherit; font-size:12.5px; padding:5px 13px; border-radius:5px; cursor:pointer;
+    background:var(--surface); color:var(--ink-soft); border:1px solid var(--rule);
+  }
+  .btn:hover{border-color:var(--accent); color:var(--accent)}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* ── 전제 상자 ──────────────────────────── */
+  .premise{
+    background:var(--accent-soft); border-left:4px solid var(--accent);
+    border-radius:0 8px 8px 0; padding:18px 22px; margin-bottom:40px;
+  }
+  .premise h2{margin:0 0 8px; font-size:15px; font-weight:600; letter-spacing:-.01em}
+  .premise p{margin:0; font-size:14px; color:var(--ink-soft)}
+  .premise p + p{margin-top:8px}
+
+  /* ── 점검 카드 ──────────────────────────── */
+  .step{
+    background:var(--surface); border:1px solid var(--rule);
+    border-radius:10px; box-shadow:var(--shadow); margin-bottom:26px; overflow:hidden;
+  }
+  .step-head{
+    display:flex; gap:16px; align-items:flex-start;
+    padding:20px 24px 18px; border-bottom:1px solid var(--rule-soft); background:var(--surface-2);
+  }
+  .idx{
+    flex:0 0 auto; width:30px; height:30px; border-radius:6px;
+    background:var(--ink); color:var(--surface);
+    display:flex; align-items:center; justify-content:center;
+    font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:600;
+  }
+  .step-head .t{flex:1; min-width:0}
+  .step-head h2{margin:0 0 5px; font-size:17px; font-weight:600; letter-spacing:-.015em}
+  .path{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--accent);
+    word-break:break-all;
+  }
+  .why{
+    margin:0; padding:14px 24px; font-size:13.5px; color:var(--ink-soft);
+    background:var(--surface); border-bottom:1px solid var(--rule-soft);
+  }
+  .why b{color:var(--ink); font-weight:600}
+
+  /* ── 확인 항목 ──────────────────────────── */
+  .rows{list-style:none; margin:0; padding:0}
+  .row{
+    display:grid; grid-template-columns:34px 1fr 34px; gap:0 14px;
+    padding:15px 24px; border-bottom:1px solid var(--rule-soft); align-items:start;
+  }
+  .row:last-child{border-bottom:0}
+  .row.done{background:var(--pass-bg)}
+  .row.ng{background:var(--fail-bg)}
+  .box{
+    appearance:none; width:20px; height:20px; margin-top:2px; cursor:pointer;
+    border:1.5px solid var(--ink-faint); border-radius:4px; background:var(--surface);
+    display:grid; place-content:center; flex:0 0 auto;
+  }
+  .box:checked{background:var(--pass); border-color:var(--pass)}
+  .box:checked::after{content:"✓"; color:#fff; font-size:13px; font-weight:700; line-height:1}
+  .box:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .flag{
+    appearance:none; width:26px; height:26px; cursor:pointer; font:inherit; font-size:13px;
+    border:1px solid var(--rule); border-radius:5px; background:var(--surface); color:var(--ink-faint);
+    display:grid; place-content:center; padding:0;
+  }
+  .flag:hover{border-color:var(--fail); color:var(--fail)}
+  .flag[aria-pressed="true"]{background:var(--fail); border-color:var(--fail); color:#fff}
+  .flag:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .row .what{font-size:14.5px; font-weight:500; margin:0 0 5px}
+  .expect{
+    margin:0; font-family:"IBM Plex Mono",monospace; font-size:12.5px;
+    color:var(--pass); font-variant-numeric:tabular-nums;
+  }
+  .expect::before{content:"기대값  "; color:var(--ink-faint)}
+  .means{margin:6px 0 0; font-size:12.5px; color:var(--ink-faint)}
+  .means::before{content:"다르면  "; color:var(--fail); font-weight:500}
+
+  /* ── 경고 ──────────────────────────────── */
+  .warn{
+    margin:0; padding:13px 24px; background:var(--watch-bg);
+    border-bottom:1px solid var(--rule-soft);
+    font-size:13.5px; color:var(--watch); font-weight:500;
+  }
+
+  /* ── 참고 표 ────────────────────────────── */
+  details{border-top:1px solid var(--rule-soft); background:var(--surface-2)}
+  summary{
+    padding:13px 24px; cursor:pointer; font-size:13px; font-weight:500; color:var(--ink-soft);
+    list-style:none;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ "; color:var(--accent)}
+  details[open] summary::before{content:"▾ "}
+  summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+  .tbl-scroll{overflow-x:auto; padding:0 24px 20px}
+  table{border-collapse:collapse; width:100%; min-width:440px; font-size:13px}
+  th, td{
+    text-align:left; padding:7px 14px 7px 0; border-bottom:1px solid var(--rule-soft);
+    white-space:nowrap;
+  }
+  th{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint);
+  }
+  td{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; color:var(--ink-soft)}
+  td.k{color:var(--ink); font-weight:500}
+  td.v{color:var(--pass); font-weight:500}
+
+  /* ── 마무리 ────────────────────────────── */
+  .closing{
+    margin-top:44px; padding:26px; border:1px dashed var(--rule); border-radius:10px;
+    background:var(--surface);
+  }
+  .closing h2{margin:0 0 12px; font-size:16px; font-weight:600}
+  .closing ol{margin:0; padding-left:20px; color:var(--ink-soft); font-size:14px}
+  .closing li{margin-bottom:7px}
+  .closing li:last-child{margin-bottom:0}
+  .closing b{color:var(--ink); font-weight:600}
+
+  @media (max-width:640px){
+    .wrap{padding:0 16px 64px}
+    .tracker-in{padding:0 16px}
+    .step-head, .why, .row, .warn, summary{padding-left:16px; padding-right:16px}
+    .tbl-scroll{padding-left:16px; padding-right:16px}
+    .row{grid-template-columns:30px 1fr 30px; gap:0 10px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important}
+  }
+
+  /* ── 파트 구분 ─────────────────────────── */
+  .part{margin:56px 0 22px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+  .part .tag{font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600; letter-spacing:.14em;
+    color:var(--surface); background:var(--accent); padding:3px 10px; border-radius:4px}
+  .part h2{margin:0; font-size:22px; font-weight:700; letter-spacing:-.02em}
+  .part p{flex-basis:100%; margin:4px 0 0; color:var(--ink-soft); font-size:14px; max-width:70ch}
+  .expect.act::before{content:"기대 동작  "}
+  .new{font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600; color:var(--accent);
+    background:var(--accent-soft); padding:1px 6px; border-radius:3px; margin-left:6px; vertical-align:2px}
+  @media print{
+    .tracker, #reset{display:none}
+    body{background:#fff}
+    .step{box-shadow:none; break-inside:avoid}
+    details > *{display:block}
+    .part{break-before:page; margin-top:0}
+    .part.first{break-before:auto}
+  }
+</style>
+
+<div class="tracker">
+  <div class="tracker-in">
+    <div class="bar"><i id="fill"></i></div>
+    <div class="tally">
+      <span class="ok">확인 <span id="n-ok" class="num">0</span></span>
+      <span class="ng">불일치 <span id="n-ng" class="num">0</span></span>
+      <span class="rest">남음 <span id="n-rest" class="num">0</span></span>
+    </div>
+    <button class="btn" type="button" id="reset">전체 해제</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">현장 검증 · 출고 집계 + 수주·작업지시 정리 (HS-UX-01)</p>
+  <h1>히센스 MES 현장 점검표</h1>
+  <p class="lede">
+    8월의 출고 집계 수정과 9월 24일의 수주·작업지시 화면 정리를 화면을 직접 열어 확인하는 목록입니다.
+    A·B는 지금 바로, 화면을 보기만 하면 됩니다. 기대값은 2026-09-24 운영 DB와 실제 화면 출력에서 뽑았습니다.
+    C는 다음 실제 수주가 들어왔을 때 한 번 진행합니다.
+  </p>
+  <div class="meta">
+    <span><b>대상</b> hisens.aiclaude.kr</span>
+    <span><b>기준일</b> 2026-09-24</span>
+    <span><b>점검 화면</b> 14개</span>
+    <span><b>소요</b> A·B 약 25분</span>
+    <span><b>반영 커밋</b> 2001a7b · 4f2e65e</span>
+  </div>
+</header>
+
+<div class="premise" style="margin-top:32px">
+  <h2>먼저 알아둘 전제</h2>
+  <p>
+    등록된 수주는 <code>R26TB02146820-00</code>(상명대, 15품목 132개)과
+    <code>R26TB02149976-00</code>(오송유치원, 8품목 51개) 두 건이고, <b>둘 다 전량 출고·납품완료</b>입니다.
+    작업지시 18건은 모두 완료 상태입니다. 8월 20일 이후 데이터 변화는 없습니다.
+  </p>
+  <p>
+    출고 183개 중 79개(43%)가 <b>포장 QR 경로</b>, 104개가 배송 경로로 나갔습니다.
+    A는 이 두 경로가 모든 화면에서 함께 세어지는지 봅니다.
+  </p>
+  <p>
+    A·B에서는 <b>아무것도 저장하거나 삭제하지 않습니다.</b> 누르라고 한 버튼도 안내나 확인창만 뜨는 버튼입니다.
+  </p>
+</div>
+
+<div class="part first"><span class="tag">A</span><h2>출고 집계 — 다시 확인</h2>
+  <p>08-20 점검표의 항목을 오늘 기준으로 다시 뽑았습니다. 포장 등록 화면의 행 수는 16이 아니라 <b>15</b>가 맞습니다(수주1 품목 수).</p></div>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">1</div>
+    <div class="t"><h2>총무 › 작업지시 › 작업지시 현황</h2><div class="path">/workorder?tab=list</div></div>
+  </div>
+  <p class="why">출고수량은 <b>출고지시·포장 QR·배송 세 경로를 모두</b> 셉니다. 한 경로라도 빠지면 "미배송"이 다시 나타납니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">표 오른쪽 두 컬럼 제목</p>
+        <p class="expect">출고수량 / 출고상태</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">18개 행 전부 출고상태가 초록 뱃지인지</p>
+        <p class="expect">18행 모두 "출하완료" · "미배송" 0건</p>
+        <p class="means">못 잡는 출고 경로가 있다는 뜻</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">각 행의 출고수량이 지시수량과 같은지 (아래 표로 대조)</p>
+        <p class="expect">WO-2026-001 → 8 · 003 → 36 · 009 → 20 · 018 → 16</p>
+        <p class="means">그 품목의 출고가 일부 경로에서 누락</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">출고수량 칸에 마우스를 올리면 배송지시 수량이 따로 뜨는지</p>
+        <p class="expect">"배송지시 N개" 툴팁 — 출고수량보다 작은 게 정상</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">WO-2026-005 행의 [✎ 편집]을 누르면 <span class="new">NEW</span></p>
+        <p class="expect">탭 편집기가 열리고 <b>HSP6-1015TT · WO-2026-005</b> 탭이 선택된 상태</p>
+        <p class="means">공통 탭이 열리면 ?wo= 반영 안 됨</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+  <details>
+    <summary>대조용 — 작업지시 18건 지시수량</summary>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>지시번호</th><th>품목</th><th>지시수량 = 출고수량</th></tr></thead>
+      <tbody>
+        <tr><td class="k">WO-2026-001</td><td>ITM-0001</td><td class="v">8</td></tr>
+        <tr><td class="k">WO-2026-002</td><td>ITM-0004</td><td class="v">16</td></tr>
+        <tr><td class="k">WO-2026-003</td><td>ITM-0005</td><td class="v">36</td></tr>
+        <tr><td class="k">WO-2026-004</td><td>ITM-0015</td><td class="v">1</td></tr>
+        <tr><td class="k">WO-2026-005</td><td>ITM-0016</td><td class="v">2</td></tr>
+        <tr><td class="k">WO-2026-006</td><td>ITM-0018</td><td class="v">1</td></tr>
+        <tr><td class="k">WO-2026-007</td><td>ITM-0031</td><td class="v">4</td></tr>
+        <tr><td class="k">WO-2026-008</td><td>ITM-0032</td><td class="v">8</td></tr>
+        <tr><td class="k">WO-2026-009</td><td>ITM-0085</td><td class="v">20</td></tr>
+        <tr><td class="k">WO-2026-010</td><td>ITM-0086</td><td class="v">6</td></tr>
+        <tr><td class="k">WO-2026-011</td><td>ITM-0087</td><td class="v">1</td></tr>
+        <tr><td class="k">WO-2026-012</td><td>ITM-0089</td><td class="v">16</td></tr>
+        <tr><td class="k">WO-2026-013</td><td>ITM-0090</td><td class="v">6</td></tr>
+        <tr><td class="k">WO-2026-014</td><td>ITM-0091</td><td class="v">4</td></tr>
+        <tr><td class="k">WO-2026-015</td><td>ITM-0149</td><td class="v">3</td></tr>
+        <tr><td class="k">WO-2026-016</td><td>ITM-0031</td><td class="v">2</td></tr>
+        <tr><td class="k">WO-2026-017</td><td>ITM-0032</td><td class="v">7</td></tr>
+        <tr><td class="k">WO-2026-018</td><td>ITM-0033</td><td class="v">16</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">2</div>
+    <div class="t"><h2>총무 › 판매수주 › 수주 상세 — 출고 완료 표시</h2><div class="path">/order/view/1 · /order/view/2</div></div>
+  </div>
+  <p class="why">출고가 끝난 수주에 "다음 할 일: 완성품 포장 / 배송요청"이 뜨면, 끝난 수주를 다시 내보내게 됩니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">파란 "▶ 다음 할 일" 안내가 없는지</p>
+        <p class="expect">두 수주 모두 배너 없음</p>
+        <p class="means">출고 완료 판정이 안 걸림</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">생산 진행 현황 아래 배너</p>
+        <p class="expect">수주1 → "15/15품목, 132개 전량 출고" · 수주2 → "8/8품목, 51개"</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">진행 칩 "4. 포장·출하"</p>
+        <p class="expect">✓ 4. 포장·출하 15/15 (수주2는 8/8) · 초록</p>
+        <p class="means">● 주황이면 잔량이 남은 것으로 계산됨</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">품목 내역 헤더의 [배송요청] 버튼</p>
+        <p class="expect">회색 · 마우스 올리면 "이미 전량 출고된 수주입니다"</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">그 [배송요청]을 눌러 확인창이 뜨는지 (뜨면 <b>취소</b>)</p>
+        <p class="expect">"이미 전량 출고되었습니다… 그래도 추가 배송지시를 만드시겠습니까?"</p>
+        <p class="means">정정 배송지시 경로는 막지 않고 확인만 받습니다</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">수주2의 품목 내역 8건 / 작업지시 현황 3건 — 이건 <b>정상</b></p>
+        <p class="expect">8품목 중 제품 3건만 생산 대상, 부자재 5건은 재고 직출고</p>
+        <p class="means">숫자가 다르면 품목 유형 분류를 확인</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">3</div>
+    <div class="t"><h2>포장·출하 › 완성품 포장 › 수주 선택</h2><div class="path">/package/orders</div></div>
+  </div>
+  <p class="why">포장 진행률은 포장수량이 아니라 <b>출고수량</b> 기준입니다. 배송으로 나간 물량도 들어가야 100%가 됩니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">컬럼 순서</p>
+        <p class="expect">주문수량 · 포장수량 · 출고수량 · 포장 진행률</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">두 수주의 숫자</p>
+        <p class="expect">상명대 주문 132 · 포장 75 · 출고 132 → 100%<br>오송유치원 주문 51 · 포장 4 · 출고 51 → 100%</p>
+        <p class="means">57% / 8%로 보이면 출고 경로 누락</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">진행률 아래 뱃지와 버튼</p>
+        <p class="expect">"출고 완료" 뱃지 · [포장 등록]이 외곽선(회색) 버튼</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">4</div>
+    <div class="t"><h2>포장·출하 › 완성품 포장 › 포장 등록</h2><div class="path">/package/create/1</div></div>
+  </div>
+  <p class="why">현장이 가장 크게 체감할 자리입니다. 이미 배송으로 나간 부품을 잔량으로 제시하면 <b>없는 물건을 포장하러</b> 나가게 됩니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">품목 표의 미포장 잔량 칸</p>
+        <p class="expect">15개 행 잔량 전부 0</p>
+        <p class="means">없는 물건을 포장하러 나가게 됨</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">기둥 부품 두 행을 콕 집어 확인</p>
+        <p class="expect">HSP6-PO10 주문 20 · 기포장 1 · 잔량 0<br>HSP6-PO12 주문 6 · 기포장 1 · 잔량 0</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">기포장 수량이 남아 있는지 (0으로 지워지면 안 됨)</p>
+        <p class="expect">예) HSP6-7010TT 기포장 34 · HSP6-8010TT 15 — 잔량만 0</p>
+        <p class="means">포장 경로 출고를 두 번 빼고 있다는 뜻</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">5</div>
+    <div class="t"><h2>대시보드</h2><div class="path">/dashboard</div></div>
+  </div>
+  <p class="why">끝난 수주가 할 일로 남아 있으면 담당자가 매일 같은 항목을 확인하게 됩니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">오늘 할 일 영역</p>
+        <p class="expect">"✅ 오늘 처리할 항목이 없습니다"</p>
+        <p class="means">완납된 수주가 할 일로 남음</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">상단 요약 카드</p>
+        <p class="expect">전체 수주 2 · 생산중 0 · 납기임박 0 · 배송중 0</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">최근 수주 목록</p>
+        <p class="expect">두 수주 모두 "납품완료"</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">6</div>
+    <div class="t"><h2>생산 › 생산계획 — 삭제 차단</h2><div class="path">/production-plan</div></div>
+  </div>
+  <p class="warn">⚠ 차단 메시지만 확인하세요. 메시지 없이 삭제가 진행되면 즉시 알려 주세요(되돌려야 합니다).</p>
+  <p class="why">출고까지 끝난 계획은 지울 수 없어야 합니다. 차단 사유에 <b>판매출고 건수</b>가 나오면 가드가 포장 QR 출하까지 보고 있다는 뜻입니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">PP-202608-001 삭제를 눌러 차단 메시지 확인 후 닫기</p>
+        <p class="expect">"생산실적 15건, 판매출고 37건, 배송진행 3건"</p>
+        <p class="means">판매출고가 빠지면 가드가 포장 출하를 못 봄</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">PP-202608-002도 같은 방식</p>
+        <p class="expect">"생산실적 3건, 판매출고 11건, 배송진행 2건"</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">7</div>
+    <div class="t"><h2>회귀 확인 — 같은 데이터를 쓰는 화면</h2><div class="path">/delivery/pending · /delivery · 수주 목록 · 거래명세서 · 리포트</div></div>
+  </div>
+  <p class="why">이번에 직접 고치지 않은 화면입니다. <b>이전과 똑같아야</b> 정상입니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">배송 › 배송 대상 수주</p>
+        <p class="expect">배송 대상 수주 0건</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">배송 › 배송 목록</p>
+        <p class="expect">DL-2026-001 ~ 005 · 5건 전부 납품완료</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">거래명세서 · 리포트가 평소대로 열리는지</p>
+        <p class="expect">오류 없이 열림 · 수치 변화 없음</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+
+<div class="part"><span class="tag">B</span><h2>수주·작업지시 새 화면</h2>
+  <p>9월 24일 정리로 바뀐 화면입니다. <span class="new">NEW</span> 표시가 이번에 새로 생긴 동작입니다.</p></div>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">8</div>
+    <div class="t"><h2>총무 › 수주 목록 — 등록 입구</h2><div class="path">/order</div></div>
+  </div>
+  <p class="why">수주 등록 입구가 버튼 셋(수주 등록·조달청수주서·일반수주서)에서 <b>[수주 등록 ▾] 하나</b>로 합쳐졌습니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">검색칸 오른쪽 버튼 <span class="new">NEW</span></p>
+        <p class="expect">초록 [+ 수주 등록 ▾] 하나 · [조달청수주서] [일반수주서] 버튼 없음</p>
+        <p class="means">옛 화면이 캐시됨 — 새로고침</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">[수주 등록 ▾]를 누르면 <span class="new">NEW</span></p>
+        <p class="expect">메뉴 3개: 직접 입력 / 조달청 납품요구서 / 고객사 발주서</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">"조달청 납품요구서"를 누르면 <span class="new">NEW</span></p>
+        <p class="expect">조달청수주서 업로드 창이 열림 → 파일 없이 ✕로 닫기</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">메뉴를 연 채 바깥을 클릭하거나 Esc <span class="new">NEW</span></p>
+        <p class="expect">메뉴가 닫힘</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">두 수주 행에 주황 "지시 미발행" 칩이 없는지 <span class="new">NEW</span></p>
+        <p class="expect">칩 0개 — 두 수주 모두 작업지시가 다 나감</p>
+        <p class="means">칩이 보이면 발행 집계 오류</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">9</div>
+    <div class="t"><h2>수주 편집 — 칸 확인만</h2><div class="path">/order/edit/1</div></div>
+  </div>
+  <p class="warn">저장하지 말고 [목록]으로 나가세요. 칸이 있는지만 봅니다.</p>
+  <p class="why">예전엔 이 화면에 없는 칸(특이사항 등)이 <b>수정 저장 때 지워졌습니다</b>. 지금은 업로드 창과 같은 칸이 있습니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">기본정보에 이 칸들이 있는지 <span class="new">NEW</span></p>
+        <p class="expect">발주기관 · 담당자 연락처 · FAX · 수수료(원) · 특이사항</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">납품기한에 * 표시 <span class="new">NEW</span></p>
+        <p class="expect">납품기한 * (필수)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">10</div>
+    <div class="t"><h2>수주 상세 — 작업지시 발행과 세부 지시</h2><div class="path">/order/view/1</div></div>
+  </div>
+  <p class="why">작업지시 발행 버튼은 <b>[작업지시 발행] 하나</b>입니다. 계획은 자동으로 만들어지고, 작업자·도면·전달사항은 발행 뒤 탭 편집기에서 넣습니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">품목 내역 헤더의 주황 버튼 이름 <span class="new">NEW</span></p>
+        <p class="expect">[작업지시 발행] ("상세 입력" 문구 없음)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">전체 체크된 상태로 [작업지시 발행]을 누르면 <span class="new">NEW</span></p>
+        <p class="expect">"선택한 품목 중 새로 발행할 품목이 없습니다" 알림 — 아무것도 만들어지지 않음</p>
+        <p class="means">확인창("발행합니다")이 뜨면 <b>취소</b>하고 알려 주세요</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">작업지시 현황 헤더 오른쪽 <span class="new">NEW</span></p>
+        <p class="expect">파란 [세부 지시 입력] 버튼 → 탭 편집기(공통 + 지시 15개)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">작업지시 현황의 WO-2026-005 행 ✎ <span class="new">NEW</span></p>
+        <p class="expect">탭 편집기가 WO-2026-005 탭으로 열림</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">11</div>
+    <div class="t"><h2>총무 › 작업지시 — 발행 탭</h2><div class="path">/workorder</div></div>
+  </div>
+  <p class="why">이 화면은 이제 <b>발행 대기 목록</b>만 보여 줍니다. 수주 등록은 수주 목록 한 곳에서 합니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">오른쪽 위 버튼 <span class="new">NEW</span></p>
+        <p class="expect">[📋 수주 목록] [📅 생산계획]만 · [＋ 수주 등록] 없음</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">두 수주의 작업지시 칸</p>
+        <p class="expect">"발행완료" 뱃지 + [✎ 편집]</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">▶를 눌러 품목 상세를 펼치면</p>
+        <p class="expect">계획 · 작업 · 입고 칩이 전부 ✓ · 부자재 행은 – (해당없음)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">12</div>
+    <div class="t"><h2>생산 › 생산입고 — ✎ 편집</h2><div class="path">/production</div></div>
+  </div>
+  <p class="why">생산 화면의 ✎도 <b>같은 탭 편집기</b>로 갑니다. 예전의 작은 수정 창은 수주 없는 자체생산 지시에만 남았습니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">목록 행 오른쪽 ✎를 누르면 <span class="new">NEW</span></p>
+        <p class="expect">수정 창이 아니라 탭 편집기로 이동 · 그 지시의 탭이 선택됨</p>
+        <p class="means">작은 수정 창이 뜨면 옛 화면</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">화면이 오류 없이 열리는지 <span class="new">NEW</span></p>
+        <p class="expect">목록·배지 정상 (예전엔 로딩 때 스크립트 오류가 있었음)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">13</div>
+    <div class="t"><h2>탭 편집기 · 옛 주소</h2><div class="path">/workorder/edit/1?wo=5 · /workorder/create/1</div></div>
+  </div>
+  <p class="why">옛 작업지시 발행 폼은 없어졌습니다. 옛 주소로 들어와도 편집기로 안내됩니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">/workorder/edit/1?wo=5 로 열면 <span class="new">NEW</span></p>
+        <p class="expect">HSP6-1015TT · WO-2026-005 탭 선택 · "완료된 작업지시라 편집할 수 없습니다" 안내</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">그 탭의 [📐 도면] <span class="new">NEW</span></p>
+        <p class="expect">도면관리의 도면 보기가 새 탭으로 열림</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">주소창에 /workorder/create/1 입력 <span class="new">NEW</span></p>
+        <p class="expect">/workorder/edit/1 로 바뀌어 열림 (옛 발행 폼 안 나옴)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+
+<div class="part"><span class="tag">C</span><h2>다음 실제 수주 때</h2>
+  <p>미리 뽑은 숫자가 없어 "기대 동작"으로 확인합니다. 시험 수주를 일부러 만들 필요는 없습니다.</p></div>
+<section class="step">
+  <div class="step-head">
+    <div class="idx">14</div>
+    <div class="t"><h2>다음 실제 수주 한 건으로 끝까지</h2><div class="path">수주 목록 → 수주 상세 → 탭 편집기 → 생산입고 → 포장·출하</div></div>
+  </div>
+  <p class="why">새 흐름은 실제 발행이 있어야 확인됩니다. <b>다음 수주가 들어오면 한 번만</b> 이 순서로 처리하며 체크하세요. 숫자 N은 그 수주의 제품·반제품 품목 수입니다.</p>
+  <ul class="rows">
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">[수주 등록 ▾] → 방식 선택 후 등록</p>
+        <p class="expect act">직접 입력은 수주 편집 화면, 업로드는 인식 결과 확인 창</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">업로드 확인 창에서 납품기한을 비우고 저장해 보기 <span class="new">NEW</span></p>
+        <p class="expect act">"납품기한을 입력하세요" — 저장 안 됨 (여러 파일 일괄 저장이면 빠진 파일 목록 안내)</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">등록 뒤 수주 목록 <span class="new">NEW</span></p>
+        <p class="expect act">그 행에 주황 "지시 미발행 N" 칩</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">수주 상세의 생산진행 칸 <span class="new">NEW</span></p>
+        <p class="expect act">첫 칩(계획)이 점선 ○ — 눌러도 반응 없음</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">[작업지시 발행] → 확인 <span class="new">NEW</span></p>
+        <p class="expect act">확인창 "이 수주의 미발행 품목 N건…" → 결과창 "작업지시 N건이 발행되었습니다" + [세부 지시 입력]</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">[세부 지시 입력] → 작업자·지시사항 입력 → [전체 저장]</p>
+        <p class="expect act">공통 + N개 탭 · 저장 후 같은 화면으로 돌아옴</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">수주 목록으로 돌아가기 <span class="new">NEW</span></p>
+        <p class="expect act">"지시 미발행" 칩이 사라짐</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">수주 상세에서 [작업지시 발행]을 한 번 더 <span class="new">NEW</span></p>
+        <p class="expect act">"새로 발행할 품목이 없습니다" — 중복 발행 안 됨</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">생산 › 생산입고에서 지시 수락 → 공정진척 · 입고</p>
+        <p class="expect act">기존과 같게 진행</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+    <li class="row">
+      <input class="box" type="checkbox" aria-label="확인">
+      <div><p class="what">포장·출하까지 마친 뒤 수주 상세</p>
+        <p class="expect act">"✅ 출고 완료 — N/N품목 … 전량 출고" 배너 · 대시보드 할 일에서 사라짐</p></div>
+      <button class="flag" type="button" aria-pressed="false" aria-label="불일치">✕</button>
+    </li>
+  </ul>
+</section>
+
+<div class="closing">
+  <h2>불일치를 찾았다면</h2>
+  <ol>
+    <li><b>화면 주소와 항목 번호</b>를 적어 주세요 (예: B-10 두 번째 줄).</li>
+    <li><b>화면에 보인 실제 숫자나 문구</b>를 그대로 적어 주세요. "틀렸다"보다 "출고수량이 1로 보였다"가 훨씬 빨리 좁혀집니다.</li>
+    <li>먼저 <b>새로고침</b>(Ctrl+F5)을 해 보세요. 옛 버튼이 보이면 대부분 브라우저 캐시입니다.</li>
+    <li>A의 1·3·4번이 동시에 틀리면 배포 반영 문제, 한 화면만 틀리면 그 화면 고유의 문제입니다.</li>
+  </ol>
+</div>
+
+</div>
+<script>
+(function(){
+  var rows  = Array.prototype.slice.call(document.querySelectorAll('.row'));
+  var nOk   = document.getElementById('n-ok');
+  var nNg   = document.getElementById('n-ng');
+  var nRest = document.getElementById('n-rest');
+  var fill  = document.getElementById('fill');
+
+  function sync(){
+    var ok = 0, ng = 0;
+    rows.forEach(function(r){
+      var checked = r.querySelector('.box').checked;
+      var flagged = r.querySelector('.flag').getAttribute('aria-pressed') === 'true';
+      r.classList.toggle('ng', flagged);
+      r.classList.toggle('done', checked && !flagged);
+      if (flagged) ng++; else if (checked) ok++;
+    });
+    nOk.textContent   = ok;
+    nNg.textContent   = ng;
+    nRest.textContent = rows.length - ok - ng;
+    fill.style.width  = Math.round((ok + ng) / rows.length * 100) + '%';
+    fill.style.background = ng > 0
+      ? 'var(--fail)'
+      : 'var(--pass)';
+  }
+
+  rows.forEach(function(r){
+    r.querySelector('.box').addEventListener('change', sync);
+    r.querySelector('.flag').addEventListener('click', function(){
+      var on = this.getAttribute('aria-pressed') === 'true';
+      this.setAttribute('aria-pressed', String(!on));
+      if (!on) r.querySelector('.box').checked = true;
+      sync();
+    });
+  });
+
+  document.getElementById('reset').addEventListener('click', function(){
+    rows.forEach(function(r){
+      r.querySelector('.box').checked = false;
+      r.querySelector('.flag').setAttribute('aria-pressed', 'false');
+    });
+    sync();
+  });
+
+  sync();
+})();
+</script>
