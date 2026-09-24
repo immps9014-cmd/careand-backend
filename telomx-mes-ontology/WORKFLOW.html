@@ -97,11 +97,11 @@
 </style>
 
 <div class="wrap">
-  <p class="eyebrow">TX-FLOW r1.0 · OPS-2026-01 · 3사 MES 온톨로지</p>
+  <p class="eyebrow">TX-FLOW r1.1 · OPS-2026-01 · 3사 MES 온톨로지</p>
   <h1>온톨로지 MCP 시스템 워크플로</h1>
   <p class="lede">hisense·infurs·naturefood MES 원장이 온톨로지 그래프로 투영되고, 검산을 거쳐 MCP 도구로 Claude에게 나가기까지의 흐름입니다. 누가(사람·Claude·cron·개발 에이전트) 어느 단계를 맡는지, 각 단계에 어떤 하네스가 걸려 있는지를 함께 정리했습니다.</p>
   <div class="docmeta">
-    <div><span class="k">기준 시각</span><span class="v mono">2026-09-24 17:47 실측</span></div>
+    <div><span class="k">기준 시각</span><span class="v mono">2026-09-24 실측 · r1.1 하네스 적용</span></div>
     <div><span class="k">상위 문서</span><span class="v">TX-ARCH r1.0 · TX-ONT-MCP r1.3</span></div>
     <div><span class="k">서버</span><span class="v mono">telomx.aiclaude.kr/mcp</span></div>
     <div><span class="k">작성</span><span class="v">TelomX 운영</span></div>
@@ -349,25 +349,25 @@
     <table>
       <thead><tr><th>레포</th><th>CLAUDE.md 온톨로지 절</th><th>에이전트</th><th>스킬</th><th>온톨로지 담당</th></tr></thead>
       <tbody>
-        <tr><td><b>hisense</b><br><span class="mono" style="font-size:12px;color:var(--muted)">스키마·MCP SSOT</span></td><td><code>/impact</code> · <code>/ontology</code> 절 있음</td><td>order · production · inventory-delivery · devops</td><td>item-matching-check · cli-auth-bypass-testing · procurement-xls-parser-guide</td><td><span class="chip c-bad">없음</span></td></tr>
-        <tr><td><b>infurs</b></td><td><code>/ontology</code> 절 있음</td><td>위 4종 + product-master</td><td>item-product-matching-check · procurement-pdf-parser-guide · safe-controller-verification 외 2</td><td><span class="chip c-bad">없음</span></td></tr>
+        <tr><td><b>hisense</b><br><span class="mono" style="font-size:12px;color:var(--muted)">스키마·MCP SSOT</span></td><td><code>/impact</code> · <code>/ontology</code> 절 있음</td><td>order · production · inventory-delivery · devops</td><td>item-matching-check · cli-auth-bypass-testing · procurement-xls-parser-guide · <b>add-mcp-tool</b></td><td><span class="chip c-ok">ontology-mcp-engineer</span></td></tr>
+        <tr><td><b>infurs</b></td><td><code>/ontology</code> 절 있음</td><td>위 4종 + product-master<br><span style="font-size:12.5px;color:var(--muted)">CLAUDE.md 가 hisense 전담 에이전트를 가리킴</span></td><td>item-product-matching-check · procurement-pdf-parser-guide · safe-controller-verification 외 2</td><td><span class="chip c-acc">hisense 것 사용</span></td></tr>
         <tr><td><b>naturefood</b></td><td>CLAUDE.md 자체가 없음</td><td>—</td><td>—</td><td><span class="chip c-bad">없음</span></td></tr>
         <tr><td><b>caren</b><br><span class="mono" style="font-size:12px;color:var(--muted)">별도 데이터셋</span></td><td>있음</td><td>6종</td><td>6종</td><td><span class="chip c-ok">matching-ontology</span></td></tr>
       </tbody>
     </table>
     </div>
-    <p class="note">공백: MCP 서버와 ETL·검산은 가장 규칙이 많은 영역인데, 3사 MES 레포 어디에도 이를 맡는 에이전트나 스킬이 없습니다. 지금은 CLAUDE.md의 화면 절, <code>scripts/ontology/README.md</code>, <code>pitfalls</code>가 그 역할을 나눠 하고 있습니다. 6절의 변경 순서도 문서에만 있고 강제 장치가 없습니다.</p>
+    <p class="note acc">r1.0 시점에는 3사 MES 레포 어디에도 온톨로지·MCP 담당 에이전트나 스킬이 없었다. r1.1에서 스키마·MCP의 SSOT인 hisense 레포에 전담 에이전트와 도구 추가 스킬을 두고, infurs CLAUDE.md가 그것을 가리키게 했다. 남은 공백은 naturefood(CLAUDE.md 없음)다.</p>
 
-    <h3>제안 (미적용)</h3>
+    <h3>적용 (2026-09-24, hisense <code>4037b01</code> · infurs <code>01699d0</code>)</h3>
     <div class="two">
       <div class="card"><h4>에이전트 <code>ontology-mcp-engineer</code></h4>
         <ul><li>위치: hisense <code>.claude/agents/</code> (스키마·MCP가 여기 있으므로)</li>
         <li>범위: <code>scripts/ontology/**</code>, <code>libraries/Ontology.php</code>, 3사 ETL·check</li>
-        <li>필독: README 3벌, pitfalls, 사이트별 반대 관례(item_id 공간·원장 키·취소 status)</li></ul></div>
+        <li>담는 것: 3사 파일 지도, 사이트별 반대 관례표(item_id 공간·원장 키·취소 status·출하 경로), 실측 함정 8가지, 스키마·ETL 변경 순서, 검증 기준값, 하지 않는 것</li></ul></div>
       <div class="card"><h4>스킬 <code>add-mcp-tool</code></h4>
         <ul><li>6절 순서를 체크리스트로: QUERIES → crosscheck → core.php → selftest → restart → 문서</li>
         <li>검증 기준값 표(실출고 183 / 72 / 23,002, check 29 / 36 / 26)</li>
-        <li>naturefood에는 최소 CLAUDE.md(원격 없음, user.name 미설정 주의)</li></ul></div>
+        <li>6절 순서를 완료 판정 체크리스트로 끝맺음</li></ul></div>
     </div>
   </section>
 
@@ -394,7 +394,7 @@
       <thead><tr><th>과제</th><th>내용</th><th>판단 주체</th></tr></thead>
       <tbody>
         <tr><td>KPI 누적</td><td>실사용 질문이 4건뿐이라 처리율 수치에 의미가 없다. 미처리 사유가 쌓여야 다음 도구가 정해진다.</td><td>사용</td></tr>
-        <tr><td>개발 하네스 공백</td><td>7절 제안 에이전트·스킬 추가, naturefood CLAUDE.md</td><td>사용자</td></tr>
+        <tr><td>개발 하네스 공백</td><td>에이전트·스킬은 r1.1에서 적용. naturefood CLAUDE.md만 남음</td><td>사용자</td></tr>
         <tr><td>MES 내장 자연어 검색</td><td>hisense·naturefood 검색과 infurs <code>Agent.php</code>(mes-agent)는 그래프가 아니라 DB를 본다. 그래프 연결은 향후 과제.</td><td>사용자</td></tr>
         <tr><td>M4 쓰기 도구</td><td>미정. 도입하더라도 MES 엔드포인트를 거쳐야 하며 그래프에서 DB로 쓰는 경로는 만들지 않는다.</td><td>사용자</td></tr>
         <tr><td>공개 범위</td><td>현재 사내 토큰 하나. 고객사 공개 시 OAuth·사이트별 토큰 필요.</td><td>사용자</td></tr>
@@ -404,5 +404,5 @@
     </div>
   </section>
 
-  <footer>TX-FLOW r1.0 · 원본 <code>/root/telomx-mes-ontology/WORKFLOW.html</code> · 근거: 서버 실측(crontab, status.json, crosscheck.json, kpi.php, 레포별 .claude/) · Copyright TelomX</footer>
+  <footer>TX-FLOW r1.1 · 원본 <code>/root/telomx-mes-ontology/WORKFLOW.html</code> · 근거: 서버 실측(crontab, status.json, crosscheck.json, kpi.php, 레포별 .claude/) · Copyright TelomX</footer>
 </div>
