@@ -76,3 +76,8 @@
 !/scripts/
 /scripts/*
 !/scripts/*.sh
+!/hisense-docs/
+/hisense-docs/*
+!/hisense-docs/ORDER-WO-SCREENS.html
+!/hisense-docs/make_pdf_order.js
+!/hisense-docs/*.pdf

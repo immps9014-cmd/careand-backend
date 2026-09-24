@@ -1,0 +1,313 @@
+<title>히센스 수주·작업지시 정리안</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:#F2F4F1; --surface:#FFFFFF; --surface-2:#E9ECE7;
+    --ink:#15191A; --ink-2:#39423F; --muted:#64706C;
+    --line:#D4D9D2; --line-2:#BFC6BD;
+    --accent:#1C5871; --accent-soft:#DCE8EC;
+    --signal:#9C5A06; --signal-soft:#F4E7D3;
+    --good:#2A6349; --good-soft:#DCE9E2;
+    --bad:#A33B2B; --bad-soft:#F5DFDA;
+    --dim:#8D9894;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1213; --surface:#171C1D; --surface-2:#1E2425;
+      --ink:#E7EAE6; --ink-2:#C3CAC6; --muted:#8D9894;
+      --line:#2B3233; --line-2:#3B4344;
+      --accent:#7CB6CE; --accent-soft:#17313B;
+      --signal:#DDA35A; --signal-soft:#33260F;
+      --good:#6FB392; --good-soft:#182E25;
+      --bad:#E08A7C; --bad-soft:#3A1D18;
+      --dim:#6E7975; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1213; --surface:#171C1D; --surface-2:#1E2425;
+    --ink:#E7EAE6; --ink-2:#C3CAC6; --muted:#8D9894;
+    --line:#2B3233; --line-2:#3B4344;
+    --accent:#7CB6CE; --accent-soft:#17313B;
+    --signal:#DDA35A; --signal-soft:#33260F;
+    --good:#6FB392; --good-soft:#182E25;
+    --bad:#E08A7C; --bad-soft:#3A1D18;
+    --dim:#6E7975; color-scheme: dark;
+  }
+  body { background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    font-size:16px; line-height:1.75; -webkit-text-size-adjust:100%; }
+  .wrap { max-width:980px; margin:0 auto; padding-inline:20px; padding-block:48px 80px; }
+  .mono, code { font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+  code { font-size:.86em; background:var(--surface-2); padding:1px 5px; border-radius:3px; word-break:break-word; }
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; }
+  h1 { font-family:"Noto Serif KR",Georgia,serif; font-weight:700; font-size:clamp(28px,5.6vw,42px); line-height:1.25; letter-spacing:-.02em; margin:0; text-wrap:balance; }
+  .lede { font-size:clamp(16px,2.2vw,18px); color:var(--ink-2); max-width:66ch; margin:18px 0 0; }
+  .docmeta { display:flex; flex-wrap:wrap; gap:10px 28px; margin:26px 0 0; padding:14px 0; border-block:1px solid var(--line); }
+  .docmeta div { display:flex; flex-direction:column; }
+  .docmeta .k { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .docmeta .v { font-size:14px; font-weight:500; }
+  nav.toc { margin:22px 0 0; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13.5px; }
+  nav.toc a { color:var(--ink-2); text-decoration:none; }
+  nav.toc a:hover, nav.toc a:focus-visible { color:var(--accent); text-decoration:underline; }
+  nav.toc .n { font-family:"IBM Plex Mono",monospace; color:var(--muted); margin-right:5px; font-size:12px; }
+  section { margin-top:60px; }
+  h2 { font-family:"Noto Serif KR",Georgia,serif; font-size:clamp(21px,3.2vw,26px); line-height:1.35; margin:0 0 6px; text-wrap:balance; }
+  h2 .n { font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent); font-weight:500; margin-right:8px; }
+  h3 { font-size:17px; margin:30px 0 6px; font-weight:600; }
+  p { max-width:72ch; }
+  .sub { color:var(--muted); font-size:14.5px; margin-top:0; max-width:72ch; }
+  figure { margin:24px 0 0; background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+  .scroll { overflow-x:auto; }
+  figcaption { font-size:13.5px; color:var(--ink-2); padding:12px 18px 16px; border-top:1px solid var(--line); }
+  svg text { font-family:"IBM Plex Sans KR",sans-serif; }
+  svg .m { font-family:"IBM Plex Mono",monospace; }
+  .tbl { overflow-x:auto; margin-top:18px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; line-height:1.6; }
+  th, td { text-align:left; vertical-align:top; padding:10px 14px; border-bottom:1px solid var(--line); }
+  th { font-size:12px; font-weight:600; color:var(--muted); background:var(--surface-2); letter-spacing:.02em; white-space:nowrap; }
+  tr:last-child td { border-bottom:0; }
+  td.num { font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+  td .who { font-weight:600; display:block; }
+  .chip { display:inline-block; font-size:11.5px; font-weight:600; padding:1px 8px; border-radius:99px; white-space:nowrap; font-family:"IBM Plex Mono",monospace; }
+  .c-ok { background:var(--good-soft); color:var(--good); }
+  .c-warn { background:var(--signal-soft); color:var(--signal); }
+  .c-bad { background:var(--bad-soft); color:var(--bad); }
+  .c-acc { background:var(--accent-soft); color:var(--accent); }
+  ol.steps { list-style:none; counter-reset:s; padding:0; margin:18px 0 0; display:grid; gap:10px; }
+  ol.steps > li { counter-increment:s; display:grid; grid-template-columns:34px 1fr; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:12px 16px; }
+  ol.steps > li::before { content:counter(s); font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent); background:var(--accent-soft); border-radius:4px; height:26px; display:grid; place-items:center; margin-top:2px; }
+  ol.steps b { font-weight:600; }
+  ol.steps .d { display:block; color:var(--ink-2); font-size:14.5px; }
+  .loops { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin-top:20px; }
+  .loop { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+  .loop .t { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .loop .h { font-weight:600; font-size:16px; }
+  .loop .w { font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--accent); }
+  .loop p { margin:4px 0 0; font-size:14px; color:var(--ink-2); }
+  .note { margin-top:18px; padding:12px 16px; border-left:3px solid var(--signal); background:var(--signal-soft); color:var(--ink); font-size:14.5px; max-width:none; border-radius:0 4px 4px 0; }
+  .note.acc { border-left-color:var(--accent); background:var(--accent-soft); }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:18px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:16px 18px; }
+  .card h4 { margin:0 0 6px; font-size:15px; }
+  .card ul { margin:6px 0 0; padding-left:18px; font-size:14px; color:var(--ink-2); }
+  .card li + li { margin-top:4px; }
+  footer { margin-top:64px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+  a { color:var(--accent); }
+  @media (max-width:520px) { .wrap { padding-inline:16px; padding-block:32px 60px; } th, td { padding:8px 10px; } }
+
+  .flow { display:grid; gap:12px; margin-top:20px; }
+  .lane { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:14px 16px; display:grid; gap:10px; }
+  .lane-h { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; }
+  .steps-row { display:flex; flex-wrap:wrap; align-items:stretch; gap:8px; }
+  .st { flex:1 1 170px; display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid var(--line-2); border-radius:5px; background:var(--ground); font-size:14px; }
+  .st b { font-weight:600; }
+  .st span:last-child { color:var(--ink-2); font-size:13px; }
+  .st.key { border-color:var(--accent); background:var(--accent-soft); }
+  .st-n { font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--accent); }
+  .arr { align-self:center; color:var(--muted); font-size:18px; }
+  @media (max-width:640px) { .arr { display:none; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">HS-UX-01 r1.0 · 히센스 MES · 총무 &gt; 수주 · 작업지시</p>
+  <h1>수주·작업지시 화면 정리안</h1>
+  <p class="lede">수주를 등록하는 입구가 네 곳, 작업지시를 내는 입구가 일곱 곳입니다. 같은 일을 하는 버튼이 세 가지 이름으로 흩어져 있고, 수주 상세에서는 계획을 먼저 등록해야 작업지시 버튼이 열립니다. 현재 코드와 운영 DB를 직접 확인해 얽힌 지점을 정리하고, 입구 하나·편집기 하나·발행 버튼 하나로 모으는 안을 제시합니다.</p>
+  <div class="docmeta">
+    <div><span class="k">기준</span><span class="v mono">2026-09-24 코드·DB 실측</span></div>
+    <div><span class="k">대상</span><span class="v mono">hisens.aiclaude.kr</span></div>
+    <div><span class="k">상태</span><span class="v">제안 · 구현 전</span></div>
+    <div><span class="k">작성</span><span class="v">TelomX 운영</span></div>
+  </div>
+  <nav class="toc" aria-label="목차">
+    <a href="#s1"><span class="n">1</span>요약</a>
+    <a href="#s2"><span class="n">2</span>수주 등록 현황</a>
+    <a href="#s3"><span class="n">3</span>작업지시 현황</a>
+    <a href="#s4"><span class="n">4</span>결함</a>
+    <a href="#s5"><span class="n">5</span>목표 흐름</a>
+    <a href="#s6"><span class="n">6</span>화면별 변경</a>
+    <a href="#s7"><span class="n">7</span>단계</a>
+    <a href="#s8"><span class="n">8</span>결정 필요</a>
+  </nav>
+
+  <section id="s1">
+    <h2><span class="n">1</span>요약</h2>
+    <div class="loops">
+      <div class="loop"><span class="t">문제 1</span><span class="h">입구가 흩어져 있다</span><p>수주 등록 4곳(보이는 것) + 숨은 2곳, 편집기 2벌, 저장 경로 2벌. 등록 방식마다 도착하는 화면이 다르다.</p></div>
+      <div class="loop"><span class="t">문제 2</span><span class="h">작업지시를 바로 못 낸다</span><p>수주 상세에서 작업지시 버튼은 계획등록 전까지 잠겨 있다. 서버는 계획을 자동으로 만드는데 화면만 막고 있다.</p></div>
+      <div class="loop"><span class="t">문제 3</span><span class="h">같은 일, 다른 이름·다른 코드</span><p>"생산요청"·"작업등록"·"작업지시 발행"이 같은 결과를 서로 다른 세 경로로 만든다.</p></div>
+    </div>
+    <p class="note acc"><b>제안의 뼈대</b> — ① 수주 등록은 수주 목록의 버튼 하나(방식 3가지 선택) ② 수주 편집기는 한 벌 ③ 작업지시는 수주 상세의 <b>[작업지시 발행]</b> 한 번(계획은 자동) ④ 세부 지시는 탭 편집기 하나 ⑤ 총무는 발행까지, 생산은 수락·진척·입고. 작업지시 생성 로직은 이미 <code>Order::pipeline_action()</code>으로 일원화돼 있어서, 대부분은 화면과 버튼을 정리하는 일입니다.</p>
+  </section>
+
+  <section id="s2">
+    <h2><span class="n">2</span>수주 등록 현황</h2>
+    <p class="sub">"총무 &gt; 수주" 목록 상단 버튼 3개와 "총무 &gt; 작업지시" 화면의 버튼 1개가 보이는 입구입니다. 방식에 따라 서로 다른 편집기에 도착합니다.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>입구</th><th>방식</th><th>편집기</th><th>저장</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td>수주 목록 [수주 등록]</td><td>직접 입력</td><td>전체 화면 <code>order/form</code></td><td><code>Order::store</code></td><td><span class="chip c-ok">사용</span></td></tr>
+        <tr><td>수주 목록 [조달청수주서]</td><td>PDF·XLS 업로드</td><td>팝업 편집기(여러 건 이전/다음)</td><td><code>Order::pdf_save</code></td><td><span class="chip c-ok">사용</span></td></tr>
+        <tr><td>수주 목록 [일반수주서]</td><td>발주서 이미지 OCR</td><td>같은 팝업 편집기</td><td><code>Order::pdf_save</code></td><td><span class="chip c-ok">사용</span></td></tr>
+        <tr><td>작업지시 [＋ 수주 등록]</td><td>직접 입력만</td><td><code>order/form</code></td><td><code>Order::store</code></td><td><span class="chip c-warn">중복 입구</span></td></tr>
+        <tr><td>견적 → 수주 전환</td><td>견적서 전환</td><td>—</td><td><code>Quotation::convert</code></td><td><span class="chip c-acc">메뉴 숨김 · 0건</span></td></tr>
+        <tr><td>판매수주</td><td>별도 테이블 <code>t_sales_order</code></td><td>별도 화면</td><td><code>SalesOrder</code></td><td><span class="chip c-acc">메뉴 숨김 · 0건</span></td></tr>
+      </tbody>
+    </table></div>
+    <h3>편집기가 두 벌이라 생기는 차이</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>항목</th><th>팝업 편집기 (업로드 등록)</th><th>전체 화면 <code>order/form</code> (직접 등록·모든 수정)</th></tr></thead>
+      <tbody>
+        <tr><td>발주기관(조달청)</td><td>있음</td><td><b>없음</b></td></tr>
+        <tr><td>품대계 · 수수료</td><td>있음</td><td><b>없음</b></td></tr>
+        <tr><td>특이사항(memo)</td><td>있음</td><td><b>없음</b></td></tr>
+        <tr><td>FAX · 담당자 연락처</td><td>OCR이 채움</td><td><b>없음</b></td></tr>
+        <tr><td>여러 건 연속 처리</td><td>있음(이전/다음·전체 저장)</td><td>한 건</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sub" style="margin-top:10px">업로드로 등록한 수주도 목록의 ✎를 누르면 <code>order/form</code>에서 수정합니다. 그런데 그 화면에는 위 필드들이 없습니다. 그 결과는 4절 D1을 보세요.</p>
+  </section>
+
+  <section id="s3">
+    <h2><span class="n">3</span>작업지시 발행 현황</h2>
+    <p class="sub">작업지시를 새로 만드는 버튼이 네 화면, 일곱 곳에 있습니다. 코드 경로는 네 갈래입니다.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>화면 · 버튼</th><th>화면 이름</th><th>코드 경로</th><th>계획</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td>수주 상세 · 품목행 단계 아이콘</td><td>계획등록 → 작업등록</td><td><code>pipeline_action</code></td><td><span class="chip c-bad">먼저 눌러야 열림</span></td></tr>
+        <tr><td>B</td><td>수주 상세 · ▶ 다음 할 일 [진행하기]</td><td>생산계획 등록 → 작업지시 등록</td><td><code>pipeline_action</code></td><td><span class="chip c-bad">두 번 눌러야 함</span></td></tr>
+        <tr><td>C</td><td>수주 상세 · 품목 선택 후 [생산요청]</td><td>생산요청</td><td><code>WorkOrder::store</code>(입력 폼)</td><td>뒤에서 연결</td></tr>
+        <tr><td>D</td><td>총무 &gt; 작업지시 · 발행 탭</td><td>작업등록(작업지시 발행)</td><td><code>pipeline_action</code></td><td><span class="chip c-ok">자동 생성</span></td></tr>
+        <tr><td>E</td><td>생산 &gt; 생산입고 · 직접 생산요청 · 수주 목록</td><td>생산요청</td><td><code>Production::issue_from_order</code></td><td>뒤에서 연결</td></tr>
+        <tr><td>F</td><td>생산 &gt; 생산입고 · 직접 생산요청 · 계획 목록 / 수주 없이</td><td>생산요청</td><td><code>issue_from_plan</code> · <code>direct_request</code></td><td>—</td></tr>
+        <tr><td>G</td><td>생산 &gt; 생산계획 · 계획 저장</td><td>—</td><td><code>ProductionPlan::store</code></td><td>계획이 곧 입구</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sub" style="margin-top:10px">A·B와 D는 같은 서버 함수를 부르는데도 동작이 다릅니다. D는 "계획이 없으면 자동으로 만들고 이어서 발행"하고, A·B는 화면이 작업 단계를 <code>locked</code>로 잠가 계획을 먼저 누르게 합니다(<code>Order_model::get_shipment_pipeline</code>). 서버의 <code>pipeline_action('work')</code>는 어느 쪽에서 불러도 계획을 자동으로 만듭니다.</p>
+
+    <h3>만든 뒤 고치는 입구도 셋</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>입구</th><th>무엇을</th><th>경로</th></tr></thead>
+      <tbody>
+        <tr><td>수주 상세 · 생산요청 현황 ✎</td><td>생산요청 폼을 다시 연다</td><td><code>workorder/create/{수주}?items=</code></td></tr>
+        <tr><td>총무 &gt; 작업지시 · 수주별 편집</td><td>수주 단위 탭 편집기 + 추가 전달사항</td><td><code>workorder/edit/{수주}</code></td></tr>
+        <tr><td>생산 &gt; 생산입고 · 작업지시 ✎</td><td>한 건 수정 모달</td><td><code>production/edit_wo</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>용어 · 표시 불일치</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>대상</th><th>지금</th></tr></thead>
+      <tbody>
+        <tr><td>작업지시를 만드는 행위</td><td>생산요청 · 작업등록 · 작업지시 등록 · 작업지시 발행 (4가지)</td></tr>
+        <tr><td>작업지시 상태 0</td><td>목록은 "대기", 생산 화면 발행 검사는 "계획 상태"</td></tr>
+        <tr><td>재고 부족 링크</td><td>구매를 운영하지 않기로 하고(2026-08-13) 메뉴를 숨겼지만, "부족 → 구매발주" 링크가 10개 화면 16곳에 남아 있다</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="s4">
+    <h2><span class="n">4</span>정리하며 발견한 결함</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>내용</th><th>영향</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td>D1</td><td><b>수주 수정 저장이 특이사항·FAX·담당자 연락처를 지운다.</b> <code>Order::update_order()</code>가 <code>memo</code>·<code>customer_fax</code>·<code>customer_contact_phone</code>을 POST 값으로 덮어쓰는데, 수정 화면(<code>order/form</code>)에는 이 입력칸이 없다. 그래서 항상 빈 값이 저장된다.</td><td>일반수주서(OCR)로 등록한 뒤 한 번이라도 수정하면 특이사항이 사라진다. 운영 수주 2건은 원래 비어 있어 아직 피해는 없다.</td><td><span class="chip c-bad">즉시 수정 권장</span></td></tr>
+        <tr><td>D2</td><td>수주 상세에서 작업지시 단계가 계획 전까지 잠김(3절 A·B).</td><td>클릭이 두 번 필요하고, 총무 &gt; 작업지시 화면과 동작이 다르다.</td><td><span class="chip c-warn">화면만 수정</span></td></tr>
+        <tr><td>D3</td><td>발행 코드가 두 벌: 원클릭(<code>pipeline_action</code>)은 빈 "대기" 작업지시를 만들고, 생산요청 폼(<code>WorkOrder::store</code>)은 작업자·도면·지시사항을 받는다.</td><td>같은 수주라도 어느 버튼으로 냈는지에 따라 작업지시의 내용이 다르다. 채번도 다르다(2026-08-15에 통일하지 않기로 결정).</td><td><span class="chip c-warn">구조 정리</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="s5">
+    <h2><span class="n">5</span>목표 흐름</h2>
+    <p class="sub">총무는 "수주를 받아 작업지시를 내보내는 곳", 생산은 "작업지시를 받아 만들고 입고하는 곳"으로 나눕니다.</p>
+    <div class="flow">
+      <div class="lane">
+        <div class="lane-h">총무</div>
+        <div class="steps-row">
+          <div class="st"><span class="st-n">1</span><b>수주 등록 ▾</b><span>직접 입력 · 조달청 PDF/XLS · 고객사 발주서</span></div>
+          <div class="arr" aria-hidden="true">→</div>
+          <div class="st"><span class="st-n">2</span><b>수주 편집기 1벌</b><span>업로드도 인식 결과를 같은 칸에 채워 확인</span></div>
+          <div class="arr" aria-hidden="true">→</div>
+          <div class="st key"><span class="st-n">3</span><b>수주 상세 = 작업 허브</b><span>[작업지시 발행] 한 번 · 계획은 자동</span></div>
+          <div class="arr" aria-hidden="true">→</div>
+          <div class="st"><span class="st-n">4</span><b>작업지시 탭 편집기</b><span>작업자 · 도면 · 전달사항</span></div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lane-h">생산</div>
+        <div class="steps-row">
+          <div class="st"><span class="st-n">5</span><b>대기 작업지시 수락</b><span>생산관리 배지</span></div>
+          <div class="arr" aria-hidden="true">→</div>
+          <div class="st"><span class="st-n">6</span><b>공정진척 · 생산입고</b><span>PC · 현장앱 동일</span></div>
+          <div class="arr" aria-hidden="true">→</div>
+          <div class="st"><span class="st-n">7</span><b>포장 · 출하 · 배송</b><span>기존 그대로</span></div>
+        </div>
+      </div>
+    </div>
+    <h3>원칙</h3>
+    <ol class="steps">
+      <li><div><b>입구 하나.</b><span class="d">수주 목록의 [수주 등록 ▾] 하나에서 방식 세 가지를 고른다. 총무 &gt; 작업지시의 "＋ 수주 등록"은 없앤다. 그 화면은 발행 대기 목록으로만 쓴다.</span></div></li>
+      <li><div><b>편집기 한 벌.</b><span class="d">수주 편집 화면 하나에 필드를 모두 둔다(발주기관·품대계·수수료·특이사항·FAX·담당자 연락처). 업로드 팝업은 "인식 결과 확인" 단계로 남기되 같은 필드와 같은 저장 규칙을 쓴다.</span></div></li>
+      <li><div><b>발행 버튼 하나, 이름 하나.</b><span class="d">"작업지시 발행". 누르면 계획이 없어도 자동으로 만들고 이어서 발행한다(서버는 이미 이렇게 동작한다). 수주 화면의 [계획등록] 단계 버튼은 없애고, 계획은 진행 표시로만 보인다. 기간·창고 조정은 생산계획 화면에서 한다.</span></div></li>
+      <li><div><b>세부 지시는 탭 편집기 하나.</b><span class="d">발행 직후 "작업자·도면·전달사항 입력" 링크로 <code>workorder/edit/{수주}</code>를 연다. 생산요청 폼(<code>workorder/create</code>)과 그 ✎는 이 편집기로 바꾼다.</span></div></li>
+      <li><div><b>역할 분리.</b><span class="d">생산 화면의 "수주 목록에서 생산요청"(E)은 총무 발행과 중복이라 없애고, 발행 대기 작업지시를 수락하는 기능만 둔다. 수주 없이 재고용으로 만드는 "직접 생산요청"(F)은 생산 고유 기능이라 유지한다.</span></div></li>
+      <li><div><b>생성 로직은 늘리지 않는다.</b><span class="d">새 버튼도 모두 <code>Order::pipeline_action()</code>을 부른다. 16곳에 흩어졌던 생성 지점을 모은 2026-08 리팩토링의 원칙을 화면까지 넓히는 것이다.</span></div></li>
+    </ol>
+  </section>
+
+  <section id="s6">
+    <h2><span class="n">6</span>화면별 변경</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>화면</th><th>지금</th><th>바꾼 뒤</th></tr></thead>
+      <tbody>
+        <tr><td>총무 &gt; 수주 (목록)</td><td>[수주 등록] [조달청수주서] [일반수주서] 버튼 3개</td><td>[수주 등록 ▾] 하나 → 직접 입력 / 조달청 PDF·XLS / 고객사 발주서. 목록 행에 "작업지시 미발행 N" 칩</td></tr>
+        <tr><td>수주 편집 (<code>order/form</code>)</td><td>발주기관·수수료·특이사항·FAX·담당자 연락처 없음</td><td>필드 추가. 업로드 팝업과 필드·검증 동일</td></tr>
+        <tr><td>수주 상세</td><td>단계 아이콘 3개(계획·작업·입고) + [다음 할 일] + [생산요청] + 생산요청 현황 ✎</td><td>상단 [작업지시 발행] 하나(선택 품목 또는 전체). 품목행은 진행 칩만(계획 ✓ · 작업지시 ✓ · 입고 n/m). 발행 후 [세부 지시 입력] → 탭 편집기</td></tr>
+        <tr><td>총무 &gt; 작업지시 · 발행 탭</td><td>＋수주 등록 · 계획등록/작업등록/생산입고 버튼</td><td>"발행 대기 수주" 목록 + [작업지시 발행]만. 수주 등록 버튼 제거</td></tr>
+        <tr><td>총무 &gt; 작업지시 · 현황 탭</td><td>목록 + 상태 select</td><td>그대로. ✎는 탭 편집기로</td></tr>
+        <tr><td>생산 &gt; 생산입고</td><td>직접 생산요청 모달에 수주 목록·계획 목록·수주 없이 3가지</td><td>수주 목록 발행 제거. "발행 대기 수락" + "수주 없이 생산요청"만</td></tr>
+        <tr><td>재고 부족 링크 (10화면)</td><td>구매발주 등록으로 이동(메뉴는 숨김)</td><td>"부족 N" 표시만 남기고 링크 제거. 구매를 다시 운영하면 되살린다</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="s7">
+    <h2><span class="n">7</span>단계</h2>
+    <div class="two">
+      <div class="card"><h4>1단계 · 바로 할 수 있는 것 <span class="chip c-ok">저위험</span></h4>
+        <ul><li>D1 수정: 수정 화면에 없는 필드는 덮어쓰지 않음 + 필드 추가</li>
+        <li>D2 수정: 수주 상세 작업 단계 잠금 해제(서버 변경 없음)</li>
+        <li>버튼 이름을 "작업지시 발행"으로 통일, 상태 0 라벨 통일</li>
+        <li>구매발주 링크 16곳 정리</li></ul></div>
+      <div class="card"><h4>2단계 · 입구와 편집기 <span class="chip c-warn">화면 개편</span></h4>
+        <ul><li>[수주 등록 ▾] 드롭다운, 작업지시 화면의 수주 등록 제거</li>
+        <li>편집기 필드·검증 통일(팝업은 확인 단계로)</li>
+        <li>수주 상세 상단을 [작업지시 발행] 중심으로 재배치</li></ul></div>
+      <div class="card"><h4>3단계 · 경로 정리 <span class="chip c-warn">코드 정리</span></h4>
+        <ul><li>생산요청 폼 → 탭 편집기로 대체, <code>WorkOrder::store</code> 은퇴</li>
+        <li>생산 화면의 수주 목록 발행(<code>issue_from_order</code>) 제거</li>
+        <li>작업지시 편집 입구를 탭 편집기 하나로(결정 Q4)</li></ul></div>
+      <div class="card"><h4>검증 <span class="chip c-acc">매 단계</span></h4>
+        <ul><li>수주 1건 등록 → 발행 → 수락 → 입고 → 출하 CLI E2E(운영 DB 무변경 방식)</li>
+        <li>브라우저로 동선 확인(PC·현장앱)</li>
+        <li>출고 점검표 24항목 재확인</li></ul></div>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2><span class="n">8</span>결정이 필요한 것</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>질문</th><th>기본안</th></tr></thead>
+      <tbody>
+        <tr><td>Q1</td><td>수주 편집기를 전체 화면(<code>order/form</code>)으로 통일할지, 업로드 팝업으로 통일할지</td><td>전체 화면 하나. 팝업은 여러 건 업로드의 "확인" 단계로만</td></tr>
+        <tr><td>Q2</td><td>수주 화면에서 [계획등록] 단계 버튼을 없앨지</td><td>없앤다(계획은 자동, 표시만)</td></tr>
+        <tr><td>Q3</td><td>생산 화면의 "수주 목록에서 생산요청"을 없앨지. 현장이 이 경로를 쓰는가?</td><td>없앤다. 수주 없는 생산요청은 유지</td></tr>
+        <tr><td>Q4</td><td>작업지시 세부 편집을 탭 편집기 하나로 모을지(생산관리 ✎ 모달 폐지). 2026-08-15에는 병행하기로 했다.</td><td>탭 편집기 하나. 생산관리에서는 링크로 연다</td></tr>
+        <tr><td>Q5</td><td>숨겨진 견적 전환·판매수주(0건) 코드를 정리할지</td><td>이번 범위 밖. 사업계획서 기능목록을 확인한 뒤 따로 판단</td></tr>
+      </tbody>
+    </table></div>
+    <p class="sub" style="margin-top:10px">유지하는 기존 결정: 작업지시 번호 체계 통일 안 함 · 탭 편집기 일괄 저장 · 전달사항 첨부 없음(2026-08-15).</p>
+  </section>
+
+  <footer>HS-UX-01 r1.0 · 근거: <code>views/order/*</code> · <code>views/production/*</code> · <code>controllers/Order.php</code> · <code>WorkOrder.php</code> · <code>Production.php</code> · <code>Order_model::get_shipment_pipeline</code> · hisense_db(수주 2 · 주문라인 23 · 계획 2 · 작업지시 18) · Copyright TelomX</footer>
+</div>
