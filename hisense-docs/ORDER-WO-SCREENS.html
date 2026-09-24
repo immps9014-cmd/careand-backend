@@ -109,13 +109,13 @@
 </style>
 
 <div class="wrap">
-  <p class="eyebrow">HS-UX-01 r1.0 · 히센스 MES · 총무 &gt; 수주 · 작업지시</p>
+  <p class="eyebrow">HS-UX-01 r1.1 · 히센스 MES · 총무 &gt; 수주 · 작업지시</p>
   <h1>수주·작업지시 화면 정리안</h1>
-  <p class="lede">수주를 등록하는 입구가 네 곳, 작업지시를 내는 입구가 일곱 곳입니다. 같은 일을 하는 버튼이 세 가지 이름으로 흩어져 있고, 수주 상세에서는 계획을 먼저 등록해야 작업지시 버튼이 열립니다. 현재 코드와 운영 DB를 직접 확인해 얽힌 지점을 정리하고, 입구 하나·편집기 하나·발행 버튼 하나로 모으는 안을 제시합니다.</p>
+  <p class="lede">수주를 등록하는 입구가 네 곳, 작업지시를 내는 입구가 일곱 곳입니다. 같은 일을 하는 버튼이 세 가지 이름으로 흩어져 있고, 수주 상세에서는 계획을 먼저 등록해야 작업지시 버튼이 열립니다. 현재 코드와 운영 DB를 직접 확인해 얽힌 지점을 정리하고, 입구 하나·편집기 하나·발행 버튼 하나로 모으는 안을 제시합니다. <b>r1.1(2026-09-24): 결정 Q1~Q4가 모두 기본안으로 확정됐고 1~3단계를 구현했습니다.</b> 2~4절은 구현 전 실측 기록이고, 결과는 9절에 있습니다.</p>
   <div class="docmeta">
     <div><span class="k">기준</span><span class="v mono">2026-09-24 코드·DB 실측</span></div>
     <div><span class="k">대상</span><span class="v mono">hisens.aiclaude.kr</span></div>
-    <div><span class="k">상태</span><span class="v">제안 · 구현 전</span></div>
+    <div><span class="k">상태</span><span class="v">구현 완료 · 현장 확인 대기</span></div>
     <div><span class="k">작성</span><span class="v">TelomX 운영</span></div>
   </div>
   <nav class="toc" aria-label="목차">
@@ -126,7 +126,8 @@
     <a href="#s5"><span class="n">5</span>목표 흐름</a>
     <a href="#s6"><span class="n">6</span>화면별 변경</a>
     <a href="#s7"><span class="n">7</span>단계</a>
-    <a href="#s8"><span class="n">8</span>결정 필요</a>
+    <a href="#s8"><span class="n">8</span>결정</a>
+    <a href="#s9"><span class="n">9</span>구현 결과</a>
   </nav>
 
   <section id="s1">
@@ -141,7 +142,7 @@
 
   <section id="s2">
     <h2><span class="n">2</span>수주 등록 현황</h2>
-    <p class="sub">"총무 &gt; 수주" 목록 상단 버튼 3개와 "총무 &gt; 작업지시" 화면의 버튼 1개가 보이는 입구입니다. 방식에 따라 서로 다른 편집기에 도착합니다.</p>
+    <p class="sub">구현 전(r1.0) 실측입니다. "총무 &gt; 수주" 목록 상단 버튼 3개와 "총무 &gt; 작업지시" 화면의 버튼 1개가 보이는 입구입니다. 방식에 따라 서로 다른 편집기에 도착합니다.</p>
     <div class="tbl"><table>
       <thead><tr><th>입구</th><th>방식</th><th>편집기</th><th>저장</th><th>상태</th></tr></thead>
       <tbody>
@@ -169,7 +170,7 @@
 
   <section id="s3">
     <h2><span class="n">3</span>작업지시 발행 현황</h2>
-    <p class="sub">작업지시를 새로 만드는 버튼이 네 화면, 일곱 곳에 있습니다. 코드 경로는 네 갈래입니다.</p>
+    <p class="sub">구현 전(r1.0) 실측입니다. 작업지시를 새로 만드는 버튼이 네 화면, 일곱 곳에 있습니다. 코드 경로는 네 갈래입니다.</p>
     <div class="tbl"><table>
       <thead><tr><th>#</th><th>화면 · 버튼</th><th>화면 이름</th><th>코드 경로</th><th>계획</th></tr></thead>
       <tbody>
@@ -210,9 +211,12 @@
     <div class="tbl"><table>
       <thead><tr><th>#</th><th>내용</th><th>영향</th><th>상태</th></tr></thead>
       <tbody>
-        <tr><td>D1</td><td><b>수주 수정 저장이 특이사항·FAX·담당자 연락처를 지운다.</b> <code>Order::update_order()</code>가 <code>memo</code>·<code>customer_fax</code>·<code>customer_contact_phone</code>을 POST 값으로 덮어쓰는데, 수정 화면(<code>order/form</code>)에는 이 입력칸이 없다. 그래서 항상 빈 값이 저장된다.</td><td>일반수주서(OCR)로 등록한 뒤 한 번이라도 수정하면 특이사항이 사라진다. 운영 수주 2건은 원래 비어 있어 아직 피해는 없다.</td><td><span class="chip c-bad">즉시 수정 권장</span></td></tr>
-        <tr><td>D2</td><td>수주 상세에서 작업지시 단계가 계획 전까지 잠김(3절 A·B).</td><td>클릭이 두 번 필요하고, 총무 &gt; 작업지시 화면과 동작이 다르다.</td><td><span class="chip c-warn">화면만 수정</span></td></tr>
-        <tr><td>D3</td><td>발행 코드가 두 벌: 원클릭(<code>pipeline_action</code>)은 빈 "대기" 작업지시를 만들고, 생산요청 폼(<code>WorkOrder::store</code>)은 작업자·도면·지시사항을 받는다.</td><td>같은 수주라도 어느 버튼으로 냈는지에 따라 작업지시의 내용이 다르다. 채번도 다르다(2026-08-15에 통일하지 않기로 결정).</td><td><span class="chip c-warn">구조 정리</span></td></tr>
+        <tr><td>D1</td><td><b>수주 수정 저장이 특이사항·FAX·담당자 연락처를 지운다.</b> <code>Order::update_order()</code>가 <code>memo</code>·<code>customer_fax</code>·<code>customer_contact_phone</code>을 POST 값으로 덮어쓰는데, 수정 화면(<code>order/form</code>)에는 이 입력칸이 없다. 그래서 항상 빈 값이 저장된다.</td><td>일반수주서(OCR)로 등록한 뒤 한 번이라도 수정하면 특이사항이 사라진다. 운영 수주 2건은 원래 비어 있어 아직 피해는 없다.</td><td><span class="chip c-ok">수정 · 2001a7b</span></td></tr>
+        <tr><td>D2</td><td>수주 상세에서 작업지시 단계가 계획 전까지 잠김(3절 A·B).</td><td>클릭이 두 번 필요하고, 총무 &gt; 작업지시 화면과 동작이 다르다.</td><td><span class="chip c-ok">수정 · 2001a7b</span></td></tr>
+        <tr><td>D3</td><td>발행 코드가 두 벌: 원클릭(<code>pipeline_action</code>)은 빈 "대기" 작업지시를 만들고, 생산요청 폼(<code>WorkOrder::store</code>)은 작업자·도면·지시사항을 받는다.</td><td>같은 수주라도 어느 버튼으로 냈는지에 따라 작업지시의 내용이 다르다. 채번도 다르다(2026-08-15에 통일하지 않기로 결정).</td><td><span class="chip c-ok">해소 · 4f2e65e</span></td></tr>
+        <tr><td>D4</td><td><b>발행할 것이 없어도 "발행되었습니다".</b> <code>pipeline_action('work')</code>가 이미 발행된 품목만 받아 아무것도 만들지 않아도 성공 문구를 띄웠다. (구현 중 발견)</td><td>담당자가 발행됐다고 믿고 넘어갈 수 있었다.</td><td><span class="chip c-ok">수정 · 4f2e65e</span></td></tr>
+        <tr><td>D5</td><td><b>업로드 팝업은 납품기한 없이 저장됐다.</b> <code>order/form</code>은 필수인데 <code>pdf_save</code>만 비워도 통과했다. (구현 중 발견)</td><td>등록 뒤 수정하려 하면 그때서야 막혔고, 생산계획 기간을 잡을 수 없었다.</td><td><span class="chip c-ok">수정 · 4f2e65e</span></td></tr>
+        <tr><td>D6</td><td>수주 목록에서 클릭할 때마다 JS 오류, 생산입고 화면 로딩 때 배지 JS 오류. (브라우저 점검 중 발견)</td><td>다른 동작은 막지 않았지만 콘솔 오류가 계속 쌓였다.</td><td><span class="chip c-ok">수정 · 4f2e65e</span></td></tr>
       </tbody>
     </table></div>
   </section>
@@ -258,14 +262,14 @@
   <section id="s6">
     <h2><span class="n">6</span>화면별 변경</h2>
     <div class="tbl"><table>
-      <thead><tr><th>화면</th><th>지금</th><th>바꾼 뒤</th></tr></thead>
+      <thead><tr><th>화면</th><th>이전</th><th>지금 (구현됨)</th></tr></thead>
       <tbody>
-        <tr><td>총무 &gt; 수주 (목록)</td><td>[수주 등록] [조달청수주서] [일반수주서] 버튼 3개</td><td>[수주 등록 ▾] 하나 → 직접 입력 / 조달청 PDF·XLS / 고객사 발주서. 목록 행에 "작업지시 미발행 N" 칩</td></tr>
-        <tr><td>수주 편집 (<code>order/form</code>)</td><td>발주기관·수수료·특이사항·FAX·담당자 연락처 없음</td><td>필드 추가. 업로드 팝업과 필드·검증 동일</td></tr>
-        <tr><td>수주 상세</td><td>단계 아이콘 3개(계획·작업·입고) + [다음 할 일] + [생산요청] + 생산요청 현황 ✎</td><td>상단 [작업지시 발행] 하나(선택 품목 또는 전체). 품목행은 진행 칩만(계획 ✓ · 작업지시 ✓ · 입고 n/m). 발행 후 [세부 지시 입력] → 탭 편집기</td></tr>
-        <tr><td>총무 &gt; 작업지시 · 발행 탭</td><td>＋수주 등록 · 계획등록/작업등록/생산입고 버튼</td><td>"발행 대기 수주" 목록 + [작업지시 발행]만. 수주 등록 버튼 제거</td></tr>
-        <tr><td>총무 &gt; 작업지시 · 현황 탭</td><td>목록 + 상태 select</td><td>그대로. ✎는 탭 편집기로</td></tr>
-        <tr><td>생산 &gt; 생산입고</td><td>직접 생산요청 모달에 수주 목록·계획 목록·수주 없이 3가지</td><td>수주 목록 발행 제거. "발행 대기 수락" + "수주 없이 생산요청"만</td></tr>
+        <tr><td>총무 &gt; 수주 (목록)</td><td>[수주 등록] [조달청수주서] [일반수주서] 버튼 3개</td><td>[수주 등록 ▾] 하나 → 직접 입력 / 조달청 납품요구서 / 고객사 발주서. 목록 행에 "지시 미발행 N" 칩</td></tr>
+        <tr><td>수주 편집 (<code>order/form</code>)</td><td>발주기관·수수료·특이사항·FAX·담당자 연락처 없음</td><td>필드 추가. 필수값(수요기관·납품기한)을 업로드 팝업과 같게</td></tr>
+        <tr><td>수주 상세</td><td>단계 아이콘 3개(계획·작업·입고) + [다음 할 일] + [생산요청] + 생산요청 현황 ✎</td><td>품목 내역의 [작업지시 발행] 하나(체크한 품목, 전부 체크면 수주 전체). 발행 결과 창에서 [세부 지시 입력] → 탭 편집기. 계획 칩은 표시만. 작업지시·입고 아이콘은 품목별 처리용으로 남김. 작업지시 현황 ✎는 탭 편집기의 해당 탭으로</td></tr>
+        <tr><td>총무 &gt; 작업지시 · 발행 탭</td><td>＋수주 등록 · 계획등록/작업등록/생산입고 버튼</td><td>수주 등록 버튼 제거. 계획 칩은 표시만. 발행 뒤 결과 창에서 [세부 지시 입력]으로 이동</td></tr>
+        <tr><td>총무 &gt; 작업지시 · 현황 탭</td><td>목록 + 상태 select</td><td>그대로. ✎는 탭 편집기의 해당 탭으로</td></tr>
+        <tr><td>생산 &gt; 생산입고</td><td>직접 생산요청 모달에 수주 목록·계획 목록·수주 없이 3가지</td><td>수주 목록 발행(<code>issue_from_order</code>)과 탭 삭제. ✎는 탭 편집기로(수주 없는 자체생산 지시만 기존 모달)</td></tr>
         <tr><td>재고 부족 링크 (10화면)</td><td>구매발주 등록으로 이동(메뉴는 숨김)</td><td>"부족 N" 표시만 남기고 링크 제거. 구매를 다시 운영하면 되살린다</td></tr>
       </tbody>
     </table></div>
@@ -274,40 +278,73 @@
   <section id="s7">
     <h2><span class="n">7</span>단계</h2>
     <div class="two">
-      <div class="card"><h4>1단계 · 바로 할 수 있는 것 <span class="chip c-ok">저위험</span></h4>
+      <div class="card"><h4>1단계 · 바로 할 수 있는 것 <span class="chip c-ok">완료 · 2001a7b</span></h4>
         <ul><li>D1 수정: 수정 화면에 없는 필드는 덮어쓰지 않음 + 필드 추가</li>
         <li>D2 수정: 수주 상세 작업 단계 잠금 해제(서버 변경 없음)</li>
         <li>버튼 이름을 "작업지시 발행"으로 통일, 상태 0 라벨 통일</li>
         <li>구매발주 링크 16곳 정리</li></ul></div>
-      <div class="card"><h4>2단계 · 입구와 편집기 <span class="chip c-warn">화면 개편</span></h4>
+      <div class="card"><h4>2단계 · 입구와 편집기 <span class="chip c-ok">완료 · 4f2e65e</span></h4>
         <ul><li>[수주 등록 ▾] 드롭다운, 작업지시 화면의 수주 등록 제거</li>
         <li>편집기 필드·검증 통일(팝업은 확인 단계로)</li>
         <li>수주 상세 상단을 [작업지시 발행] 중심으로 재배치</li></ul></div>
-      <div class="card"><h4>3단계 · 경로 정리 <span class="chip c-warn">코드 정리</span></h4>
+      <div class="card"><h4>3단계 · 경로 정리 <span class="chip c-ok">완료 · 4f2e65e</span></h4>
         <ul><li>생산요청 폼 → 탭 편집기로 대체, <code>WorkOrder::store</code> 은퇴</li>
         <li>생산 화면의 수주 목록 발행(<code>issue_from_order</code>) 제거</li>
         <li>작업지시 편집 입구를 탭 편집기 하나로(결정 Q4)</li></ul></div>
-      <div class="card"><h4>검증 <span class="chip c-acc">매 단계</span></h4>
-        <ul><li>수주 1건 등록 → 발행 → 수락 → 입고 → 출하 CLI E2E(운영 DB 무변경 방식)</li>
-        <li>브라우저로 동선 확인(PC·현장앱)</li>
-        <li>출고 점검표 24항목 재확인</li></ul></div>
+      <div class="card"><h4>검증 <span class="chip c-warn">일부</span></h4>
+        <ul><li>한 것: 시험 수주 등록 → 1건 → 2건 → 0건 발행 CLI E2E, 변경 화면 렌더 오류 0, PC 브라우저 캡처 JS 오류 0. 시험 데이터 삭제 후 전 테이블 행수·AUTO_INCREMENT 동일 확인</li>
+        <li>안 한 것: 수락 → 입고 → 출하까지 이어지는 E2E, 현장앱 동선, 출고 점검표 24항목 재확인</li></ul></div>
     </div>
   </section>
 
   <section id="s8">
-    <h2><span class="n">8</span>결정이 필요한 것</h2>
+    <h2><span class="n">8</span>결정</h2>
     <div class="tbl"><table>
-      <thead><tr><th>#</th><th>질문</th><th>기본안</th></tr></thead>
+      <thead><tr><th>#</th><th>질문</th><th>기본안</th><th>결정 (09-24)</th></tr></thead>
       <tbody>
-        <tr><td>Q1</td><td>수주 편집기를 전체 화면(<code>order/form</code>)으로 통일할지, 업로드 팝업으로 통일할지</td><td>전체 화면 하나. 팝업은 여러 건 업로드의 "확인" 단계로만</td></tr>
-        <tr><td>Q2</td><td>수주 화면에서 [계획등록] 단계 버튼을 없앨지</td><td>없앤다(계획은 자동, 표시만)</td></tr>
-        <tr><td>Q3</td><td>생산 화면의 "수주 목록에서 생산요청"을 없앨지. 현장이 이 경로를 쓰는가?</td><td>없앤다. 수주 없는 생산요청은 유지</td></tr>
-        <tr><td>Q4</td><td>작업지시 세부 편집을 탭 편집기 하나로 모을지(생산관리 ✎ 모달 폐지). 2026-08-15에는 병행하기로 했다.</td><td>탭 편집기 하나. 생산관리에서는 링크로 연다</td></tr>
-        <tr><td>Q5</td><td>숨겨진 견적 전환·판매수주(0건) 코드를 정리할지</td><td>이번 범위 밖. 사업계획서 기능목록을 확인한 뒤 따로 판단</td></tr>
+        <tr><td>Q1</td><td>수주 편집기를 전체 화면(<code>order/form</code>)으로 통일할지, 업로드 팝업으로 통일할지</td><td>전체 화면 하나. 팝업은 여러 건 업로드의 "확인" 단계로만</td><td><span class="chip c-ok">기본안 확정</span></td></tr>
+        <tr><td>Q2</td><td>수주 화면에서 [계획등록] 단계 버튼을 없앨지</td><td>없앤다(계획은 자동, 표시만)</td><td><span class="chip c-ok">기본안 확정</span></td></tr>
+        <tr><td>Q3</td><td>생산 화면의 "수주 목록에서 생산요청"을 없앨지. 현장이 이 경로를 쓰는가?</td><td>없앤다. 수주 없는 생산요청은 유지</td><td><span class="chip c-ok">기본안 확정</span></td></tr>
+        <tr><td>Q4</td><td>작업지시 세부 편집을 탭 편집기 하나로 모을지(생산관리 ✎ 모달 폐지). 2026-08-15에는 병행하기로 했다.</td><td>탭 편집기 하나. 생산관리에서는 링크로 연다</td><td><span class="chip c-ok">기본안 확정</span></td></tr>
+        <tr><td>Q5</td><td>숨겨진 견적 전환·판매수주(0건) 코드를 정리할지</td><td>이번 범위 밖. 사업계획서 기능목록을 확인한 뒤 따로 판단</td><td><span class="chip c-acc">범위 밖 유지</span></td></tr>
       </tbody>
     </table></div>
-    <p class="sub" style="margin-top:10px">유지하는 기존 결정: 작업지시 번호 체계 통일 안 함 · 탭 편집기 일괄 저장 · 전달사항 첨부 없음(2026-08-15).</p>
+    <p class="sub" style="margin-top:10px">유지하는 기존 결정: 탭 편집기 일괄 저장 · 전달사항 첨부 없음(2026-08-15). 작업지시 번호는 2026-08-17에 "1건 = 번호 1개"로 이미 통일됐다.</p>
   </section>
 
-  <footer>HS-UX-01 r1.0 · 근거: <code>views/order/*</code> · <code>views/production/*</code> · <code>controllers/Order.php</code> · <code>WorkOrder.php</code> · <code>Production.php</code> · <code>Order_model::get_shipment_pipeline</code> · hisense_db(수주 2 · 주문라인 23 · 계획 2 · 작업지시 18) · Copyright TelomX</footer>
+  <section id="s9">
+    <h2><span class="n">9</span>구현 결과</h2>
+    <p class="sub">2026-09-24 구현 · <code>immps9014-cmd/hisense-mes</code> main 푸시 완료. 설계 요약은 레포 <code>CLAUDE.md</code>의 "HS-UX-01" 절.</p>
+    <h3>할 일마다 입구가 하나</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>할 일</th><th>유일한 입구</th><th>서버</th></tr></thead>
+      <tbody>
+        <tr><td>수주 등록</td><td>수주 목록 [수주 등록 ▾] → 직접 입력 / 조달청 납품요구서 / 고객사 발주서</td><td><code>Order::store</code> · <code>pdf_save</code></td></tr>
+        <tr><td>수주 수정</td><td><code>order/form</code>. 업로드 팝업은 등록 전 인식 결과 확인 단계</td><td><code>update_order</code></td></tr>
+        <tr><td>작업지시 발행</td><td>수주 상세 [작업지시 발행] · 다음 할 일, 총무 &gt; 작업지시 발행 탭</td><td><code>Order::pipeline_action('work')</code></td></tr>
+        <tr><td>세부 지시</td><td>탭 편집기 <code>workorder/edit/{수주}</code>. <code>?wo=</code>로 해당 탭 열기</td><td><code>WorkOrder::save_edit</code></td></tr>
+      </tbody>
+    </table></div>
+    <h3>없앤 것</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>대상</th><th>처리</th></tr></thead>
+      <tbody>
+        <tr><td>옛 발행 폼 <code>workorder/create</code> · <code>WorkOrder::store</code> · 도면 업로드 · 뷰 <code>workorder_form.php</code></td><td>삭제. 옛 주소는 탭 편집기(발행 있음)나 수주 상세로 리다이렉트. 도면은 도면관리에서</td></tr>
+        <tr><td><code>Production::issue_from_order</code> · 생산입고 모달의 "수주선택" 탭</td><td>삭제(탭은 원래 숨김이었다)</td></tr>
+        <tr><td>생산관리 ✎ 수정 모달</td><td>수주가 있는 지시는 탭 편집기로. 수주 없는 자체생산 지시는 탭 편집기가 열 수 없어 모달 유지</td></tr>
+        <tr><td>총무 &gt; 작업지시 [＋ 수주 등록]</td><td>삭제</td></tr>
+      </tbody>
+    </table></div>
+    <h3>남은 일</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>항목</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td>현장 확인</td><td>실제 수주로 등록 → 발행 → 세부 지시 → 수락 → 입고 → 출하를 한 번 돌려 본다. 출고 점검표 24항목도 다시 확인</td></tr>
+        <tr><td>여는 버튼이 없는 모달 2개</td><td>생산입고 화면의 "작업등록" 모달(<code>?open_plan=1</code>로만 열림), 재고 &gt; 입출고의 생산입고 모달(<code>stock-txn/issue_and_receive</code>). 되살리거나 지우기 전에 현장 사용 여부를 먼저 확인</td></tr>
+        <tr><td>Q5</td><td>견적 전환·판매수주(0건) 코드는 사업계획서 기능목록 확인 뒤 판단</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>HS-UX-01 r1.1 (r1.0 제안 → r1.1 구현 반영, 2026-09-24) · 구현 커밋 <code>2001a7b</code> · <code>4f2e65e</code> · 근거: <code>views/order/*</code> · <code>views/production/*</code> · <code>controllers/Order.php</code> · <code>WorkOrder.php</code> · <code>Production.php</code> · <code>Order_model::get_shipment_pipeline</code> · hisense_db(수주 2 · 주문라인 23 · 계획 2 · 작업지시 18) · Copyright TelomX</footer>
 </div>
