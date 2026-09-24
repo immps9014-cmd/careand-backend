@@ -1,0 +1,408 @@
+<title>온톨로지 MCP 워크플로</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:#F2F4F1; --surface:#FFFFFF; --surface-2:#E9ECE7;
+    --ink:#15191A; --ink-2:#39423F; --muted:#64706C;
+    --line:#D4D9D2; --line-2:#BFC6BD;
+    --accent:#1C5871; --accent-soft:#DCE8EC;
+    --signal:#9C5A06; --signal-soft:#F4E7D3;
+    --good:#2A6349; --good-soft:#DCE9E2;
+    --bad:#A33B2B; --bad-soft:#F5DFDA;
+    --dim:#8D9894;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0E1213; --surface:#171C1D; --surface-2:#1E2425;
+      --ink:#E7EAE6; --ink-2:#C3CAC6; --muted:#8D9894;
+      --line:#2B3233; --line-2:#3B4344;
+      --accent:#7CB6CE; --accent-soft:#17313B;
+      --signal:#DDA35A; --signal-soft:#33260F;
+      --good:#6FB392; --good-soft:#182E25;
+      --bad:#E08A7C; --bad-soft:#3A1D18;
+      --dim:#6E7975; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0E1213; --surface:#171C1D; --surface-2:#1E2425;
+    --ink:#E7EAE6; --ink-2:#C3CAC6; --muted:#8D9894;
+    --line:#2B3233; --line-2:#3B4344;
+    --accent:#7CB6CE; --accent-soft:#17313B;
+    --signal:#DDA35A; --signal-soft:#33260F;
+    --good:#6FB392; --good-soft:#182E25;
+    --bad:#E08A7C; --bad-soft:#3A1D18;
+    --dim:#6E7975; color-scheme: dark;
+  }
+  body { background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    font-size:16px; line-height:1.75; -webkit-text-size-adjust:100%; }
+  .wrap { max-width:980px; margin:0 auto; padding-inline:20px; padding-block:48px 80px; }
+  .mono, code { font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+  code { font-size:.86em; background:var(--surface-2); padding:1px 5px; border-radius:3px; word-break:break-word; }
+  .eyebrow { font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; }
+  h1 { font-family:"Noto Serif KR",Georgia,serif; font-weight:700; font-size:clamp(28px,5.6vw,42px); line-height:1.25; letter-spacing:-.02em; margin:0; text-wrap:balance; }
+  .lede { font-size:clamp(16px,2.2vw,18px); color:var(--ink-2); max-width:66ch; margin:18px 0 0; }
+  .docmeta { display:flex; flex-wrap:wrap; gap:10px 28px; margin:26px 0 0; padding:14px 0; border-block:1px solid var(--line); }
+  .docmeta div { display:flex; flex-direction:column; }
+  .docmeta .k { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .docmeta .v { font-size:14px; font-weight:500; }
+  nav.toc { margin:22px 0 0; display:flex; flex-wrap:wrap; gap:6px 18px; font-size:13.5px; }
+  nav.toc a { color:var(--ink-2); text-decoration:none; }
+  nav.toc a:hover, nav.toc a:focus-visible { color:var(--accent); text-decoration:underline; }
+  nav.toc .n { font-family:"IBM Plex Mono",monospace; color:var(--muted); margin-right:5px; font-size:12px; }
+  section { margin-top:60px; }
+  h2 { font-family:"Noto Serif KR",Georgia,serif; font-size:clamp(21px,3.2vw,26px); line-height:1.35; margin:0 0 6px; text-wrap:balance; }
+  h2 .n { font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent); font-weight:500; margin-right:8px; }
+  h3 { font-size:17px; margin:30px 0 6px; font-weight:600; }
+  p { max-width:72ch; }
+  .sub { color:var(--muted); font-size:14.5px; margin-top:0; max-width:72ch; }
+  figure { margin:24px 0 0; background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+  .scroll { overflow-x:auto; }
+  figcaption { font-size:13.5px; color:var(--ink-2); padding:12px 18px 16px; border-top:1px solid var(--line); }
+  svg text { font-family:"IBM Plex Sans KR",sans-serif; }
+  svg .m { font-family:"IBM Plex Mono",monospace; }
+  .tbl { overflow-x:auto; margin-top:18px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:14px; line-height:1.6; }
+  th, td { text-align:left; vertical-align:top; padding:10px 14px; border-bottom:1px solid var(--line); }
+  th { font-size:12px; font-weight:600; color:var(--muted); background:var(--surface-2); letter-spacing:.02em; white-space:nowrap; }
+  tr:last-child td { border-bottom:0; }
+  td.num { font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+  td .who { font-weight:600; display:block; }
+  .chip { display:inline-block; font-size:11.5px; font-weight:600; padding:1px 8px; border-radius:99px; white-space:nowrap; font-family:"IBM Plex Mono",monospace; }
+  .c-ok { background:var(--good-soft); color:var(--good); }
+  .c-warn { background:var(--signal-soft); color:var(--signal); }
+  .c-bad { background:var(--bad-soft); color:var(--bad); }
+  .c-acc { background:var(--accent-soft); color:var(--accent); }
+  ol.steps { list-style:none; counter-reset:s; padding:0; margin:18px 0 0; display:grid; gap:10px; }
+  ol.steps > li { counter-increment:s; display:grid; grid-template-columns:34px 1fr; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:12px 16px; }
+  ol.steps > li::before { content:counter(s); font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent); background:var(--accent-soft); border-radius:4px; height:26px; display:grid; place-items:center; margin-top:2px; }
+  ol.steps b { font-weight:600; }
+  ol.steps .d { display:block; color:var(--ink-2); font-size:14.5px; }
+  .loops { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; margin-top:20px; }
+  .loop { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; }
+  .loop .t { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .loop .h { font-weight:600; font-size:16px; }
+  .loop .w { font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--accent); }
+  .loop p { margin:4px 0 0; font-size:14px; color:var(--ink-2); }
+  .note { margin-top:18px; padding:12px 16px; border-left:3px solid var(--signal); background:var(--signal-soft); color:var(--ink); font-size:14.5px; max-width:none; border-radius:0 4px 4px 0; }
+  .note.acc { border-left-color:var(--accent); background:var(--accent-soft); }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:18px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:16px 18px; }
+  .card h4 { margin:0 0 6px; font-size:15px; }
+  .card ul { margin:6px 0 0; padding-left:18px; font-size:14px; color:var(--ink-2); }
+  .card li + li { margin-top:4px; }
+  footer { margin-top:64px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+  a { color:var(--accent); }
+  @media (max-width:520px) { .wrap { padding-inline:16px; padding-block:32px 60px; } th, td { padding:8px 10px; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">TX-FLOW r1.0 · OPS-2026-01 · 3사 MES 온톨로지</p>
+  <h1>온톨로지 MCP 시스템 워크플로</h1>
+  <p class="lede">hisense·infurs·naturefood MES 원장이 온톨로지 그래프로 투영되고, 검산을 거쳐 MCP 도구로 Claude에게 나가기까지의 흐름입니다. 누가(사람·Claude·cron·개발 에이전트) 어느 단계를 맡는지, 각 단계에 어떤 하네스가 걸려 있는지를 함께 정리했습니다.</p>
+  <div class="docmeta">
+    <div><span class="k">기준 시각</span><span class="v mono">2026-09-24 17:47 실측</span></div>
+    <div><span class="k">상위 문서</span><span class="v">TX-ARCH r1.0 · TX-ONT-MCP r1.3</span></div>
+    <div><span class="k">서버</span><span class="v mono">telomx.aiclaude.kr/mcp</span></div>
+    <div><span class="k">작성</span><span class="v">TelomX 운영</span></div>
+  </div>
+  <nav class="toc" aria-label="목차">
+    <a href="#s1"><span class="n">1</span>전체 흐름</a>
+    <a href="#s2"><span class="n">2</span>참여자와 역할</a>
+    <a href="#s3"><span class="n">3</span>적재</a>
+    <a href="#s4"><span class="n">4</span>검산</a>
+    <a href="#s5"><span class="n">5</span>질의</a>
+    <a href="#s6"><span class="n">6</span>변경</a>
+    <a href="#s7"><span class="n">7</span>하네스</a>
+    <a href="#s8"><span class="n">8</span>현황·과제</a>
+  </nav>
+
+  <section id="s1">
+    <h2><span class="n">1</span>전체 흐름: 네 개의 루프</h2>
+    <p class="sub">시스템은 주기가 다른 네 루프로 돕니다. 앞의 셋은 자동이고, 마지막 변경 루프만 사람과 개발 에이전트가 움직입니다.</p>
+    <div class="loops">
+      <div class="loop"><span class="t">A · 자동</span><span class="h">적재</span><span class="w">매시 :25 / :40 / :55</span><p>MES DB를 읽어 그래프를 통째로 다시 만든다. 사이트별로 시각을 엇갈려 둔다.</p></div>
+      <div class="loop"><span class="t">B · 자동</span><span class="h">검산</span><span class="w">매일 06:40 / 06:58</span><p>그래프 수치와 DB 원천 집계를 대조한다. 실패하면 도구 응답의 상태에 드러난다.</p></div>
+      <div class="loop"><span class="t">C · 요청 시</span><span class="h">질의</span><span class="w">Claude → /mcp → Fuseki</span><p>질문을 받은 Claude가 검증된 질의만 도구로 호출한다. 쓰기 경로는 없다.</p></div>
+      <div class="loop"><span class="t">D · 사람 주도</span><span class="h">변경</span><span class="w">질의 → 대조 → 노출</span><p>새 질의·도구·스키마를 넣는 절차. Claude Code 개발 에이전트가 수행한다.</p></div>
+    </div>
+
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 920 470" width="920" height="470" role="img" aria-label="MES DB에서 ETL, Fuseki, 질의 화이트리스트를 거쳐 MES 화면과 MCP 서버, Claude 클라이언트로 이어지는 흐름도">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--line-2)"/></marker>
+          <marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker>
+          <marker id="arS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--signal)"/></marker>
+        </defs>
+        <!-- 레이어 라벨 -->
+        <g class="m" font-size="10.5" fill="var(--muted)" letter-spacing="1.2">
+          <text x="20" y="30">L0 원장</text><text x="195" y="30">L1 적재</text><text x="375" y="30">L2 그래프</text><text x="545" y="30">L3 검증된 질의</text><text x="735" y="30">L4–L5 소비</text>
+        </g>
+        <!-- L0 -->
+        <g>
+          <rect x="20" y="60" width="140" height="190" rx="5" fill="var(--surface-2)" stroke="var(--line-2)"/>
+          <text x="90" y="86" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">MES DB (SSOT)</text>
+          <text x="90" y="118" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">hisense_db</text>
+          <text x="90" y="140" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">infurs_db</text>
+          <text x="90" y="162" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">naturefood</text>
+          <text x="90" y="196" text-anchor="middle" font-size="11.5" fill="var(--muted)">쓰기는 MES 웹앱만</text>
+          <text x="90" y="214" text-anchor="middle" font-size="11.5" fill="var(--muted)">(현장·사무 사용자)</text>
+        </g>
+        <!-- L1 -->
+        <g>
+          <rect x="195" y="60" width="150" height="120" rx="5" fill="var(--surface)" stroke="var(--line-2)"/>
+          <text x="270" y="84" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">reload.cron.sh</text>
+          <text x="270" y="108" text-anchor="middle" class="m" font-size="11" fill="var(--ink-2)">etl_{site}.php</text>
+          <text x="270" y="126" text-anchor="middle" class="m" font-size="11" fill="var(--ink-2)">load.sh (PUT)</text>
+          <text x="270" y="144" text-anchor="middle" class="m" font-size="11" fill="var(--ink-2)">check.php</text>
+          <text x="270" y="166" text-anchor="middle" font-size="11" fill="var(--muted)">→ status.json · 로그</text>
+        </g>
+        <line x1="160" y1="120" x2="193" y2="120" stroke="var(--line-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <!-- L2 -->
+        <g>
+          <rect x="375" y="60" width="140" height="120" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="445" y="86" text-anchor="middle" font-size="14" font-weight="600" fill="var(--ink)">Fuseki tx-mes</text>
+          <text x="445" y="110" text-anchor="middle" class="m" font-size="10.5" fill="var(--ink-2)">graph/schema</text>
+          <text x="445" y="127" text-anchor="middle" class="m" font-size="10.5" fill="var(--ink-2)">graph/hisense</text>
+          <text x="445" y="144" text-anchor="middle" class="m" font-size="10.5" fill="var(--ink-2)">graph/infurs</text>
+          <text x="445" y="161" text-anchor="middle" class="m" font-size="10.5" fill="var(--ink-2)">graph/naturefood</text>
+        </g>
+        <line x1="345" y1="120" x2="373" y2="120" stroke="var(--line-2)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <!-- L3 -->
+        <g>
+          <rect x="545" y="60" width="160" height="120" rx="5" fill="var(--surface)" stroke="var(--line-2)"/>
+          <text x="625" y="84" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">Ontology::QUERIES</text>
+          <text x="625" y="106" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">이름으로만 호출하는</text>
+          <text x="625" y="123" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">SPARQL 화이트리스트</text>
+          <text x="625" y="147" text-anchor="middle" class="m" font-size="10.5" fill="var(--muted)">hisense libraries/</text>
+          <text x="625" y="163" text-anchor="middle" class="m" font-size="10.5" fill="var(--muted)">Ontology.php</text>
+        </g>
+        <line x1="515" y1="120" x2="543" y2="120" stroke="var(--accent)" stroke-width="1.5" marker-start="url(#arA)"/>
+        <!-- L4 MES 화면 -->
+        <g>
+          <rect x="735" y="60" width="165" height="72" rx="5" fill="var(--surface)" stroke="var(--line-2)"/>
+          <text x="817" y="84" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">MES 화면</text>
+          <text x="817" y="104" text-anchor="middle" class="m" font-size="10.5" fill="var(--ink-2)">/impact · /ontology</text>
+          <text x="817" y="120" text-anchor="middle" font-size="10.5" fill="var(--muted)">현장·관리자</text>
+        </g>
+        <!-- L4 MCP -->
+        <g>
+          <rect x="735" y="150" width="165" height="100" rx="5" fill="var(--surface)" stroke="var(--accent)"/>
+          <text x="817" y="173" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">MCP 서버 core.php</text>
+          <text x="817" y="193" text-anchor="middle" font-size="11" fill="var(--ink-2)">도구 10 · 리소스 4</text>
+          <text x="817" y="211" text-anchor="middle" class="m" font-size="10.5" fill="var(--ink-2)">http.php · server.php</text>
+          <text x="817" y="229" text-anchor="middle" font-size="10.5" fill="var(--muted)">토큰 · 분당 120 · 5초</text>
+        </g>
+        <path d="M705 105 L733 97" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arA)"/>
+        <path d="M705 150 L733 190" fill="none" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arA)"/>
+        <!-- L5 clients -->
+        <g>
+          <rect x="735" y="290" width="165" height="96" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/>
+          <text x="817" y="313" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Claude (런타임 에이전트)</text>
+          <text x="817" y="335" text-anchor="middle" font-size="11" fill="var(--ink-2)">claude.ai 커넥터 · HTTPS</text>
+          <text x="817" y="353" text-anchor="middle" font-size="11" fill="var(--ink-2)">Claude Code · stdio</text>
+          <text x="817" y="374" text-anchor="middle" font-size="10.5" fill="var(--muted)">↑ 질문하는 사람</text>
+        </g>
+        <line x1="817" y1="288" x2="817" y2="252" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arA)"/>
+        <!-- KPI log -->
+        <g>
+          <rect x="545" y="222" width="160" height="56" rx="5" fill="var(--surface)" stroke="var(--line-2)" stroke-dasharray="4 3"/>
+          <text x="625" y="245" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">호출 로그 → kpi.php</text>
+          <text x="625" y="264" text-anchor="middle" class="m" font-size="10.5" fill="var(--muted)">mcp-calls.jsonl</text>
+        </g>
+        <line x1="735" y1="225" x2="707" y2="245" stroke="var(--line-2)" stroke-width="1.3" marker-end="url(#ar)"/>
+        <!-- 검산 B -->
+        <g>
+          <rect x="195" y="300" width="320" height="86" rx="5" fill="var(--signal-soft)" stroke="var(--signal)"/>
+          <text x="355" y="324" text-anchor="middle" font-size="13.5" font-weight="600" fill="var(--ink)">검산 (매일)</text>
+          <text x="355" y="346" text-anchor="middle" class="m" font-size="11" fill="var(--ink-2)">06:40 verify.cron.sh · 문서 vs 원장</text>
+          <text x="355" y="364" text-anchor="middle" class="m" font-size="11" fill="var(--ink-2)">06:58 crosscheck.php · 질의 vs DB 원천</text>
+        </g>
+        <path d="M90 250 L90 343 L193 343" fill="none" stroke="var(--signal)" stroke-width="1.4" marker-end="url(#arS)"/>
+        <path d="M445 180 L445 298" fill="none" stroke="var(--signal)" stroke-width="1.4" marker-end="url(#arS)"/>
+        <path d="M515 343 L560 343 L560 420 L760 420 L760 252" fill="none" stroke="var(--signal)" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#arS)"/>
+        <text x="600" y="412" font-size="11" fill="var(--signal)">crosscheck.json → status:// 리소스</text>
+        <!-- 쓰기 없음 표시 -->
+        <text x="20" y="450" font-size="11.5" fill="var(--muted)">굵은 파란 선 = 질의 경로(읽기 전용). 주황 선 = 검산. 그래프에서 MES DB로 돌아가는 선은 없다.</text>
+      </svg>
+      </div>
+      <figcaption>그림 1. 계층과 루프. 계층 번호는 TX-ARCH r1.0을 따른다. caren은 같은 Fuseki의 별도 데이터셋(<code>caren</code>, 매시 :10)이며 이 MCP 서버 범위 밖이다.</figcaption>
+    </figure>
+  </section>
+
+  <section id="s2">
+    <h2><span class="n">2</span>참여자와 역할</h2>
+    <p class="sub">"에이전트"는 이 시스템에서 세 종류로 나옵니다. 질문에 답하는 <b>런타임 에이전트</b>(Claude), 정해진 시각에 도는 <b>자동화 작업</b>(cron), 코드를 고치는 <b>개발 에이전트</b>(Claude Code 서브에이전트)입니다. 권한이 서로 겹치지 않게 나뉘어 있습니다.</p>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>참여자</th><th>맡는 루프</th><th>하는 일</th><th>할 수 없는 일</th></tr></thead>
+      <tbody>
+        <tr><td><span class="who">현장·사무 사용자</span><span class="chip c-acc">사람</span></td><td>—</td><td>MES 웹앱에서 수주·생산·출하를 기록한다. 이것이 유일한 쓰기 경로다.</td><td>그래프를 직접 수정</td></tr>
+        <tr><td><span class="who">질문하는 사람</span><span class="chip c-acc">사람</span></td><td>C</td><td>claude.ai 또는 Claude Code에서 자연어로 묻는다. 후보가 여럿이면 직접 고른다.</td><td>—</td></tr>
+        <tr><td><span class="who">Claude</span><span class="chip c-ok">런타임 에이전트</span></td><td>C</td><td>질문을 도구 호출로 바꾸고, <code>pitfalls://</code>를 읽고 해석하며, 기준 시각과 stale 여부를 함께 전한다. 답할 도구가 없으면 <code>log_unanswered</code>로 남긴다.</td><td>MES 쓰기, SPARQL 작성, 후보 임의 선택, 없는 수량 추정</td></tr>
+        <tr><td><span class="who">reload.cron.sh ×3</span><span class="chip c-warn">자동화</span></td><td>A</td><td>ETL → PUT → 불변식 점검 → status.json. 실패하면 이전 그래프가 그대로 남는다.</td><td>DB 쓰기</td></tr>
+        <tr><td><span class="who">verify · crosscheck</span><span class="chip c-warn">자동화</span></td><td>B</td><td>그래프 수치를 DB 원천과 대조하고 결과를 파일과 <code>status://</code>에 남긴다.</td><td>불일치 자동 수정</td></tr>
+        <tr><td><span class="who">MCP 서버</span><span class="chip c-warn">게이트</span></td><td>C</td><td>토큰·Origin·분당 한도 확인, 이름으로 질의 호출, 행 상한 200, 응답 앞에 freshness 부착, 호출 기록.</td><td>임의 SPARQL 실행</td></tr>
+        <tr><td><span class="who">개발 에이전트</span><span class="chip c-bad">Claude Code</span></td><td>D</td><td>사이트 레포의 <code>.claude/agents</code>·<code>skills</code>와 CLAUDE.md를 따라 ETL·질의·도구를 고치고 selftest를 돌린다.</td><td>git push(하네스가 차단), 사용자 결정 없는 스키마 의미 변경</td></tr>
+        <tr><td><span class="who">운영자 (root)</span><span class="chip c-acc">사람</span></td><td>D</td><td>토큰 발급·폐기(<code>token.php</code>), <code>tx-mcp-http</code> 재시작, crontab, 인증서 수동 갱신, 푸시.</td><td>—</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="s3">
+    <h2><span class="n">3</span>루프 A · 적재</h2>
+    <p class="sub">세 사이트 모두 같은 다섯 단계를 거칩니다. 스키마 <code>mes-core.ttl</code>은 hisense 레포에 한 벌만 두고 나머지 사이트가 그 파일을 읽습니다.</p>
+    <ol class="steps">
+      <li><div><b>flock으로 겹침 방지</b><span class="d">이전 실행이 안 끝났으면 건너뛴다. 사이트별로 :25 hisense, :40 naturefood, :55 infurs에 돌려 Fuseki 부하를 나눈다.</span></div></li>
+      <li><div><b>ETL: DB를 Turtle로 투영</b><span class="d"><code>etl_{site}.php</code>. IRI는 <code>mes.telomx.kr/id/{site}/{Class}/{업무키}</code>. 업무키를 써서 item_id 이중공간을 구조적으로 없앤다. 개인정보·센서 시계열·Kitchen Sink 컬럼은 싣지 않는다.</span></div></li>
+      <li><div><b>load.sh: 그래프 통째로 PUT</b><span class="d">파싱과 저장이 한 트랜잭션이라 깨진 입력은 400으로 거부되고 기존 그래프가 남는다. 그래서 별도 <code>riot --validate</code>를 쓰지 않는다(컨테이너 메모리 스래싱 원인이었다).</span></div></li>
+      <li><div><b>check.php: 불변식 점검</b><span class="d">hisense 29 · infurs 36 · naturefood 26항목. "원장 실출고 = 그래프 출하수량", "스키마에 없는 술어 = 0", "이름이 같은 Partner = 0"처럼 연결의 양쪽을 센다.</span></div></li>
+      <li><div><b>status.json과 한 줄 로그</b><span class="d"><code>data_at</code>·트리플 수·경고 수. MCP 응답의 freshness와 화면의 "데이터 기준" 칩이 이 파일을 읽는다. 150분이 지나면 stale.</span></div></li>
+    </ol>
+  </section>
+
+  <section id="s4">
+    <h2><span class="n">4</span>루프 B · 검산</h2>
+    <p class="sub">적재 점검은 "그래프가 스스로 맞는가"를 봅니다. 검산은 "그래프가 DB와 같은 답을 내는가"를 봅니다.</p>
+    <div class="two">
+      <div class="card"><h4>verify.cron.sh <span class="chip c-acc">06:40</span></h4>
+        <ul><li>hisense <code>Impact::verify_cli()</code> — 온톨로지 잔량과 SQL 집계를 라인별로 대조</li>
+        <li>화면 <code>/impact/verify</code>와 같은 <code>_reconcile()</code>을 쓴다</li>
+        <li>종료코드 0/1/2, 36시간 넘게 결과가 없으면 화면 칩이 경고</li></ul></div>
+      <div class="card"><h4>crosscheck.php <span class="chip c-acc">06:58</span></h4>
+        <ul><li>MCP 도구가 쓰는 <b>같은 질의</b>로 그래프를 읽고, DB는 원천 테이블을 직접 읽는다</li>
+        <li>로트 180 · 연결 거래처 전부 · infurs 품목 687 전건</li>
+        <li>개인정보 누출 점검 포함 → <code>crosscheck.json</code> → <code>status://</code></li></ul></div>
+    </div>
+    <p class="note acc">규칙: 검산을 통과하지 못한 질의는 도구로 노출하지 않는다. 대조가 실제로 잡은 결함이 두 건 있었다(수주·출하 겸용 관계 <code>tx:hasLine</code> 혼동, 표시 속성을 필수 패턴에 둔 조용한 누락).</p>
+  </section>
+
+  <section id="s5">
+    <h2><span class="n">5</span>루프 C · 질의</h2>
+    <p class="sub">질문 하나가 처리되는 순서입니다. 1~2와 6은 서버 지침(instructions)과 <code>pitfalls://</code> 리소스가 Claude에게 요구하는 행동이고, 3~5는 서버가 강제합니다.</p>
+    <ol class="steps">
+      <li><div><b>사이트 함정부터 읽기</b><span class="d">해석 전에 <code>pitfalls://{site}</code>와 <code>common</code>. 잔량은 원장 기준, 발주기관과 수요기관 구분, 다단 BOM 소요량은 추정하지 않기.</span></div></li>
+      <li><div><b>이름을 객체로 바꾸기</b><span class="d"><code>resolve_entity</code>. 후보가 둘 이상이면 고르지 않고 사람에게 묻는다(infurs는 "개별화물"만 14곳).</span></div></li>
+      <li><div><b>게이트 통과</b><span class="d">Apache <code>/mcp</code> → Bearer 또는 경로 토큰(sha256만 저장) · Origin 허용목록 · 토큰당 분당 120회. 경로 토큰은 로그에 남지 않게 가린다.</span></div></li>
+      <li><div><b>이름으로 질의 실행</b><span class="d"><code>core.php</code> → <code>Ontology::QUERIES</code>. 서버 안에 SPARQL 문자열이 없다. 타임아웃 5초, 200행 상한.</span></div></li>
+      <li><div><b>응답과 기록</b><span class="d">맨 앞에 <code>freshness{data_at, stale}</code>. <code>question</code> 인자의 원문을 호출 로그에 남겨 자연어 처리율 KPI 분모로 쓴다.</span></div></li>
+      <li><div><b>답하기</b><span class="d">기준 시각을 함께 말하고, stale이면 최신이 아니라고 밝힌다. 어떤 도구로도 답이 안 되면 <code>log_unanswered</code>를 한 번 부른다.</span></div></li>
+    </ol>
+    <h3>도구 10종</h3>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>도구</th><th>질문 유형</th><th>사이트</th><th>단계</th></tr></thead>
+      <tbody>
+        <tr><td><code>resolve_entity</code></td><td>이름·코드로 품목/거래처 찾기</td><td>3사</td><td>M1</td></tr>
+        <tr><td><code>impact_by_material</code></td><td>이 자재가 없으면 어느 수주·납기가 걸리나</td><td>3사</td><td>M1</td></tr>
+        <tr><td><code>order_remaining</code></td><td>수주별 미출고 잔량(원장 기준)</td><td>3사</td><td>M1</td></tr>
+        <tr><td><code>run_invariants</code></td><td>그래프가 지금 믿을 만한가</td><td>3사</td><td>M1</td></tr>
+        <tr><td><code>doc_vs_ledger</code></td><td>출하 문서와 원장이 다른 곳</td><td>hisense</td><td>M1</td></tr>
+        <tr><td><code>trace_lot</code></td><td>로트 → 작업지시 · 포장 · 출하 추적</td><td>hisense</td><td>M2</td></tr>
+        <tr><td><code>partner_360</code></td><td>거래처 하나의 수주·출하 전체</td><td>3사</td><td>M2</td></tr>
+        <tr><td><code>data_gaps</code></td><td>사진·도면·BOM·거래처가 비어 있는 곳</td><td>3사</td><td>M2</td></tr>
+        <tr><td><code>log_unanswered</code></td><td>답하지 못한 질문 기록</td><td>—</td><td>M2</td></tr>
+        <tr><td><code>nl_kpi</code></td><td>자연어 질문 처리율</td><td>—</td><td>M2</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="sub" style="margin-top:10px">리소스: <code>schema://mes-core</code> · <code>terms://tx-ont-terms</code>(용어 대조표 r1.1) · <code>pitfalls://{site}</code> · <code>status://{site}</code></p>
+  </section>
+
+  <section id="s6">
+    <h2><span class="n">6</span>루프 D · 변경</h2>
+    <p class="sub">새 질문 유형을 받게 하거나 스키마를 바꿀 때의 순서입니다. 순서를 건너뛰면 검산 없는 질의가 Claude에게 나갑니다.</p>
+    <ol class="steps">
+      <li><div><b>질의 추가</b><span class="d">hisense <code>libraries/Ontology.php</code>의 <code>QUERIES</code>에 이름을 붙여 넣는다. 수주·출하 겸용 관계는 클래스를 못 박고, 번호·라벨 같은 표시 속성은 OPTIONAL로 둔다.</span></div></li>
+      <li><div><b>DB 대조 추가</b><span class="d"><code>mcp/crosscheck.php</code>에 같은 질의 결과를 원천 테이블과 맞추는 항목을 넣고 통과시킨다.</span></div></li>
+      <li><div><b>도구로 노출</b><span class="d"><code>mcp/core.php</code>에 도구 정의와 핸들러. 사이트별 차이는 <code>pitfalls/{site}.md</code>에 적는다.</span></div></li>
+      <li><div><b>selftest</b><span class="d"><code>mcp/selftest.php</code> 59항목. 서버를 실제 프로세스로 띄워 확인하며, KPI 로그는 임시 파일로 돌려 실데이터를 오염시키지 않는다.</span></div></li>
+      <li><div><b>배포</b><span class="d"><code>systemctl restart tx-mcp-http</code>. stdio 쪽은 다음 세션부터 반영된다.</span></div></li>
+      <li><div><b>문서·PMS</b><span class="d">TX-ONT-MCP 개정 → PDF 재생성 → <code>pms_push.js rev</code>. 푸시는 운영자가 한다.</span></div></li>
+    </ol>
+    <p class="note">스키마를 바꿀 때는 hisense에서 <code>load.sh --schema-only</code>를 먼저 돌린다. 세 사이트의 check가 모두 "스키마에 없는 술어 = 0"을 보므로, 코어에 없는 술어를 ETL에 먼저 넣으면 다음 적재에서 바로 실패한다.</p>
+  </section>
+
+  <section id="s7">
+    <h2><span class="n">7</span>하네스</h2>
+    <p class="sub">하네스는 두 겹입니다. <b>개발 하네스</b>는 코드를 고치는 Claude Code에 거는 것이고, <b>실행 하네스</b>는 질문에 답하는 Claude에게 MCP 서버가 거는 것입니다.</p>
+
+    <h3>실행 하네스 (런타임 Claude용)</h3>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>장치</th><th>위치</th><th>막는 것</th></tr></thead>
+      <tbody>
+        <tr><td>서버 지침</td><td><code>core.php</code> initialize</td><td>stale 숨기기, 후보 임의 선택, question 누락</td></tr>
+        <tr><td>함정 리소스</td><td><code>mcp/pitfalls/*.md</code> (4개)</td><td>문서 수량으로 잔량 계산, 기관 역할 혼동, 사이트 관례 착각</td></tr>
+        <tr><td>질의 화이트리스트</td><td><code>Ontology::QUERIES</code></td><td>LLM이 만든 SPARQL 실행</td></tr>
+        <tr><td>검산 통과 조건</td><td><code>crosscheck.php</code></td><td>DB와 다른 답을 내는 도구 노출</td></tr>
+        <tr><td>읽기 전용</td><td>서버 설계 · <code>ProtectSystem=strict</code></td><td>그래프·DB 쓰기</td></tr>
+        <tr><td>입력 게이트</td><td><code>http.php</code> · Apache</td><td>무토큰 접근, 과호출, 토큰 로그 누출</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>개발 하네스 (Claude Code용, 실측)</h3>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>레포</th><th>CLAUDE.md 온톨로지 절</th><th>에이전트</th><th>스킬</th><th>온톨로지 담당</th></tr></thead>
+      <tbody>
+        <tr><td><b>hisense</b><br><span class="mono" style="font-size:12px;color:var(--muted)">스키마·MCP SSOT</span></td><td><code>/impact</code> · <code>/ontology</code> 절 있음</td><td>order · production · inventory-delivery · devops</td><td>item-matching-check · cli-auth-bypass-testing · procurement-xls-parser-guide</td><td><span class="chip c-bad">없음</span></td></tr>
+        <tr><td><b>infurs</b></td><td><code>/ontology</code> 절 있음</td><td>위 4종 + product-master</td><td>item-product-matching-check · procurement-pdf-parser-guide · safe-controller-verification 외 2</td><td><span class="chip c-bad">없음</span></td></tr>
+        <tr><td><b>naturefood</b></td><td>CLAUDE.md 자체가 없음</td><td>—</td><td>—</td><td><span class="chip c-bad">없음</span></td></tr>
+        <tr><td><b>caren</b><br><span class="mono" style="font-size:12px;color:var(--muted)">별도 데이터셋</span></td><td>있음</td><td>6종</td><td>6종</td><td><span class="chip c-ok">matching-ontology</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="note">공백: MCP 서버와 ETL·검산은 가장 규칙이 많은 영역인데, 3사 MES 레포 어디에도 이를 맡는 에이전트나 스킬이 없습니다. 지금은 CLAUDE.md의 화면 절, <code>scripts/ontology/README.md</code>, <code>pitfalls</code>가 그 역할을 나눠 하고 있습니다. 6절의 변경 순서도 문서에만 있고 강제 장치가 없습니다.</p>
+
+    <h3>제안 (미적용)</h3>
+    <div class="two">
+      <div class="card"><h4>에이전트 <code>ontology-mcp-engineer</code></h4>
+        <ul><li>위치: hisense <code>.claude/agents/</code> (스키마·MCP가 여기 있으므로)</li>
+        <li>범위: <code>scripts/ontology/**</code>, <code>libraries/Ontology.php</code>, 3사 ETL·check</li>
+        <li>필독: README 3벌, pitfalls, 사이트별 반대 관례(item_id 공간·원장 키·취소 status)</li></ul></div>
+      <div class="card"><h4>스킬 <code>add-mcp-tool</code></h4>
+        <ul><li>6절 순서를 체크리스트로: QUERIES → crosscheck → core.php → selftest → restart → 문서</li>
+        <li>검증 기준값 표(실출고 183 / 72 / 23,002, check 29 / 36 / 26)</li>
+        <li>naturefood에는 최소 CLAUDE.md(원격 없음, user.name 미설정 주의)</li></ul></div>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2><span class="n">8</span>현재 상태와 남은 과제</h2>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>항목</th><th>값 (2026-09-24 실측)</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td>hisense 그래프</td><td class="num">17,604 트리플 · 경고 2</td><td><span class="chip c-ok">17:25 적재</span></td></tr>
+        <tr><td>infurs 그래프</td><td class="num">178,454 트리플 · 경고 4</td><td><span class="chip c-ok">16:55 적재</span></td></tr>
+        <tr><td>naturefood 그래프</td><td class="num">87,672 트리플 · 경고 0</td><td><span class="chip c-ok">17:40 적재</span></td></tr>
+        <tr><td>crosscheck</td><td class="num">실패 0 · 경고 0</td><td><span class="chip c-ok">통과</span></td></tr>
+        <tr><td>tx-mcp-http</td><td class="num">active</td><td><span class="chip c-ok">가동</span></td></tr>
+        <tr><td>자연어 처리율 (30일)</td><td class="num">질문 4 · 처리 4 · 호출 16</td><td><span class="chip c-warn">표본 적음</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="sub" style="margin-top:10px">infurs 트리플은 F1 품목 마스터 통합 뒤 180,337에서 178,454로 줄었다. 호출 16건 중 8건은 question 없이 부른 시험 호출이라 KPI 분모에서 빠진다.</p>
+
+    <h3>남은 과제</h3>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>과제</th><th>내용</th><th>판단 주체</th></tr></thead>
+      <tbody>
+        <tr><td>KPI 누적</td><td>실사용 질문이 4건뿐이라 처리율 수치에 의미가 없다. 미처리 사유가 쌓여야 다음 도구가 정해진다.</td><td>사용</td></tr>
+        <tr><td>개발 하네스 공백</td><td>7절 제안 에이전트·스킬 추가, naturefood CLAUDE.md</td><td>사용자</td></tr>
+        <tr><td>MES 내장 자연어 검색</td><td>hisense·naturefood 검색과 infurs <code>Agent.php</code>(mes-agent)는 그래프가 아니라 DB를 본다. 그래프 연결은 향후 과제.</td><td>사용자</td></tr>
+        <tr><td>M4 쓰기 도구</td><td>미정. 도입하더라도 MES 엔드포인트를 거쳐야 하며 그래프에서 DB로 쓰는 경로는 만들지 않는다.</td><td>사용자</td></tr>
+        <tr><td>공개 범위</td><td>현재 사내 토큰 하나. 고객사 공개 시 OAuth·사이트별 토큰 필요.</td><td>사용자</td></tr>
+        <tr><td>미결 D2·D5·D8</td><td>infurs 거래처 DB 통합, 임계값 SSOT, infurs BOM 등록(영향분석의 선결 조건)</td><td>사용자</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>TX-FLOW r1.0 · 원본 <code>/root/telomx-mes-ontology/WORKFLOW.html</code> · 근거: 서버 실측(crontab, status.json, crosscheck.json, kpi.php, 레포별 .claude/) · Copyright TelomX</footer>
+</div>

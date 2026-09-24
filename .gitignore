@@ -64,6 +64,8 @@
 !/telomx-mes-ontology/make_pdf_arch.js
 !/telomx-mes-ontology/ONTO-ASK-OVERVIEW.html
 !/telomx-mes-ontology/make_pdf_ontoask.js
+!/telomx-mes-ontology/WORKFLOW.html
+!/telomx-mes-ontology/make_pdf_flow.js
 !/telomx-mes-ontology/pdf/
 /telomx-mes-ontology/pdf/*
 !/telomx-mes-ontology/pdf/*.pdf
