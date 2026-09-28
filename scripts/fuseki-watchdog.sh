@@ -27,6 +27,16 @@ GAP=10                  # 시도 간격(초)
 
 say() { echo "[$(date '+%F %T')] $*" >>"$LOG"; }
 
+# PMS 관리자 알림(2026-09-25) — 이 서버는 외부 메일·Slack·Telegram 이 막혀 있어 워치독 기록이 로그에만 남았다.
+# 재시작·복구 실패는 드문 사건이라 하루가 아니라 **시간 단위**로 묶는다(dedup 에 시각). 알림 실패는 워치독 동작과 무관.
+pms() {   # pms <kind(≤30자)> <제목> <내용>
+  local js=/var/www/telomx-backend/src/jobs/ops_alert.js
+  [[ -f $js ]] || return 0
+  local out
+  out=$(timeout 20 /usr/bin/node "$js" --kind "$1" --title "$2" --body "$3" --dedup "$1:$(date +%H)" 2>&1) || out="PMS 알림 실패: $out"
+  say "      → $out"
+}
+
 # 살아 있는가 — ping(프로세스) + 질의 1건(데이터 경로). 둘 다 통과해야 정상이다.
 alive() {
   curl -fs -m 5 -o /dev/null "$FUSEKI/\$/ping" 2>/dev/null || return 1
@@ -52,6 +62,9 @@ last=$(cat "$STATE" 2>/dev/null || echo 0)
 now=$(date +%s)
 if (( now - last < COOLDOWN )); then
   say "      재시작 억제 — 최근 $(( (now - last) / 60 ))분 전에 이미 재시작했다. 손으로 볼 것."
+  pms fuseki_down_repeat "[Fuseki] 반복 장애 — 사람 확인 필요" \
+    "moai-fuseki 가 재시작 $(( (now - last) / 60 ))분 만에 다시 무응답입니다(재시작 반복은 억제). 3사 MES·caren·kcro 온톨로지·MCP 가 멈춥니다.
+컨테이너=$state · 메모리=$mem · 로그 $LOG"
   exit 1
 fi
 
@@ -60,16 +73,26 @@ echo "$now" > "$STATE"
 say "      docker restart $CONTAINER 시도"
 if ! timeout 120 docker restart "$CONTAINER" >/dev/null 2>&1; then
   say "FAIL  재시작 명령 실패 — 도커 데몬까지 확인할 것"
+  pms fuseki_down "[Fuseki] 다운 — 재시작 명령 실패" \
+    "moai-fuseki 무응답으로 docker restart 를 시도했으나 명령이 실패했습니다. 도커 데몬까지 확인하세요.
+컨테이너=$state · 메모리=$mem · 로그 $LOG"
   exit 1
 fi
 
 # 기동에 20초쯤 걸린다. 복구를 확인한 뒤에 끝낸다 — "재시작했다" 는 복구했다는 뜻이 아니다.
 for _ in $(seq 1 20); do
   if alive; then
-    say "OK    복구 확인 · 메모리=$(timeout 10 docker stats --no-stream --format '{{.MemUsage}}' "$CONTAINER" 2>/dev/null | tr -d '\n')"
+    mem2=$(timeout 10 docker stats --no-stream --format '{{.MemUsage}}' "$CONTAINER" 2>/dev/null | tr -d '\n')
+    say "OK    복구 확인 · 메모리=$mem2"
+    pms fuseki_restarted "[Fuseki] 자동 재시작 — 복구됨" \
+      "moai-fuseki 가 ${TRIES}회 연속 무응답이라 자동 재시작했고 응답이 돌아왔습니다. 자주 반복되면 메모리 한도를 확인하세요.
+재시작 전 컨테이너=$state · 메모리=$mem → 복구 후 메모리=$mem2 · 로그 $LOG"
     exit 0
   fi
   sleep 3
 done
 say "FAIL  재시작했으나 60초 안에 응답하지 않는다 — 손으로 볼 것"
+pms fuseki_down "[Fuseki] 다운 — 재시작 후에도 무응답" \
+  "moai-fuseki 를 재시작했으나 60초 안에 응답하지 않습니다. 3사 MES·caren·kcro 온톨로지·MCP 가 멈춰 있습니다.
+재시작 전 컨테이너=$state · 메모리=$mem · 로그 $LOG"
 exit 1
