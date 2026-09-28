@@ -510,9 +510,16 @@ class CaregiverController extends Controller
         }, $months));
         $tracks = ['rookie' => '새내기', 'settled' => '정착', 'excellent' => '우수', 'premium' => '프리미엄', 'instructor' => '강사'];
 
+        // 화면 숫자는 실제 기록에서 센다 — caregivers.rating_*/completed_sessions 저장값은 데모 시드와 섞여 후기 목록과 어긋났다(2026-09-29)
+        $agg = DB::table('reviews as rv')->join('matches as m', 'm.id', '=', 'rv.match_id')
+            ->where('m.caregiver_id', $cg->id)->where('rv.reviewer_role', 'guardian')
+            ->selectRaw('COUNT(*) n, AVG(rv.rating) a')->first();
+        $done = DB::table('care_sessions as cs')->join('matches as m', 'm.id', '=', 'cs.match_id')
+            ->where('m.caregiver_id', $cg->id)->where('cs.status', 'completed')->count();
+
         return response()->json(['success' => true, 'data' => [
-            'rating_avg' => (float) $cg->rating_avg, 'rating_count' => (int) $cg->rating_count,
-            'completed_sessions' => (int) $cg->completed_sessions,
+            'rating_avg' => $agg->n ? round((float) $agg->a, 2) : 0.0, 'rating_count' => (int) $agg->n,
+            'completed_sessions' => $done,
             'career_track' => $tracks[$cg->career_track] ?? $cg->career_track,
             'status' => $cg->status,
             'rating_note' => '받은 평점은 후기 수를 함께 고려한 평균으로 매칭 점수에 반영돼요.',
