@@ -68,7 +68,7 @@ class ExpireStaleRequests extends Command
                 $n = $notifications->notify((int) $r->guardian_user_id, NotificationService::TYPE_MATCH_REQUEST_EXPIRED, [
                     'request_id' => $r->id,
                     'target_name' => $r->target_name ?? '대상자',
-                    'scheduled_at' => Carbon::parse($r->scheduled_start)->format('n월 j일 H:i'),
+                    'scheduled_at' => Carbon::parse($r->scheduled_start, 'UTC')->setTimezone('Asia/Seoul')->format('n월 j일 H:i'),
                 ]);
                 if ($n) {
                     $notified++;

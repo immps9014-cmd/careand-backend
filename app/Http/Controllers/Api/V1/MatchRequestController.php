@@ -312,6 +312,7 @@ class MatchRequestController extends Controller
                     'message' => $e->getMessage(),
                 ], 409);
             }
+            $this->notifyMatchConfirmed($match);
 
             return response()->json([
                 'success' => true,
@@ -386,7 +387,7 @@ class MatchRequestController extends Controller
             ], 409);
         }
 
-        // TODO: 양측에 FCM 푸시 (MATCH_CONFIRMED)
+        $this->notifyMatchConfirmed($match);
 
         return response()->json([
             'success' => true,
@@ -404,6 +405,21 @@ class MatchRequestController extends Controller
      * 후보 수락/선택을 확정 매칭(matches)으로 전환한다.
      * 후보 accepted, 요청 matched, 잔여 후보 expired, matches + 일별 세션 생성.
      */
+    /** 매칭 확정 → 보호자에게 앱 알림 + 알림톡 CAREN_MATCH_OK (2026-09-28 S4, 이전엔 TODO) */
+    private function notifyMatchConfirmed(CareMatch $match): void
+    {
+        $svc = app(NotificationService::class);
+        $ctx = $svc->matchContext($match->id);
+        if ($ctx) {
+            $svc->notifySafely((int) $ctx->guardian_user_id, NotificationService::TYPE_MATCH_CONFIRMED, [
+                'match_id' => $match->id,
+                'caregiver_name' => $ctx->caregiver_name,
+                'recipient_name' => $ctx->recipient_name,
+                'scheduled_at' => $ctx->scheduled_at,
+            ]);
+        }
+    }
+
     private function confirmMatch(MatchCandidate $candidate, float $hourlyRate): CareMatch
     {
         return DB::transaction(function () use ($candidate, $hourlyRate) {

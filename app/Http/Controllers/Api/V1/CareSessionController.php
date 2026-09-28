@@ -15,6 +15,7 @@ use App\Models\CarePhoto;
 use App\Models\CareSession;
 use App\Models\VoiceLog;
 use App\Services\External\AiService;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -125,6 +126,7 @@ class CareSessionController extends Controller
                 'distance_m' => round($distance, 2),
             ], 422);
         }
+        $this->notifyGuardian($session->match_id, NotificationService::TYPE_CARE_STARTED, ['session_id' => $session->id]);
 
         return response()->json([
             'success' => true,
@@ -206,6 +208,8 @@ class CareSessionController extends Controller
 
         // C:Writer AI 일지 자동 생성 (비동기)
         GenerateCareLogJob::dispatch($session->id);
+        $this->notifyGuardian($session->match_id, NotificationService::TYPE_CARE_COMPLETED,
+            ['session_id' => $session->id, 'duration_min' => (int) $session->fresh()->duration_min]);
 
         return response()->json([
             'success' => true,
@@ -407,5 +411,21 @@ class CareSessionController extends Controller
         if (!$caregiver || $session->match->caregiver_id !== $caregiver->id) {
             abort(403, '본인의 케어 세션만 접근 가능합니다.');
         }
+    }
+
+    /** 출근·퇴근 → 보호자 앱 알림 + 알림톡 CAREN_CARE_START/END (기능 6·12, 2026-09-28 S4 — 이전엔 발송 안 됨) */
+    private function notifyGuardian(int $matchId, string $type, array $extra): void
+    {
+        $svc = app(NotificationService::class);
+        $ctx = $svc->matchContext($matchId);
+        if (!$ctx) {
+            return;
+        }
+        $svc->notifySafely((int) $ctx->guardian_user_id, $type, $extra + [
+            'caregiver_name' => $ctx->caregiver_name,
+            'recipient_name' => $ctx->recipient_name,
+            'senior_name' => $ctx->recipient_name,
+            'time' => now('Asia/Seoul')->format('H:i'),
+        ]);
     }
 }

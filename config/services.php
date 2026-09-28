@@ -49,6 +49,15 @@ return [
         'sender' => env('SMS_SENDER'),
     ],
 
+    // 카카오 알림톡(알리고) — 기능 6·32(2026-09-28 S4). 키는 위 sms 와 공용(알리고 계정 하나).
+    // live=false 거나 키가 비면 발송하지 않고 message_logs 에 stub 으로만 남긴다(PG_LIVE 와 같은 방식).
+    'alimtalk' => [
+        'live' => env('ALIMTALK_LIVE', false),
+        'sender_key' => env('ALIMTALK_SENDER_KEY', ''),   // 발신 프로필 키(카카오 채널 연결 후 알리고가 발급)
+        'token' => env('ALIMTALK_TOKEN', ''),             // 비우면 자동 발급(30일)
+        'templates' => env('ALIMTALK_TEMPLATES', ''),     // "CAREN_MATCH_OK=TA_1234,CAREN_SAFETY=TA_5678"
+    ],
+
     // 보건복지부 (요양보호사·간호조무사 자격 진위확인)
     'mohw' => [
         'url' => env('MOHW_API_URL'),

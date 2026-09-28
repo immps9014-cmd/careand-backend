@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendAlimtalkJob;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\External\FcmService;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Log;
  *
  * - DB 기록 (notifications 테이블) + FCM 푸시 동시 처리
  * - 알림 타입별 템플릿 관리
+ * - 카카오 알림톡(실패 시 SMS) — AlimtalkTemplates::BY_TYPE 에 있는 종류만, 관리자 제외, 커밋 뒤 큐 발송(2026-09-28 S4)
  *
  * 사용 예:
  *   $svc->notify($userId, NotificationService::TYPE_MATCH_CONFIRMED, [
@@ -65,7 +67,7 @@ class NotificationService
         }
 
         // DB + FCM 동시 처리 (트랜잭션)
-        return DB::transaction(function () use ($user, $type, $template, $payload) {
+        $notification = DB::transaction(function () use ($user, $type, $template, $payload) {
             $notification = Notification::create([
                 'user_id' => $user->id,
                 'type' => $type,
@@ -95,6 +97,60 @@ class NotificationService
 
             return $notification;
         });
+
+        if ($user->role !== 'admin' && isset(AlimtalkTemplates::BY_TYPE[$type])) {
+            try {
+                SendAlimtalkJob::dispatch($user->id, $type, $payload, $notification->id)->afterCommit();
+            } catch (\Throwable $e) {
+                Log::warning('알림톡 큐 등록 실패', ['user_id' => $user->id, 'type' => $type, 'error' => $e->getMessage()]);
+            }
+        }
+
+        return $notification;
+    }
+
+    /**
+     * 매칭 한 건의 알림 문구용 정보 — 보호자·돌봄전문가 user_id, 대상자 이름(도메인 무관), 서비스명, 예정 일시(KST).
+     * 매칭 확정·출퇴근·결제 알림이 같이 쓴다(2026-09-28 S4 — 이전엔 이 종류들이 정의만 되고 발송되지 않았음).
+     */
+    public function matchContext(int $matchId): ?object
+    {
+        $row = DB::table('matches as m')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->join('guardians as g', 'g.id', '=', 'r.guardian_id')
+            ->join('caregivers as c', 'c.id', '=', 'm.caregiver_id')
+            ->join('users as cu', 'cu.id', '=', 'c.user_id')
+            ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+            ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
+            ->where('m.id', $matchId)
+            ->selectRaw('m.id as match_id, m.scheduled_start, r.service_domain, g.user_id as guardian_user_id,
+                c.user_id as caregiver_user_id, cu.name as caregiver_name,
+                COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name')
+            ->first();
+        if ($row) {
+            $row->service_label = \App\Support\ServiceDomains::label((string) $row->service_domain);
+            $row->scheduled_at = $row->scheduled_start
+                ? \Illuminate\Support\Carbon::parse($row->scheduled_start, 'UTC')->setTimezone('Asia/Seoul')->format('n월 j일 H:i')
+                : '';
+        }
+        return $row;
+    }
+
+    /** 알림 실패가 본 처리(매칭·출퇴근·결제)를 깨지 않도록 감싼 발송 */
+    public function notifySafely(?int $userId, string $type, array $payload = []): void
+    {
+        if (!$userId) {
+            return;
+        }
+        try {
+            $this->notify($userId, $type, $payload);
+        } catch (\Throwable $e) {
+            Log::warning('알림 발송 예외', ['user_id' => $userId, 'type' => $type, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -200,9 +256,9 @@ class NotificationService
             self::TYPE_SETTLEMENT_CONFIRMED => [
                 'title' => '정산서 확정',
                 'body' => sprintf(
-                    '이번 주 정산 %s원이 확정되었어요. (D-%d)',
+                    '이번 주 정산 %s원이 확정되었어요.%s',
                     number_format($payload['net_amount'] ?? 0),
-                    $payload['days_until_paid'] ?? 0
+                    isset($payload['days_until_paid']) ? sprintf(' (D-%d)', $payload['days_until_paid']) : ''
                 ),
             ],
             self::TYPE_SETTLEMENT_PAID => [

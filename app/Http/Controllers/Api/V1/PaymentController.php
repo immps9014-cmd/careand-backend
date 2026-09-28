@@ -12,6 +12,7 @@ use App\Models\PaymentItem;
 use App\Services\External\NhisService;
 use App\Services\External\PgService;
 use App\Services\External\TossPaymentsService;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -255,6 +256,7 @@ class PaymentController extends Controller
 
                 return $payment;
             });
+            $this->notifyPaid($payment);
 
             return response()->json([
                 'success' => true,
@@ -441,8 +443,30 @@ class PaymentController extends Controller
             }
             $payment->update(['status' => 'paid', 'paid_at' => now()]);
         });
+        $this->notifyPaid($payment->fresh());
 
         return response()->json(['success' => true, 'message' => '결제가 완료되었습니다.', 'data' => new PaymentResource($payment->fresh()->load('items'))]);
+    }
+
+    /** 결제 완료 → 보호자 앱 알림 + 알림톡 CAREN_PAY_OK (기능 4·31, 2026-09-28 S4 — 이전엔 발송 안 됨) */
+    private function notifyPaid(Payment $payment): void
+    {
+        if ($payment->status !== 'paid') {
+            return;
+        }
+        $svc = app(NotificationService::class);
+        $ctx = $svc->matchContext((int) $payment->match_id);
+        if (!$ctx) {
+            return;
+        }
+        $methods = ['card' => '카드', 'toss' => '토스페이먼츠', 'voucher_only' => '바우처', 'transfer' => '계좌이체'];
+        $svc->notifySafely((int) $ctx->guardian_user_id, NotificationService::TYPE_PAYMENT_PAID, [
+            'payment_id' => $payment->id,
+            'amount' => (int) $payment->amount_self_pay,
+            'service_label' => $ctx->service_label,
+            'method_label' => $methods[$payment->method] ?? ($payment->method ?: '카드'),
+            'paid_at' => ($payment->paid_at ?? now())->copy()->setTimezone('Asia/Seoul')->format('n월 j일 H:i'),
+        ]);
     }
 
     public function cancel(Request $request, int $id): JsonResponse

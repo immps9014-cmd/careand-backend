@@ -9,6 +9,7 @@ use App\Models\Settlement;
 use App\Models\SettlementItem;
 use App\Services\External\HometaxService;
 use Carbon\Carbon;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -279,7 +280,8 @@ class SettlementController extends Controller
 
         $confirmed = 0;
         $skipped = 0;
-        DB::transaction(function () use ($ids, $request, &$confirmed, &$skipped) {
+        $confirmedIds = [];
+        DB::transaction(function () use ($ids, $request, &$confirmed, &$skipped, &$confirmedIds) {
             $settlements = Settlement::whereIn('id', $ids)->lockForUpdate()->get();
             foreach ($settlements as $settlement) {
                 if ($settlement->status === 'draft') {
@@ -289,11 +291,15 @@ class SettlementController extends Controller
                         'confirmed_at' => now(),
                     ]);
                     $confirmed++;
+                    $confirmedIds[] = $settlement->id;
                 } else {
                     $skipped++;
                 }
             }
         });
+        foreach ($confirmedIds as $sid) {
+            $this->notifyConfirmed(Settlement::find($sid));
+        }
 
         return response()->json([
             'success' => true,
@@ -325,13 +331,23 @@ class SettlementController extends Controller
             'confirmed_at' => now(),
         ]);
 
-        // TODO: 인력에게 FCM 푸시 (SETTLEMENT_CONFIRMED)
+        $this->notifyConfirmed($settlement->fresh());
         // TODO: 송금 큐 등록
 
         return response()->json([
             'success' => true,
             'message' => '정산서가 확정되었습니다.',
             'data' => new SettlementResource($settlement->fresh()),
+        ]);
+    }
+
+    /** 정산 확정 → 돌봄전문가 앱 알림 + 알림톡 CAREN_SETTLE_OK (기능 15·23, 2026-09-28 S4 — 이전엔 TODO) */
+    private function notifyConfirmed(?Settlement $settlement): void
+    {
+        $userId = $settlement ? DB::table('caregivers')->where('id', $settlement->caregiver_id)->value('user_id') : null;
+        app(NotificationService::class)->notifySafely($userId ? (int) $userId : null, NotificationService::TYPE_SETTLEMENT_CONFIRMED, [
+            'settlement_id' => $settlement?->id,
+            'net_amount' => (int) ($settlement?->net_amount ?? 0),
         ]);
     }
 
