@@ -163,7 +163,11 @@ Route::prefix('v1')->group(function () {
             Route::post('{id}/voice-log', [CareSessionController::class, 'uploadVoiceLog'])->whereNumber('id');
             Route::post('{id}/photos', [CareSessionController::class, 'uploadPhoto'])->whereNumber('id');
             Route::get('{id}/ai-summary', [CareSessionController::class, 'getAiSummary'])->whereNumber('id');
+            // 칩 기반 케어일지(기능 40, S5)
+            Route::get('{id}/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'show'])->whereNumber('id');
+            Route::put('{id}/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'save'])->whereNumber('id');
         });
+        Route::get('care-journal/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'catalog']);
 
         // 결제
         Route::prefix('payments')->group(function () {

@@ -35,7 +35,7 @@ class GenerateCareLogJob implements ShouldQueue
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
             ->where('cs.id', $this->sessionId)
-            ->select('cs.id', 'cs.duration_min', 'r.service_domain',
+            ->select('cs.id', 'cs.duration_min', 'r.service_domain', 'cs.journal_chips', 'cs.journal_note',
                 DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name'))
             ->first();
 
@@ -56,8 +56,24 @@ class GenerateCareLogJob implements ShouldQueue
             ->toArray();
 
         $aiUrl = config('services.ai.base_url', 'http://localhost:8001');
+        $chips = $session->journal_chips ? (json_decode($session->journal_chips, true) ?: []) : [];
 
         try {
+            if ($chips) {
+                // 칩 기반(기능 40): 칩→SPARQL→정규화 JSON→LLM 조립. 활동 메모는 칩 메모 뒤에 붙인다
+                $memos = array_filter(array_map(fn ($a) => $a['memo'] ?? null, $activities));
+                $note = trim(implode("\n", array_filter([\App\Support\MedicalCrypto::decrypt($session->journal_note), ...$memos])));
+                $resp = Http::timeout(40)
+                    ->withToken(config('services.ai.token') ?? '')
+                    ->post("{$aiUrl}/care-log/chips", [
+                        'session_id' => $session->id,
+                        'service_domain' => $session->service_domain,
+                        'senior_name' => $session->senior_name ?? '어르신',
+                        'duration_min' => (int) $session->duration_min,
+                        'chips' => $chips,
+                        'note' => $note !== '' ? mb_substr($note, 0, 1000) : null,
+                    ]);
+            } else {
             $resp = Http::timeout(40)
                 ->withToken(config('services.ai.token') ?? '')
                 ->post("{$aiUrl}/care-log/generate", [
@@ -67,6 +83,7 @@ class GenerateCareLogJob implements ShouldQueue
                     'duration_min' => (int) $session->duration_min,
                     'activities' => $activities,
                 ]);
+            }
 
             if (! $resp->successful()) {
                 Log::error("일지 생성 실패(세션 {$this->sessionId}): HTTP {$resp->status()}");

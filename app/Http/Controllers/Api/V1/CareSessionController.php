@@ -186,7 +186,8 @@ class CareSessionController extends Controller
             // KPI 「케어일지 작성시간」: 케어 중 이미 활동·음성·사진 기록이 있으면 퇴근 시각이 작성 시작
             $hasLogInput = $session->activities()->exists()
                 || $session->voiceLogs()->exists()
-                || $session->photos()->exists();
+                || $session->photos()->exists()
+                || !empty($session->journal_chips);
             $session->update([
                 'actual_end' => now(),
                 'duration_min' => $duration,
