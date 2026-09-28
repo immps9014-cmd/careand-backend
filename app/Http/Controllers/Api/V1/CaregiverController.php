@@ -457,6 +457,71 @@ class CaregiverController extends Controller
     }
 
     /**
+     * GET /v1/caregivers/me/performance — 받은 후기·월별 활동·평점(기능 16, 2026-09-29)
+     * 보호자 이름은 내보내지 않는다. 인센티브 제도는 아직 없어 경력 단계와 「평점이 매칭 점수에 반영됨」만 알린다.
+     */
+    public function performance(Request $request): JsonResponse
+    {
+        $cg = $request->user()->caregiver;
+        if (!$cg) {
+            return response()->json(['success' => false, 'message' => '돌봄전문가 회원만 볼 수 있어요.'], 403);
+        }
+        $reviews = DB::table('reviews as rv')->join('matches as m', 'm.id', '=', 'rv.match_id')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->where('m.caregiver_id', $cg->id)->where('rv.reviewer_role', 'guardian')
+            ->orderByDesc('rv.created_at')->limit(30)
+            ->get(['rv.rating', 'rv.comment', 'rv.tags', 'rv.scores', 'rv.admin_reply', 'rv.created_at', 'r.service_domain'])
+            ->map(function ($r) {
+                $labels = array_column(GuardianController::criteria($r->service_domain), 'label', 'key');
+                $scores = $r->scores ? (json_decode($r->scores, true) ?: []) : [];
+                return [
+                    'rating' => (int) $r->rating, 'comment' => $r->comment,
+                    'tags' => $r->tags ? (json_decode($r->tags, true) ?: []) : [],
+                    'scores' => collect($scores)->map(fn ($v, $k) => ['label' => $labels[$k] ?? $k, 'score' => (int) $v])->values(),
+                    'service' => \App\Support\ServiceDomains::label((string) $r->service_domain),
+                    'reply' => $r->admin_reply, 'created_at' => $r->created_at,
+                ];
+            });
+        $from = now('Asia/Seoul')->startOfMonth()->subMonths(5)->utc();
+        $sessions = DB::table('care_sessions as cs')->join('matches as m', 'm.id', '=', 'cs.match_id')
+            ->where('m.caregiver_id', $cg->id)->where('cs.status', 'completed')->where('cs.actual_end', '>=', $from)
+            ->get(['cs.actual_end', 'cs.duration_min']);
+        $revByMonth = DB::table('reviews as rv')->join('matches as m', 'm.id', '=', 'rv.match_id')
+            ->where('m.caregiver_id', $cg->id)->where('rv.reviewer_role', 'guardian')->where('rv.created_at', '>=', $from)
+            ->get(['rv.created_at', 'rv.rating']);
+        $months = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $k = now('Asia/Seoul')->startOfMonth()->subMonths($i)->format('Y-m');
+            $months[$k] = ['month' => $k, 'sessions' => 0, 'hours' => 0.0, 'reviews' => 0, 'avg_rating' => null, '_sum' => 0];
+        }
+        foreach ($sessions as $s) {
+            $k = \Illuminate\Support\Carbon::parse($s->actual_end, 'UTC')->setTimezone('Asia/Seoul')->format('Y-m');
+            if (isset($months[$k])) { $months[$k]['sessions']++; $months[$k]['hours'] += round(((int) $s->duration_min) / 60, 1); }
+        }
+        foreach ($revByMonth as $r) {
+            $k = \Illuminate\Support\Carbon::parse($r->created_at, 'UTC')->setTimezone('Asia/Seoul')->format('Y-m');
+            if (isset($months[$k])) { $months[$k]['reviews']++; $months[$k]['_sum'] += (int) $r->rating; }
+        }
+        $months = array_values(array_map(function ($m) {
+            $m['avg_rating'] = $m['reviews'] ? round($m['_sum'] / $m['reviews'], 2) : null;
+            $m['hours'] = round($m['hours'], 1);
+            unset($m['_sum']);
+            return $m;
+        }, $months));
+        $tracks = ['rookie' => '새내기', 'settled' => '정착', 'excellent' => '우수', 'premium' => '프리미엄', 'instructor' => '강사'];
+
+        return response()->json(['success' => true, 'data' => [
+            'rating_avg' => (float) $cg->rating_avg, 'rating_count' => (int) $cg->rating_count,
+            'completed_sessions' => (int) $cg->completed_sessions,
+            'career_track' => $tracks[$cg->career_track] ?? $cg->career_track,
+            'status' => $cg->status,
+            'rating_note' => '받은 평점은 후기 수를 함께 고려한 평균으로 매칭 점수에 반영돼요.',
+            'months' => $months,
+            'reviews' => $reviews,
+        ]]);
+    }
+
+    /**
      * GET /v1/caregivers/me/matches
      * 내게 추천된 매칭 후보 (수락 대기 포함)
      */

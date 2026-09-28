@@ -98,6 +98,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('me/profile', [CaregiverController::class, 'updateProfile']);
             Route::post('me/leave', [CaregiverController::class, 'requestLeave']);
             Route::post('me/return', [CaregiverController::class, 'requestReturn']);
+            Route::get('me/performance', [CaregiverController::class, 'performance']);   // 받은 후기·월별 활동(기능 16)
             // 서류·정산 계좌 (기능 9·20, S5)
             Route::get('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'index']);
             Route::post('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'store']);
