@@ -51,7 +51,13 @@ class CaregiverDocumentController extends Controller
             'doc_type' => ['required', 'string', 'in:' . implode(',', array_keys(CaregiverDocumentService::types()))],
             'file' => ['required', 'file', 'max:' . config('caregiver_docs.max_kb'), 'mimes:' . implode(',', config('caregiver_docs.mimes'))],
             'issued_at' => ['nullable', 'date', 'before_or_equal:today'],
-        ], [], ['doc_type' => '서류 종류', 'file' => '파일', 'issued_at' => '발급일']);
+        ], [
+            'doc_type.in' => '지원하지 않는 서류 종류입니다.',
+            'file.required' => '파일을 선택해 주세요.',
+            'file.max' => '파일은 ' . (int) (config('caregiver_docs.max_kb') / 1024) . 'MB 이하만 올릴 수 있어요.',
+            'file.mimes' => '사진(jpg·png·heic·webp) 또는 PDF 파일만 올릴 수 있어요.',
+            'issued_at.before_or_equal' => '발급일은 오늘 이전이어야 해요.',
+        ]);
 
         $id = $this->docs->store($cg->id, $v['doc_type'], $request->file('file'), $v['issued_at'] ?? null);
 

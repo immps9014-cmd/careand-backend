@@ -46,7 +46,7 @@ class CaregiverDocumentAdminController extends Controller
     /** GET /v1/admin/caregivers/{id}/documents/{docId}/file — 원본 열람(사유 필수) */
     public function file(Request $request, int $id, int $docId): Response
     {
-        $reason = trim((string) $request->header('X-Access-Reason', $request->query('reason', '')));
+        $reason = trim(rawurldecode((string) $request->header('X-Access-Reason', '')));
         if (mb_strlen($reason) < 5) {
             return response()->json(['success' => false, 'error_code' => 'REASON_REQUIRED', 'message' => '열람 사유를 5자 이상 입력해 주세요.'], 422);
         }
