@@ -494,19 +494,26 @@ class OperationsController extends Controller
     {
         $perPage = min((int) $request->input('per_page', 20), 100);
 
-        // 같은 title+body+created_at(분 단위) 으로 묶어 발송 단위로 집계
+        // 발송 단위로 집계 — broadcast_id 가 있으면 그것(S5 이후), 없으면 예전처럼 제목+본문
         $paginated = DB::table('notifications')
             ->where('type', 'announcement')
             ->select(
-                'title',
-                'body',
+                DB::raw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(data, '$.broadcast_id')), CONCAT('legacy:', MD5(CONCAT(title, body)))) as bid"),
+                DB::raw('MAX(title) as title'),
+                DB::raw('MAX(body) as body'),
                 DB::raw('COUNT(*) as recipients'),
                 DB::raw('SUM(is_read) as read_count'),
+                // 도달 = 발송 시점에 푸시 토큰이 있던 수신자(앱 알림함에는 전원 도달)
+                DB::raw("SUM(JSON_EXTRACT(data, '$.push') = 'true') as push_count"),
+                // 전환 = 24시간 안에 열어 본 수신자
+                DB::raw('SUM(is_read = 1 AND read_at IS NOT NULL AND read_at <= DATE_ADD(created_at, INTERVAL 1 DAY)) as read_24h'),
                 DB::raw('MAX(created_at) as sent_at'),
+                DB::raw("MAX(JSON_UNQUOTE(JSON_EXTRACT(data, '$.domain'))) as domain"),
+                DB::raw("MAX(JSON_UNQUOTE(JSON_EXTRACT(data, '$.branch_id'))) as branch_id"),
                 // 개인 지정 발송(data.target=direct) 여부 — 이력에서 "개인" 뱃지 구분용
                 DB::raw('MAX(CASE WHEN data LIKE \'%"target":"direct"%\' THEN 1 ELSE 0 END) as has_direct')
             )
-            ->groupBy('title', 'body')
+            ->groupBy('bid')
             ->orderByDesc('sent_at')
             ->paginate($perPage);
 
@@ -516,6 +523,11 @@ class OperationsController extends Controller
             'recipients' => (int) $r->recipients,
             'read_count' => (int) $r->read_count,
             'read_rate' => $r->recipients > 0 ? round($r->read_count / $r->recipients * 100, 1) : 0,
+            'push_count' => (int) $r->push_count,
+            'read_24h' => (int) $r->read_24h,
+            'read_24h_rate' => $r->recipients > 0 ? round($r->read_24h / $r->recipients * 100, 1) : 0,
+            'domain' => $r->domain !== 'null' ? $r->domain : null,
+            'branch_id' => $r->branch_id && $r->branch_id !== 'null' ? (int) $r->branch_id : null,
             'sent_at' => $r->sent_at,
             // 개인 지정(1인) 발송이면 true — 프론트 이력 표에서 "개인" 뱃지 표시
             'is_direct' => (bool) $r->has_direct,
@@ -535,25 +547,52 @@ class OperationsController extends Controller
             'title' => 'required|string|max:200',
             'body' => 'required|string|max:2000',
             'target' => 'required|in:all,guardian,caregiver',
+            // 세분 대상(기능 25, S5): 도메인 = 돌봄전문가는 활동 도메인, 보호자는 그 도메인 요청 이력 / 지점 = 돌봄전문가 소속 지점
+            'domain' => 'nullable|string|max:30',
+            'branch_id' => 'nullable|integer|exists:branches,id',
         ]);
-
-        $userQuery = DB::table('users')->where('status', 'active')->whereNull('deleted_at');
-        if ($validated['target'] !== 'all') {
-            $userQuery->where('role', $validated['target']);
+        $domain = $validated['domain'] ?? null;
+        $branch = $validated['branch_id'] ?? null;
+        if ($branch && $validated['target'] === 'guardian') {
+            return response()->json(['success' => false, 'message' => '지점 지정은 돌봄전문가 대상에만 쓸 수 있어요(보호자는 지점 소속이 없음).'], 422);
         }
-        $userIds = $userQuery->pluck('id');
+
+        $userQuery = DB::table('users as u')->where('u.status', 'active')->whereNull('u.deleted_at');
+        if ($validated['target'] !== 'all') {
+            $userQuery->where('u.role', $validated['target']);
+        } else {
+            $userQuery->whereIn('u.role', ['guardian', 'caregiver']);
+        }
+        if ($domain || $branch) {
+            $userQuery->where(function ($w) use ($domain, $branch, $validated) {
+                if ($validated['target'] !== 'guardian') {
+                    $w->orWhereExists(fn ($e) => $e->from('caregivers as c')->whereColumn('c.user_id', 'u.id')->whereNull('c.deleted_at')
+                        ->when($domain, fn ($q) => $q->whereRaw('FIND_IN_SET(?, c.service_domains)', [$domain]))
+                        ->when($branch, fn ($q) => $q->where('c.branch_id', $branch)));
+                }
+                if ($validated['target'] !== 'caregiver' && !$branch) {
+                    $w->orWhereExists(fn ($e) => $e->from('guardians as g')->join('match_requests as r', 'r.guardian_id', '=', 'g.id')
+                        ->whereColumn('g.user_id', 'u.id')->where('r.service_domain', $domain));
+                }
+            });
+        }
+        $recipients = $userQuery->get(['u.id', 'u.fcm_token']);
+        $userIds = $recipients->pluck('id');
 
         if ($userIds->isEmpty()) {
             return response()->json(['success' => false, 'message' => '대상 사용자가 없습니다.'], 422);
         }
 
         $now = now();
-        $rows = $userIds->map(fn ($uid) => [
-            'user_id' => $uid,
+        // 발송 단위 식별자 — 이력 집계(도달·열람)를 제목+본문 대신 이것으로 묶는다
+        $broadcastId = (string) \Illuminate\Support\Str::uuid();
+        $rows = $recipients->map(fn ($r) => [
+            'user_id' => $r->id,
             'type' => 'announcement',
             'title' => $validated['title'],
             'body' => $validated['body'],
-            'data' => json_encode(['target' => $validated['target']]),
+            'data' => json_encode(['target' => $validated['target'], 'domain' => $domain, 'branch_id' => $branch,
+                'broadcast_id' => $broadcastId, 'push' => !empty($r->fcm_token)]),
             'is_read' => 0,
             'sent_at' => $now,
             'created_at' => $now,

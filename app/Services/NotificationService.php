@@ -49,7 +49,8 @@ class NotificationService
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_MATCH_OFFER_TIMEOUT = 'MATCH_OFFER_TIMEOUT';         // 지정 후보 무응답 자동 거절 → 보호자(기능 10)
     public const TYPE_MATCH_UNMATCHED_ALERT = 'MATCH_UNMATCHED_ALERT';     // 장시간 미매칭 → 매칭 담당 관리자(기능 18)
-    public const TYPE_CARE_REMINDER = 'CARE_REMINDER';                     // 방문 전 리마인더 → 보호자·돌봄전문가(기능 11)           // 2점 이하 후기 → CS 관리자(기능 24)
+    public const TYPE_CARE_REMINDER = 'CARE_REMINDER';
+    public const TYPE_MONTHLY_REPORT_READY = 'MONTHLY_REPORT_READY';       // 월간 결산 생성 → 리포트 권한 관리자(기능 23)                     // 방문 전 리마인더 → 보호자·돌봄전문가(기능 11)           // 2점 이하 후기 → CS 관리자(기능 24)
 
     public function __construct(private FcmService $fcm)
     {
@@ -348,6 +349,11 @@ class NotificationService
                     $payload['recipient_name'] ?? '대상자',
                     $payload['caregiver_name'] ?? ''
                 ),
+            ],
+            self::TYPE_MONTHLY_REPORT_READY => [
+                'title' => '월간 결산이 준비됐어요',
+                'body' => sprintf('%s 결산(매출 %s원)을 리포트 화면에서 확인해 주세요.',
+                    $payload['month'] ?? '', number_format((int) ($payload['total'] ?? 0))),
             ],
             self::TYPE_CAREGIVER_DOC_REJECTED => [
                 'title' => '서류 보완 요청',

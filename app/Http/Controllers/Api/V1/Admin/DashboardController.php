@@ -62,6 +62,96 @@ class DashboardController extends Controller
     }
 
     /**
+     * GET /v1/admin/dashboard/breakdown?period=today|week|month&branch_id=&domain=
+     * 지점·도메인·기간 필터 현황(기능 17, 2026-09-28 S5). 지점 = 배정된 돌봄전문가의 소속 지점(caregivers.branch_id).
+     * 요청 건수는 지점 필터가 걸리면 「그 지점 인력이 후보로 오른 요청」 기준. 가동률 = 기간 중 돌봄 1회 이상 한 활성 인력 / 활성 인력.
+     */
+    public function breakdown(Request $request): JsonResponse
+    {
+        $v = $request->validate([
+            'period' => 'nullable|in:today,week,month',
+            'branch_id' => 'nullable|integer',
+            'domain' => 'nullable|string|max:30',
+        ]);
+        $period = $v['period'] ?? 'week';
+        $from = match ($period) {
+            'today' => now('Asia/Seoul')->startOfDay()->utc(),
+            'month' => now('Asia/Seoul')->startOfMonth()->utc(),
+            default => now('Asia/Seoul')->startOfWeek()->utc(),
+        };
+        $branch = $v['branch_id'] ?? null;
+        $domain = $v['domain'] ?? null;
+
+        $matchQ = fn () => DB::table('matches as m')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->join('caregivers as c', 'c.id', '=', 'm.caregiver_id')
+            ->when($branch, fn ($q) => $q->where('c.branch_id', $branch))
+            ->when($domain, fn ($q) => $q->where('r.service_domain', $domain));
+
+        $requests = DB::table('match_requests as r')->where('r.created_at', '>=', $from)
+            ->when($domain, fn ($q) => $q->where('r.service_domain', $domain))
+            ->when($branch, fn ($q) => $q->whereExists(fn ($e) => $e->from('match_candidates as mc')
+                ->join('caregivers as c', 'c.id', '=', 'mc.caregiver_id')
+                ->whereColumn('mc.request_id', 'r.id')->where('c.branch_id', $branch)));
+        $reqTotal = (clone $requests)->count();
+        $reqMatched = (clone $requests)->where('r.status', 'matched')->count();
+
+        $revenue = (int) $matchQ()->join('payments as p', 'p.match_id', '=', 'm.id')
+            ->where('p.status', 'paid')->where('p.paid_at', '>=', $from)->sum('p.total_amount');
+        $sessionsDone = DB::table('care_sessions as cs')->join('matches as m', 'm.id', '=', 'cs.match_id')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')->join('caregivers as c', 'c.id', '=', 'm.caregiver_id')
+            ->where('cs.status', 'completed')->where('cs.actual_end', '>=', $from)
+            ->when($branch, fn ($q) => $q->where('c.branch_id', $branch))
+            ->when($domain, fn ($q) => $q->where('r.service_domain', $domain));
+        $sessionCount = (clone $sessionsDone)->count();
+        $workedCaregivers = (clone $sessionsDone)->distinct()->count('m.caregiver_id');
+
+        $activeCg = DB::table('caregivers')->where('status', 'active')->whereNull('deleted_at')
+            ->when($branch, fn ($q) => $q->where('branch_id', $branch))
+            ->when($domain, fn ($q) => $q->whereRaw('FIND_IN_SET(?, service_domains)', [$domain]));
+        $activeCount = (clone $activeCg)->count();
+        $ratingAvg = (clone $activeCg)->where('rating_count', '>', 0)->avg('rating_avg');
+
+        $byBranch = DB::table('branches as b')->orderBy('b.id')->get(['b.id', 'b.name'])->map(function ($b) use ($from, $domain) {
+            $rev = (int) DB::table('payments as p')->join('matches as m', 'm.id', '=', 'p.match_id')
+                ->join('match_requests as r', 'r.id', '=', 'm.request_id')->join('caregivers as c', 'c.id', '=', 'm.caregiver_id')
+                ->where('c.branch_id', $b->id)->where('p.status', 'paid')->where('p.paid_at', '>=', $from)
+                ->when($domain, fn ($q) => $q->where('r.service_domain', $domain))->sum('p.total_amount');
+            $cg = DB::table('caregivers')->where('status', 'active')->whereNull('deleted_at')->where('branch_id', $b->id)->count();
+            return ['branch_id' => $b->id, 'name' => $b->name, 'revenue' => $rev, 'active_caregivers' => $cg];
+        });
+        $unassignedCg = DB::table('caregivers')->where('status', 'active')->whereNull('deleted_at')->whereNull('branch_id')->count();
+
+        $byDomain = DB::table('match_requests as r')->where('r.created_at', '>=', $from)
+            ->when($branch, fn ($q) => $q->whereExists(fn ($e) => $e->from('match_candidates as mc')
+                ->join('caregivers as c', 'c.id', '=', 'mc.caregiver_id')
+                ->whereColumn('mc.request_id', 'r.id')->where('c.branch_id', $branch)))
+            ->select('r.service_domain', DB::raw('COUNT(*) as requests'), DB::raw("SUM(r.status = 'matched') as matched"))
+            ->groupBy('r.service_domain')->get()->keyBy('service_domain');
+        $domains = array_keys(config('service_domains', []));
+
+        return response()->json(['success' => true, 'data' => [
+            'filter' => ['period' => $period, 'from' => $from->toIso8601String(), 'branch_id' => $branch, 'domain' => $domain],
+            'requests' => $reqTotal,
+            'matched' => $reqMatched,
+            'match_rate' => $reqTotal ? round($reqMatched / $reqTotal * 100, 1) : null,
+            'revenue' => $revenue,
+            'sessions_completed' => $sessionCount,
+            'active_caregivers' => $activeCount,
+            'utilization' => $activeCount ? round(min($workedCaregivers, $activeCount) / $activeCount * 100, 1) : null,
+            'rating_avg' => $ratingAvg !== null ? round((float) $ratingAvg, 2) : null,
+            'by_branch' => $byBranch,
+            'unassigned_caregivers' => $unassignedCg,
+            'by_domain' => collect($domains)->map(fn ($d) => [
+                'domain' => $d,
+                'label' => \App\Support\ServiceDomains::label($d),
+                'requests' => (int) ($byDomain[$d]->requests ?? 0),
+                'matched' => (int) ($byDomain[$d]->matched ?? 0),
+            ])->values(),
+        ], 'updated_at' => now()->toIso8601String()]);
+    }
+
+    /**
      * 도메인별 현황 — 진행중 매칭 / 주간 요청 / 주간 매출
      */
     private function domainBreakdown(): array

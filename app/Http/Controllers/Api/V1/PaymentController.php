@@ -45,6 +45,12 @@ class PaymentController extends Controller
         $payments = Payment::where('guardian_id', $guardian->id)
             ->with(['match.request.senior:id,name', 'items'])
             ->when($request->input('status'), fn ($q, $s) => $q->where('status', $s))
+            // 월별·도메인별 필터(기능 8, S5) — month=YYYY-MM(한국 시각 기준), domain=서비스 도메인
+            ->when(preg_match('/^\d{4}-\d{2}$/', (string) $request->input('month')) ? $request->input('month') : null, function ($q, $m) {
+                $from = \Illuminate\Support\Carbon::createFromFormat('Y-m-d H:i:s', "$m-01 00:00:00", 'Asia/Seoul');
+                $q->whereBetween('created_at', [$from->copy()->utc(), $from->copy()->addMonth()->utc()]);
+            })
+            ->when($request->input('domain'), fn ($q, $d) => $q->whereHas('match.request', fn ($r) => $r->where('service_domain', $d)))
             ->orderByDesc('created_at')
             ->paginate(20);
 
@@ -446,6 +452,40 @@ class PaymentController extends Controller
         $this->notifyPaid($payment->fresh());
 
         return response()->json(['success' => true, 'message' => '결제가 완료되었습니다.', 'data' => new PaymentResource($payment->fresh()->load('items'))]);
+    }
+
+    /**
+     * GET /v1/payments/{id}/receipt — 영수증(기능 8, S5). 본인 결제만. 화면에서 인쇄 → PDF 저장.
+     * 대상자 이름은 성만 남긴다(영수증은 밖으로 돌기 쉬운 문서).
+     */
+    public function receipt(Request $request, int $id): JsonResponse
+    {
+        $payment = Payment::with(['items', 'match.request', 'match.caregiver.user:id,name'])->findOrFail($id);
+        $this->authorize('view', $payment);
+        if (!in_array($payment->status, ['paid', 'cancelled', 'refunded'], true)) {
+            return response()->json(['success' => false, 'message' => '결제가 완료된 건만 영수증을 볼 수 있어요.'], 422);
+        }
+        $ctx = app(NotificationService::class)->matchContext((int) $payment->match_id);
+        $methods = ['card' => '카드', 'toss' => '토스페이먼츠', 'voucher_only' => '바우처', 'transfer' => '계좌이체'];
+        $kst = fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t)->setTimezone('Asia/Seoul')->format('Y-m-d H:i') : null;
+
+        return response()->json(['success' => true, 'data' => [
+            'receipt_no' => sprintf('CR-%s-%06d', ($payment->paid_at ?? $payment->created_at)->copy()->setTimezone('Asia/Seoul')->format('Ym'), $payment->id),
+            'status' => $payment->status,
+            'paid_at' => $kst($payment->paid_at),
+            'method' => $methods[$payment->method] ?? $payment->method,
+            'pg_tid_tail' => $payment->pg_tid ? substr($payment->pg_tid, -6) : null,
+            'service' => $ctx?->service_label ?? '돌봄',
+            'service_period' => $payment->match ? ($kst($payment->match->scheduled_start) . ' ~ ' . $kst($payment->match->scheduled_end)) : null,
+            'recipient' => \App\Services\AlimtalkTemplates::maskName($ctx?->recipient_name),
+            'caregiver' => $ctx?->caregiver_name,
+            'buyer' => $request->user()->name,
+            'total_amount' => (int) $payment->total_amount,
+            'self_pay' => (int) $payment->amount_self_pay,
+            'ltc_pay' => (int) $payment->amount_ltc_pay,
+            'items' => $payment->items->map(fn ($i) => ['description' => $i->description, 'amount' => (int) $i->amount])->values(),
+            'seller' => config('company'),
+        ]]);
     }
 
     /** 결제 완료 → 보호자 앱 알림 + 알림톡 CAREN_PAY_OK (기능 4·31, 2026-09-28 S4 — 이전엔 발송 안 됨) */

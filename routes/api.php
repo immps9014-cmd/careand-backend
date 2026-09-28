@@ -178,6 +178,7 @@ Route::prefix('v1')->group(function () {
             Route::post('toss/prepare', [PaymentController::class, 'tossPrepare']);
             Route::post('toss/confirm', [PaymentController::class, 'tossConfirm']);
             Route::post('{id}/cancel', [PaymentController::class, 'cancel'])->whereNumber('id');
+            Route::get('{id}/receipt', [PaymentController::class, 'receipt'])->whereNumber('id');   // 영수증(기능 8, S5)
         });
 
         // 정산
@@ -236,6 +237,7 @@ Route::prefix('v1')->group(function () {
             Route::prefix('dashboard')->group(function () {
                 Route::get('kpi', [DashboardController::class, 'kpi']);
                 Route::get('business-kpi', [DashboardController::class, 'businessKpi']);   // 사업계획서 KPI 3종
+                Route::get('breakdown', [DashboardController::class, 'breakdown']);   // 지점·도메인·기간 필터(기능 17, S5)
                 Route::get('hourly-requests', [DashboardController::class, 'hourlyRequests']);
                 Route::get('regional-demand', [DashboardController::class, 'regionalDemand']);
                 Route::get('recent-alerts', [DashboardController::class, 'recentAlerts']);
@@ -296,6 +298,10 @@ Route::prefix('v1')->group(function () {
             });
 
             // 공지·푸시 알림 (#25)
+            // 월간 결산(기능 23·26, S5) — RBAC 'reports'
+            Route::get('reports/monthly', [\App\Http\Controllers\Api\V1\Admin\ReportController::class, 'index']);
+            Route::post('reports/monthly', [\App\Http\Controllers\Api\V1\Admin\ReportController::class, 'generate']);
+
             Route::prefix('announcements')->group(function () {
                 Route::get('/', [OperationsController::class, 'announcements']);
                 Route::post('/', [OperationsController::class, 'broadcast']);

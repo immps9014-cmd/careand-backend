@@ -28,6 +28,13 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/matching-watch.log'));
 
+        // 월간 결산 — 매월 1일 02:30 KST 전월분(기능 23·26, S5)
+        $schedule->command('reports:monthly-close')
+            ->monthlyOn(1, '02:30')
+            ->timezone('Asia/Seoul')
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/monthly-close.log'));
+
         $schedule->command('requests:expire-stale')
             ->hourly()
             ->onOneServer()
