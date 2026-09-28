@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * 보유기간 지난 개인정보 파기 — 개인정보 처리방침 · 사업계획서 3.3 (2026-09-28, 구현계획 S2-5).
- *   ① 음성 일지 원본 파일: 녹음 후 30일 → 파일 삭제(전사 텍스트·일지는 유지)
+ *   ① 음성 일지 원본 파일: 녹음 후 30일 → 파일 삭제(전사 텍스트·일지는 유지), DB 기록 없는 고아 파일 포함
  *   ② 출퇴근 위치(GPS 좌표): 기록 후 90일 → 좌표 파기(0,0), 시각·이벤트는 정산 근거로 유지
  *   ③ 탈퇴 회원: 탈퇴 후 30일 → 계정 식별정보와 본인·돌봄대상자 개인정보 파기(행은 남겨 정산·통계 무결성 유지)
  * 기본은 대상만 보여 주는 시험 실행. 실제 파기는 --execute. 파기 건수는 감사로그(privacy.purge)에 남는다.
@@ -38,7 +38,18 @@ class PurgePersonalData extends Command
                 DB::table('voice_logs')->where('id', $v->id)->update(['audio_url' => 'purged:' . now()->toDateString(), 'updated_at' => now()]);
             }
         }
-        $done['voice_files'] = $voices->count();
+        // DB 기록이 없는 음성 파일(삭제된 기록의 잔재)도 30일이 지나면 삭제
+        $known = DB::table('voice_logs')->pluck('audio_url')->flip();
+        $orphans = [];
+        foreach (glob(storage_path('app/voice-logs/*/*')) ?: [] as $f) {
+            if (is_file($f) && filemtime($f) < now()->subDays(30)->timestamp && !isset($known[$f])) {
+                $orphans[] = $f;
+            }
+        }
+        if ($run) {
+            foreach ($orphans as $f) { @unlink($f); }
+        }
+        $done['voice_files'] = $voices->count() + count($orphans);
 
         // ② 위치 90일
         $gps = DB::table('attendance_logs')->where('logged_at', '<', now()->subDays(90))
