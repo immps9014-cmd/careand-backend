@@ -41,6 +41,7 @@ Route::prefix('v1')->group(function () {
         Route::post('otp/verify', [AuthController::class, 'verifyOtp'])->middleware('throttle:30,1');
         Route::post('signup', [AuthController::class, 'signup'])->middleware('throttle:10,1');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::post('2fa/verify', [AuthController::class, 'verifyTwoFactor'])->middleware('throttle:10,1');   // 관리자 2단계 인증
         Route::post('refresh', [AuthController::class, 'refresh'])->middleware('throttle:20,1');
     });
 

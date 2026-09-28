@@ -36,4 +36,7 @@ return [
     ],
 
     'password_timeout' => 10800,
+    // 관리자 2단계 인증 강제(role:admin API 는 mfa 클레임 토큰만) — 2026-09-28 S2
+    'admin_2fa_required' => env('ADMIN_2FA_REQUIRED', true),
+
 ];

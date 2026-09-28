@@ -10,7 +10,11 @@ use App\Http\Requests\Auth\SignupRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Guardian;
 use App\Models\User;
+use App\Models\AuditLog;
 use App\Services\OtpService;
+use App\Services\TotpService;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -155,18 +159,117 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // 관리자는 비밀번호만으로 토큰을 주지 않는다 — 2단계 인증(TOTP) 필수 (사업계획서 3.3, 2026-09-28 S2).
+        // 방금 발급된 토큰은 폐기하고, 5분짜리 확인 토큰으로 /auth/2fa/verify 를 거치게 한다.
+        if ($user->role === 'admin') {
+            try { JWTAuth::setToken($token)->invalidate(); } catch (\Throwable) {}
+            return $this->startTwoFactor($request, $user);
+        }
+
         // FCM 토큰 갱신 (앱에서 전송 시)
         if ($request->filled('fcm_token')) {
             $user->update(['fcm_token' => $request->input('fcm_token')]);
         }
 
+        return $this->tokenResponse($user, $token);
+    }
+
+    /**
+     * 관리자 2단계 인증 시작 — 미등록이면 등록용 QR·설정 키를 함께 준다(등록 전에는 접속 불가).
+     */
+    private function startTwoFactor(Request $request, User $user): JsonResponse
+    {
+        $challenge = Str::random(48);
+        Cache::put("2fa:challenge:{$challenge}", ['user_id' => $user->id, 'fails' => 0], 300);
+        $body = [
+            'success' => true,
+            'requires_2fa' => true,
+            'setup_required' => $user->totp_enabled_at === null,
+            'challenge_token' => $challenge,
+            'expires_in' => 300,
+        ];
+        if ($user->totp_enabled_at === null) {
+            $totp = app(TotpService::class);
+            $secret = $totp->generateSecret();
+            Cache::put("2fa:setup:{$challenge}", $secret, 300);
+            $uri = $totp->otpauthUri($user->email, $secret);
+            $body += ['secret' => $secret, 'otpauth_uri' => $uri, 'qr_svg' => $totp->qrSvg($uri)];
+        }
+        return response()->json($body);
+    }
+
+    /**
+     * POST /v1/auth/2fa/verify {challenge_token, code}
+     * 인증 앱 6자리 코드 확인 → (첫 등록이면 비밀키 저장) → 토큰 발급.
+     * 같은 코드 재사용 불가, 확인 토큰당 5회 실패 시 처음부터 다시 로그인.
+     */
+    public function verifyTwoFactor(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challenge_token' => ['required', 'string', 'size:48'],
+            'code' => ['required', 'string'],
+        ]);
+        $key = "2fa:challenge:{$data['challenge_token']}";
+        $ch = Cache::get($key);
+        if (!$ch) {
+            return response()->json(['success' => false, 'error_code' => '2FA_EXPIRED', 'message' => '인증 시간이 지났습니다. 다시 로그인해 주세요.'], 401);
+        }
+        $user = User::find($ch['user_id']);
+        $code = preg_replace('/\D/', '', $data['code']);
+        $setupSecret = Cache::get("2fa:setup:{$data['challenge_token']}");
+        $secret = $setupSecret ?? $user?->totp_secret;
+        $step = ($user && $secret) ? app(TotpService::class)->verify($secret, $code) : null;
+
+        // 재사용 방지 — 같은 사용자의 같은 시간 단계 코드는 한 번만
+        $lastKey = "2fa:last_step:{$ch['user_id']}";
+        if ($step !== null && (int) Cache::get($lastKey, -1) >= $step) {
+            $step = null;
+        }
+        if ($step === null) {
+            $ch['fails']++;
+            $this->audit2fa($request, $ch['user_id'], 'auth.2fa.fail');
+            if ($ch['fails'] >= 5) {
+                Cache::forget($key);
+                Cache::forget("2fa:setup:{$data['challenge_token']}");
+                return response()->json(['success' => false, 'error_code' => '2FA_LOCKED', 'message' => '인증 코드가 5회 틀렸습니다. 다시 로그인해 주세요.'], 401);
+            }
+            Cache::put($key, $ch, 300);
+            return response()->json(['success' => false, 'error_code' => '2FA_INVALID', 'message' => '인증 코드가 올바르지 않습니다.'], 422);
+        }
+
+        Cache::put($lastKey, $step, 120);
+        Cache::forget($key);
+        if ($setupSecret) {
+            $user->forceFill(['totp_secret' => $setupSecret, 'totp_enabled_at' => now()])->save();
+            Cache::forget("2fa:setup:{$data['challenge_token']}");
+            $this->audit2fa($request, $user->id, 'auth.2fa.enroll');
+        }
+        $this->audit2fa($request, $user->id, 'auth.2fa.success');
+
+        // mfa 클레임 — 관리자 API(role:admin)는 이 표시가 있는 토큰만 받는다(도입 전 발급 토큰 무효화)
+        return $this->tokenResponse($user, JWTAuth::customClaims(['mfa' => true])->fromUser($user), true);
+    }
+
+    private function audit2fa(Request $request, int $userId, string $action): void
+    {
+        try {
+            AuditLog::create([
+                'actor_id' => $userId, 'action' => $action, 'entity_type' => 'auth', 'entity_id' => $userId,
+                'details' => ['ok' => $action !== 'auth.2fa.fail'],
+                'ip_address' => $request->ip(), 'user_agent' => substr((string) $request->userAgent(), 0, 500),
+            ]);
+        } catch (\Throwable) {}
+    }
+
+    private function tokenResponse(User $user, string $token, bool $mfa = false): JsonResponse
+    {
         $user->load(['guardian', 'caregiver', 'organization', 'admin']);
 
         return response()->json([
             'success' => true,
             'user' => new UserResource($user),
             'access_token' => $token,
-            'refresh_token' => $this->generateRefreshToken($user),
+            'refresh_token' => $this->generateRefreshToken($user, $mfa),
             'token_type' => 'Bearer',
             'expires_in' => config('jwt.ttl') * 60,
         ]);
@@ -318,12 +421,12 @@ class AuthController extends Controller
         ]);
     }
 
-    private function generateRefreshToken(User $user): string
+    private function generateRefreshToken(User $user, bool $mfa = false): string
     {
-        return JWTAuth::customClaims([
+        return JWTAuth::customClaims(array_merge([
             'exp' => now()->addMinutes(config('jwt.refresh_ttl'))->timestamp,
             'type' => 'refresh',
-        ])->fromUser($user);
+        ], $mfa ? ['mfa' => true] : []))->fromUser($user);
     }
 
     private function getNextStep(User $user): ?string
