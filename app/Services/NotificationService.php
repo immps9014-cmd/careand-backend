@@ -31,6 +31,7 @@ class NotificationService
     public const TYPE_CARE_SUMMARY_READY = 'CARE_SUMMARY_READY';
     public const TYPE_ANOMALY_HIGH = 'ANOMALY_HIGH';
     public const TYPE_ANOMALY_CRITICAL = 'ANOMALY_CRITICAL';
+    public const TYPE_SAFETY_ALERT = 'SAFETY_ALERT';   // 돌봄 기록의 안전 알림 10종(기능 41)
     public const TYPE_PAYMENT_PAID = 'PAYMENT_PAID';
     public const TYPE_PAYMENT_FAILED = 'PAYMENT_FAILED';
     public const TYPE_SETTLEMENT_CONFIRMED = 'SETTLEMENT_CONFIRMED';
@@ -171,6 +172,14 @@ class NotificationService
                     $payload['senior_name'] ?? '어르신',
                     $payload['risk_type_ko'] ?? '건강',
                     (int) ($payload['risk_score'] ?? 0)
+                ),
+            ],
+            self::TYPE_SAFETY_ALERT => [
+                'title' => ($payload['critical'] ?? false) ? '🚨 안전 알림' : '안전 알림',
+                'body' => sprintf(
+                    '%s 돌봄 기록에 「%s」 관련 내용이 있어요. 상태를 확인해 주세요.',
+                    $payload['senior_name'] ?? '어르신',
+                    $payload['alert_labels'] ?? '주의'
                 ),
             ],
             self::TYPE_ANOMALY_CRITICAL => [

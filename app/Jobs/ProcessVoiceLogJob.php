@@ -85,8 +85,13 @@ class ProcessVoiceLogJob implements ShouldQueue
                 'categorized' => $summary['categorized'],
                 'confidence' => $summary['confidence'],
                 'llm_model' => $summary['model'],
+                'risk_score' => $summary['verification']['risk'] ?? null,
+                'verification' => $summary['verification'] ?? null,
                 'generated_at' => now(),
             ]);
+
+            // 위험 기반 검수 — 위험 없으면 자동 승인·보호자 전송, 안전 알림은 즉시 통지 (S3)
+            app(\App\Services\CareLogReviewService::class)->route($session->id, $summary['verification'] ?? null);
 
             $voiceLog->update(['status' => 'summarized']);
 

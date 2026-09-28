@@ -82,12 +82,17 @@ class GenerateCareLogJob implements ShouldQueue
                 'categorized' => json_encode($d['categorized'] ?? [], JSON_UNESCAPED_UNICODE),
                 'confidence' => $d['confidence'] ?? 0.9,
                 'llm_model' => $d['model'] ?? 'stub-claude',
+                'risk_score' => $d['verification']['risk'] ?? null,
+                'verification' => isset($d['verification']) ? json_encode($d['verification'], JSON_UNESCAPED_UNICODE) : null,
                 'generated_at' => $now,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
 
             Log::info("일지 생성 완료: 세션 {$this->sessionId}");
+
+            // 위험 기반 검수 — 위험 없으면 자동 승인·보호자 전송, 안전 알림은 즉시 통지 (S3)
+            app(\App\Services\CareLogReviewService::class)->route($session->id, $d['verification'] ?? null);
         } catch (\Throwable $e) {
             Log::error("일지 생성 예외(세션 {$this->sessionId}): {$e->getMessage()}");
         }

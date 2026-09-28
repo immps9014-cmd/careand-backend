@@ -375,6 +375,9 @@ class OperationsController extends Controller
             'medical_version' => $summary->medical_version ?? null,
             'confidence' => $summary ? (float) $summary->confidence : null,
             'llm_model' => $summary->llm_model ?? null,
+            // 사실성 검증·안전 알림(S3) — 검수 사유 표시용
+            'risk_score' => ($summary && $summary->risk_score !== null) ? (float) $summary->risk_score : null,
+            'verification' => ($summary && $summary->verification) ? json_decode($summary->verification, true) : null,
             'transcript' => $voice->stt_text ?? null,
             'stt_confidence' => ($voice && $voice->stt_confidence !== null) ? (float) $voice->stt_confidence : null,
             'voice_duration_sec' => $voice->duration_sec ?? null,

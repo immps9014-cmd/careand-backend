@@ -20,10 +20,13 @@ class AiLogSummary extends Model
         'confidence',
         'llm_model',
         'generated_at',
+        'risk_score',
+        'verification',
     ];
 
     protected $casts = [
         'categorized' => 'array',
+        'verification' => 'array',
         'confidence' => 'decimal:3',
         'generated_at' => 'datetime',
     ];
