@@ -56,7 +56,9 @@ hydration 완료 대기는 `__reactFiber`/`__reactProps` DOM 속성 폴링으로
 
 1. **UI 폼 로그인 (권장, 더 안정적)**: 로그인 폼에 직접 입력→제출. persist 스토어 주입은 hydration
    타이밍과 겹쳐 불안정한 경우가 있었음.
-   - 데모 계정: `guardian0@demo.careand.kr` / `Demo1234!` (보호자), `test@gmail.com` / `test1234` (기관)
+   - 데모 계정: `guardian0@demo.careand.kr` / `Demo1234!` (보호자). **기관 `test@gmail.com`은 test1234가 더 이상 아니다**(2026-09-25 확인 401)
+     — 기관 세션이 필요하면 비번 변경 없이 `php artisan tinker --execute='echo Tymon\JWTAuth\Facades\JWTAuth::fromUser(App\Models\User::find(57));'`
+     로 JWT를 받아 아래 2번(localStorage 주입) 방식을 쓸 것(실측 성공).
 2. **localStorage/쿠키 직접 주입**: `page.addInitScript`로 localStorage 키 `careand-member-auth` =
    `{"state":{user,accessToken,refreshToken,isAuthenticated:true},"version":0}` + 쿠키
    `careand_auth=1`(domain=`careand.aiclaude.kr`, path=`/app`, 미들웨어 게이트용) 주입.
