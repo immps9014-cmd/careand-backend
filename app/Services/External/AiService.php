@@ -267,7 +267,7 @@ class AiService
                     'mood' => 'positive',
                 ],
                 'confidence' => 0.93,
-                'model' => 'claude-opus-4.7',
+                'model' => 'claude-opus-5-5',
             ],
             '/ai/anomaly/score' => [
                 'risk_score' => 78.0,
