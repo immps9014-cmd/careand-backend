@@ -359,6 +359,10 @@ class PaymentController extends Controller
             return response()->json(['success' => true, 'data' => ['toss_required' => false]]);
         }
 
+        // 결제창을 닫고 다시 누르면 새 주문을 만든다 — 이전 미완료 토스 주문은 '대체됨'으로 정리(대기 기록 누적 방지)
+        Payment::where('match_id', $match->id)->where('pg_provider', 'toss')->where('status', 'pending')
+            ->update(['status' => 'failed', 'pg_response' => json_encode(['reason' => 'superseded_by_new_attempt'])]);
+
         $payment = Payment::create([
             'guardian_id' => $request->user()->guardian->id,
             'match_id' => $match->id,
