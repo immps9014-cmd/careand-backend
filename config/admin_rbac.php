@@ -36,6 +36,7 @@ return [
         'ontology'      => ['label' => '온톨로지 분석',         'read' => ['super', 'analyst', 'developer'],      'write' => ['super', 'developer']],
         'reports'       => ['label' => '리포트',               'read' => ['super', 'branch', 'analyst'],          'write' => ['super']],
         'admins'        => ['label' => '관리자 계정·권한',      'read' => ['super'],                              'write' => ['super']],
+        'exports'       => ['label' => '개인정보 다운로드',     'read' => ['super'],                              'write' => ['super']],
     ],
 
     'default' => ['read' => ['super'], 'write' => ['super']],

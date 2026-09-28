@@ -208,6 +208,8 @@ Route::prefix('v1')->group(function () {
             Route::post('admins', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'store']);
             Route::patch('admins/{id}', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'update'])->whereNumber('id');
             Route::post('admins/{id}/reset-2fa', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'resetTwoFactor'])->whereNumber('id');
+            // 개인정보 다운로드(마스킹 CSV, 사유 필수, 슈퍼관리자만 — 'exports' 영역) S2-5
+            Route::get('exports/members', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'members']);
 
             // 정산
             Route::post('settlements/run', [SettlementController::class, 'runWeekly']);
