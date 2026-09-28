@@ -22,7 +22,9 @@ class SignupRequest extends FormRequest
             'phone' => ['required', 'string', 'regex:/^01[0-9]\d{7,8}$/', 'unique:users,phone'],
             'phone_verify_token' => ['required', 'string'],
             'name' => ['required', 'string', 'max:50'],
-            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+            // 소셜 가입(카카오·구글, S4)은 비밀번호 없이 — social_token 이 있으면 password 생략 가능
+            'password' => ['required_without:social_token', 'nullable', 'confirmed', Password::min(8)->letters()->numbers()],
+            'social_token' => ['nullable', 'string', 'size:48'],
             'role' => ['required', 'in:guardian,caregiver,organization'],
             // 가입 의도(보호자/가사·산모·아이돌봄·마음돌봄 요청자). guardian일 때만 의미. 미지정 시 care.
             'intent' => ['nullable', 'in:care,housekeeping,postpartum,childcare,mental_care'],

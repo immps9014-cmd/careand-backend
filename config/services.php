@@ -14,6 +14,13 @@ return [
     ],
 
     // 스텁 모드에서 고정 인증번호(123456)를 허용할 테스트 번호 접두어(숫자만, 쉼표 구분) — 2026-09-28 S2
+    // 카카오·구글 로그인(S4) — client_id 가 비어 있으면 해당 버튼·API 비활성
+    'oauth' => [
+        'redirect_base' => env('OAUTH_REDIRECT_BASE', 'https://caren.aiclaude.kr/app/auth/callback'),
+        'kakao' => ['client_id' => env('KAKAO_REST_API_KEY', ''), 'client_secret' => env('KAKAO_CLIENT_SECRET', '')],
+        'google' => ['client_id' => env('GOOGLE_CLIENT_ID', ''), 'client_secret' => env('GOOGLE_CLIENT_SECRET', '')],
+    ],
+
     'otp' => [
         'stub_test_prefixes' => env('OTP_STUB_TEST_PREFIXES', '0100000'),
     ],

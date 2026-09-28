@@ -92,15 +92,31 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = DB::transaction(function () use ($data) {
+        // 소셜 가입(S4) — 콜백에서 받은 30분짜리 가입 토큰. 비밀번호 없이 가입하고 소셜 계정을 연결한다
+        $social = null;
+        if (!empty($data['social_token'])) {
+            $social = Cache::pull("oauth:signup:{$data['social_token']}");
+            if (!$social) {
+                return response()->json(['success' => false, 'error_code' => 'SOCIAL_EXPIRED', 'message' => '소셜 로그인 정보가 만료되었습니다. 다시 로그인해 주세요.'], 422);
+            }
+        }
+
+        $user = DB::transaction(function () use ($data, $social) {
             $user = User::create([
                 'email' => $data['email'],
                 'phone' => $data['phone'],
                 'name' => $data['name'],
                 'role' => $data['role'],
-                'password' => $data['password'],
+                // 소셜 가입은 쓸 일 없는 무작위 비밀번호(비밀번호 로그인 불가 — 필요하면 비밀번호 재설정으로 만든다)
+                'password' => $data['password'] ?? Str::random(40),
                 'phone_verified_at' => now(),
             ]);
+            if ($social) {
+                DB::table('social_accounts')->insert([
+                    'user_id' => $user->id, 'provider' => $social['provider'], 'provider_user_id' => $social['provider_user_id'],
+                    'email' => $social['email'] ?? null, 'last_login_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
 
             // 역할별 프로필 자동 생성
             if ($user->role === 'guardian') {

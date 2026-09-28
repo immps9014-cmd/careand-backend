@@ -42,6 +42,10 @@ Route::prefix('v1')->group(function () {
         Route::post('signup', [AuthController::class, 'signup'])->middleware('throttle:10,1');
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1');
         Route::post('2fa/verify', [AuthController::class, 'verifyTwoFactor'])->middleware('throttle:10,1');   // 관리자 2단계 인증
+        // 카카오·구글 로그인(S4)
+        Route::get('oauth/providers', [\App\Http\Controllers\Api\V1\SocialAuthController::class, 'providers']);
+        Route::get('oauth/{provider}/url', [\App\Http\Controllers\Api\V1\SocialAuthController::class, 'url'])->where('provider', 'kakao|google')->middleware('throttle:20,1');
+        Route::post('oauth/{provider}/callback', [\App\Http\Controllers\Api\V1\SocialAuthController::class, 'callback'])->where('provider', 'kakao|google')->middleware('throttle:10,1');
         Route::post('refresh', [AuthController::class, 'refresh'])->middleware('throttle:20,1');
     });
 
