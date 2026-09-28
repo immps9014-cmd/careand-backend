@@ -17,7 +17,8 @@ return [
     // 카카오·구글 로그인(S4) — client_id 가 비어 있으면 해당 버튼·API 비활성
     'oauth' => [
         'redirect_base' => env('OAUTH_REDIRECT_BASE', 'https://caren.aiclaude.kr/app/auth/callback'),
-        'kakao' => ['client_id' => env('KAKAO_REST_API_KEY', ''), 'client_secret' => env('KAKAO_CLIENT_SECRET', '')],
+        // 로그인 전용 키 — 지오코딩용 KAKAO_REST_API_KEY 와 분리(그 앱에 카카오 로그인이 켜져 있다는 보장이 없음)
+        'kakao' => ['client_id' => env('KAKAO_LOGIN_CLIENT_ID', ''), 'client_secret' => env('KAKAO_LOGIN_CLIENT_SECRET', '')],
         'google' => ['client_id' => env('GOOGLE_CLIENT_ID', ''), 'client_secret' => env('GOOGLE_CLIENT_SECRET', '')],
     ],
 
