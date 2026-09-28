@@ -42,7 +42,17 @@ class OperationsController extends Controller
 
         $paginated = $query->orderByDesc('c.created_at')->paginate($perPage);
 
-        $items = collect($paginated->items())->map(function ($r) {
+        // 서류 요약(기능 20, S5): 필수 서류 중 확인 완료 수 / 검토 대기 수
+        $required = array_keys(array_filter(config('caregiver_docs.types', []), fn ($t) => $t['required']));
+        $docRows = DB::table('caregiver_documents')->whereIn('caregiver_id', collect($paginated->items())->pluck('id'))
+            ->where('status', '!=', 'replaced')->get(['caregiver_id', 'doc_type', 'status'])->groupBy('caregiver_id');
+        $items = collect($paginated->items())->map(function ($r) use ($required, $docRows) {
+            $d = $docRows[$r->id] ?? collect();
+            $r->docs_summary = [
+                'required' => count($required),
+                'verified' => $d->whereIn('doc_type', $required)->where('status', 'verified')->count(),
+                'pending' => $d->where('status', 'submitted')->count(),
+            ];
             $spec = $r->specialties ? json_decode($r->specialties, true) : [];
 
             return [
@@ -61,6 +71,7 @@ class OperationsController extends Controller
                 'completed_sessions' => (int) $r->completed_sessions,
                 'rejection_reason' => $r->rejection_reason,
                 'created_at' => $r->created_at,
+                'docs_summary' => $r->docs_summary,
             ];
         });
 
@@ -74,6 +85,16 @@ class OperationsController extends Controller
     /** POST /v1/admin/caregivers/{id}/approve */
     public function approveCaregiver(int $id): JsonResponse
     {
+        // 필수 서류(신분증·통장·범죄경력) 확인 여부 — 기능 20(S5). enforce 면 막고, 아니면 응답에 경고로 알림
+        $missingDocs = app(\App\Services\CaregiverDocumentService::class)->missingRequired($id);
+        if ($missingDocs && config('caregiver_docs.enforce_on_approve')) {
+            return response()->json([
+                'success' => false, 'error_code' => 'DOCUMENTS_REQUIRED',
+                'message' => '확인되지 않은 필수 서류가 있어 승인할 수 없습니다: ' . implode(', ', $missingDocs),
+                'missing_documents' => $missingDocs,
+            ], 422);
+        }
+
         $updated = DB::table('caregivers')->where('id', $id)->update([
             'status' => 'active',
             'rejection_reason' => null,
@@ -104,7 +125,11 @@ class OperationsController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'message' => '승인되었습니다.']);
+        return response()->json([
+            'success' => true,
+            'message' => $missingDocs ? '승인되었습니다. (미확인 필수 서류: ' . implode(', ', $missingDocs) . ')' : '승인되었습니다.',
+            'missing_documents' => $missingDocs,
+        ]);
     }
 
     /** POST /v1/admin/caregivers/{id}/reject */

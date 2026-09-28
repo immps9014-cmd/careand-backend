@@ -45,7 +45,8 @@ class NotificationService
     public const TYPE_CAREGIVER_REJECTED = 'CAREGIVER_REJECTED';
     public const TYPE_CAREGIVER_APPLIED = 'CAREGIVER_APPLIED';
     public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
-    public const TYPE_REVIEW_LOW = 'REVIEW_LOW';           // 2점 이하 후기 → CS 관리자(기능 24)
+    public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
+    public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)           // 2점 이하 후기 → CS 관리자(기능 24)
 
     public function __construct(private FcmService $fcm)
     {
@@ -308,6 +309,10 @@ class NotificationService
                     $payload['caregiver_name'] ?? '돌봄전문가',
                     $payload['recipient_name'] ?? '대상자'
                 ),
+            ],
+            self::TYPE_CAREGIVER_DOC_REJECTED => [
+                'title' => '서류 보완 요청',
+                'body' => sprintf('제출하신 %s를 다시 올려 주세요. 사유: %s', $payload['doc_label'] ?? '서류', $payload['reason'] ?? '확인 불가'),
             ],
             self::TYPE_REVIEW_REQUEST => [
                 'title' => '케어는 어떠셨나요?',

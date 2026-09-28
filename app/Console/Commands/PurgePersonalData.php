@@ -72,8 +72,13 @@ class PurgePersonalData extends Command
                     ]);
                     DB::table('caregivers')->where('user_id', $u->id)->update([
                         'birth_date' => '1900-01-01', 'base_address' => self::GONE, 'base_lat' => null, 'base_lng' => null,
-                        'license_no' => null, 'license_image_url' => null, 'updated_at' => now(),
+                        'license_no' => null, 'license_image_url' => null,
+                        'bank_name' => null, 'bank_account' => null, 'bank_holder' => null, 'updated_at' => now(),
                     ]);
+                    // 제출 서류(신분증·통장·범죄경력) 파일과 기록 삭제 — S5
+                    foreach (DB::table('caregivers')->where('user_id', $u->id)->pluck('id') as $cgId) {
+                        app(\App\Services\CaregiverDocumentService::class)->purge((int) $cgId);
+                    }
                     $gid = DB::table('guardians')->where('user_id', $u->id)->value('id');
                     if ($gid) {
                         DB::table('seniors')->where('guardian_id', $gid)->update([

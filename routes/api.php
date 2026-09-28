@@ -97,6 +97,10 @@ Route::prefix('v1')->group(function () {
             Route::patch('me/profile', [CaregiverController::class, 'updateProfile']);
             Route::post('me/leave', [CaregiverController::class, 'requestLeave']);
             Route::post('me/return', [CaregiverController::class, 'requestReturn']);
+            // 서류·정산 계좌 (기능 9·20, S5)
+            Route::get('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'index']);
+            Route::post('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'store']);
+            Route::put('me/payout-account', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'updatePayout']);
             Route::get('{id}', [CaregiverController::class, 'show'])->whereNumber('id');
         });
 
@@ -266,6 +270,11 @@ Route::prefix('v1')->group(function () {
                 Route::post('{id}/approve', [OperationsController::class, 'approveCaregiver'])->whereNumber('id');
                 Route::post('{id}/reject', [OperationsController::class, 'rejectCaregiver'])->whereNumber('id');
                 Route::patch('{id}', [OperationsController::class, 'updateCaregiver'])->whereNumber('id');
+                // 서류 검토 (기능 20, S5)
+                Route::get('{id}/documents', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'index'])->whereNumber('id');
+                Route::get('{id}/documents/{docId}/file', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'file'])->whereNumber(['id', 'docId']);
+                Route::post('{id}/documents/{docId}/verify', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'verify'])->whereNumber(['id', 'docId']);
+                Route::post('{id}/documents/{docId}/reject', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'reject'])->whereNumber(['id', 'docId']);
             });
 
             // 계약·일정 관리 (#21)
