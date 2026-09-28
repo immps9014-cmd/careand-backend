@@ -191,6 +191,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [SettlementController::class, 'index']);
             Route::post('preview', [SettlementController::class, 'preview']);
             Route::get('{id}', [SettlementController::class, 'show'])->whereNumber('id');
+            Route::post('{id}/ack', [\App\Http\Controllers\Api\V1\SettlementActionController::class, 'ack'])->whereNumber('id');         // 명세서 확인(기능 15)
+            Route::post('{id}/dispute', [\App\Http\Controllers\Api\V1\SettlementActionController::class, 'dispute'])->whereNumber('id'); // 이의제기
         });
 
         // === Phase 2 신규 ===
@@ -237,6 +239,8 @@ Route::prefix('v1')->group(function () {
             Route::post('settlements/file-tax', [SettlementController::class, 'fileTax']);
             Route::post('settlements/bulk-confirm', [SettlementController::class, 'bulkConfirm']);
             Route::post('settlements/{id}/confirm', [SettlementController::class, 'confirm'])->whereNumber('id');
+            Route::post('settlements/{id}/dispute-reply', [\App\Http\Controllers\Api\V1\SettlementActionController::class, 'reply'])->whereNumber('id');   // 기능 15
+            Route::post('settlements/{id}/paid', [\App\Http\Controllers\Api\V1\SettlementActionController::class, 'paid'])->whereNumber('id');             // 입금 완료(수동 이체 후)
 
             // Phase 2: 대시보드 KPI
             Route::prefix('dashboard')->group(function () {

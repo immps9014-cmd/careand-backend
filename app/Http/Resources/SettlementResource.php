@@ -20,6 +20,12 @@ class SettlementResource extends JsonResource
             'status' => $this->status,
             'confirmed_at' => $this->confirmed_at?->toIso8601String(),
             'paid_at' => $this->paid_at?->toIso8601String(),
+            // 명세서 확인·이의제기(기능 15)
+            'caregiver_ack_at' => $this->caregiver_ack_at,
+            'dispute_status' => $this->dispute_status,
+            'dispute_reason' => $this->dispute_reason,
+            'disputed_at' => $this->disputed_at,
+            'dispute_reply' => $this->dispute_reply,
 
             'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [
                 'id' => $item->id,

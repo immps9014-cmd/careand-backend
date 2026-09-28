@@ -51,6 +51,8 @@ class NotificationService
     public const TYPE_MATCH_UNMATCHED_ALERT = 'MATCH_UNMATCHED_ALERT';     // 장시간 미매칭 → 매칭 담당 관리자(기능 18)
     public const TYPE_CARE_REMINDER = 'CARE_REMINDER';
     public const TYPE_MONTHLY_REPORT_READY = 'MONTHLY_REPORT_READY';
+    public const TYPE_SETTLEMENT_DISPUTED = 'SETTLEMENT_DISPUTED';           // 정산 이의제기 → 정산 담당 관리자(기능 15)
+    public const TYPE_SETTLEMENT_DISPUTE_REPLY = 'SETTLEMENT_DISPUTE_REPLY'; // 이의제기 답변 → 돌봄전문가
     public const TYPE_ATTENDANCE_OUT_OF_RANGE = 'ATTENDANCE_OUT_OF_RANGE'; // 반경 밖 출퇴근 → 케어 진행 담당 관리자(기능 12)       // 월간 결산 생성 → 리포트 권한 관리자(기능 23)                     // 방문 전 리마인더 → 보호자·돌봄전문가(기능 11)           // 2점 이하 후기 → CS 관리자(기능 24)
 
     public function __construct(private FcmService $fcm)
@@ -350,6 +352,15 @@ class NotificationService
                     $payload['recipient_name'] ?? '대상자',
                     $payload['caregiver_name'] ?? ''
                 ),
+            ],
+            self::TYPE_SETTLEMENT_DISPUTED => [
+                'title' => '⚠ 정산 이의제기',
+                'body' => sprintf('%s 돌봄전문가가 정산서(%s원)에 이의를 제기했어요. 24시간 안에 답변해 주세요.',
+                    $payload['caregiver_name'] ?? '', number_format((int) ($payload['net_amount'] ?? 0))),
+            ],
+            self::TYPE_SETTLEMENT_DISPUTE_REPLY => [
+                'title' => ($payload['resolved'] ?? true) ? '정산 이의제기 답변' : '정산 이의제기 검토 중',
+                'body' => sprintf('운영팀 답변: %s', $payload['reply'] ?? ''),
             ],
             self::TYPE_ATTENDANCE_OUT_OF_RANGE => [
                 'title' => '⚠ 반경 밖 ' . (($payload['event'] ?? '') === 'checkout' ? '퇴근' : '출근'),

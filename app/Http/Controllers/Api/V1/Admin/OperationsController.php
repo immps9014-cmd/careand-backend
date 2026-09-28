@@ -1638,7 +1638,8 @@ class OperationsController extends Controller
             ->select(
                 'st.id', 'cu.name as caregiver_name', 'st.period_start', 'st.period_end',
                 'st.gross_amount', 'st.withholding_tax_3_3 as withholding_tax', 'st.net_amount',
-                'st.status', 'st.hometax_filing_no', 'st.bank_tx_id', 'st.confirmed_at', 'st.paid_at', 'st.created_at'
+                'st.status', 'st.hometax_filing_no', 'st.bank_tx_id', 'st.confirmed_at', 'st.paid_at', 'st.created_at',
+                'st.caregiver_ack_at', 'st.dispute_status', 'st.dispute_reason', 'st.disputed_at', 'st.dispute_reply'
             )
             ->first();
 
@@ -1659,6 +1660,8 @@ class OperationsController extends Controller
             'period_start' => $st->period_start,
             'period_end' => $st->period_end,
             'gross_amount' => (int) $st->gross_amount,
+            'caregiver_ack_at' => $st->caregiver_ack_at,
+            'dispute' => $st->dispute_status ? ['status' => $st->dispute_status, 'reason' => $st->dispute_reason, 'at' => $st->disputed_at, 'reply' => $st->dispute_reply] : null,
             'withholding_tax' => (int) $st->withholding_tax,
             'net_amount' => (int) $st->net_amount,
             'status' => $st->status,
@@ -1690,10 +1693,12 @@ class OperationsController extends Controller
                 'st.id', 'u.name as caregiver_name',
                 'st.period_start', 'st.period_end',
                 'st.gross_amount', 'st.withholding_tax_3_3', 'st.net_amount',
-                'st.status', 'st.hometax_filing_no', 'st.paid_at'
+                'st.status', 'st.hometax_filing_no', 'st.paid_at', 'st.caregiver_ack_at', 'st.dispute_status', 'st.disputed_at'
             );
 
-        if ($request->filled('status')) {
+        if ($request->input('status') === 'disputed') {
+            $query->where('st.dispute_status', 'open');   // 답변 대기 이의제기(기능 15)
+        } elseif ($request->filled('status')) {
             $query->where('st.status', $request->input('status'));
         }
 
@@ -1710,6 +1715,9 @@ class OperationsController extends Controller
             'status' => $s->status,
             'hometax_filing_no' => $s->hometax_filing_no,
             'paid_at' => $s->paid_at,
+            'caregiver_ack_at' => $s->caregiver_ack_at,
+            'dispute_status' => $s->dispute_status,
+            'disputed_at' => $s->disputed_at,
         ]);
 
         $agg = DB::table('settlements')->selectRaw(
