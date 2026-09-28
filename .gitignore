@@ -14,5 +14,7 @@ bootstrap/cache/services.php
 *.bak
 *.bak*
 
-# 사용자 업로드 콘텐츠 (음성일지 등 — 코드 아님, 백업 tar가 담당)
-storage/app/voice-logs/
+# 사용자 업로드 콘텐츠 (음성일지·돌봄전문가 서류·사진 등 — 코드 아님, 백업 tar가 담당)
+# storage/app 전체 제외: careand-deploy 가 git add -A 로 스냅샷을 찍어서, 빠진 폴더가 있으면 개인정보 파일이 커밋된다
+# (2026-09-28 caregiver-docs 시험 파일이 그렇게 커밋됨 — 06-27 에는 voice-logs 가 같은 경로로 GitHub 까지 감)
+storage/app/
