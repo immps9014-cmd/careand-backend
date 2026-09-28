@@ -10,4 +10,6 @@ return [
     'unmatched_alert_hours' => (int) env('MATCH_UNMATCHED_ALERT_HOURS', 6),
     // 방문 몇 시간 전에 보호자·돌봄전문가에게 리마인더(한 세션에 한 번)
     'remind_before_hours' => (int) env('CARE_REMIND_BEFORE_HOURS', 24),
+    // 출퇴근 GPS(기능 12): 도메인 반경(200m·병원 500m) 밖이어도 이 거리(m) 안이면 받아 주고 운영팀에 경고, 넘으면 거부
+    'attendance_hard_limit_m' => (int) env('ATTENDANCE_HARD_LIMIT_M', 3000),
 ];

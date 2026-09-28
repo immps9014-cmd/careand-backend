@@ -248,6 +248,14 @@ class OperationsController extends Controller
      * 진행 현황(Working List): 매칭 완료~AI 일지 검수 전 단계의 케어 세션.
      * status=scheduled|in_progress|completed(검수전) | 미지정=active(예정+진행중+완료검수전).
      */
+    /** POST /v1/admin/care-sessions/{id}/attendance-review — 반경 밖 출퇴근 확인 처리(기능 12, 사유는 감사로그 X-Access-Reason) */
+    public function reviewAttendance(Request $request, int $id): JsonResponse
+    {
+        $n = DB::table('attendance_logs')->where('session_id', $id)->where('out_of_range', 1)->whereNull('reviewed_at')
+            ->update(['reviewed_at' => now(), 'updated_at' => now()]);
+        return response()->json(['success' => true, 'message' => $n ? "반경 밖 기록 {$n}건을 확인 처리했어요." : '확인할 기록이 없어요.', 'data' => ['reviewed' => $n]]);
+    }
+
     public function careSessions(Request $request): JsonResponse
     {
         $perPage = min((int) $request->input('per_page', 20), 100);
@@ -267,7 +275,11 @@ class OperationsController extends Controller
             ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id');
 
-        if (in_array($status, ['scheduled', 'in_progress', 'completed'], true)) {
+        $oor = 'EXISTS(SELECT 1 FROM attendance_logs al WHERE al.session_id = cs.id AND al.out_of_range = 1 AND al.reviewed_at IS NULL)';
+        if ($status === 'out_of_range') {
+            // 반경 밖 출퇴근 확인 대기(기능 12) — 세션 상태와 무관
+            $query->whereRaw($oor);
+        } elseif (in_array($status, ['scheduled', 'in_progress', 'completed'], true)) {
             $query->where('cs.status', $status);
             if ($status === 'completed') {
                 $query->where('cs.review_status', 'pending');
@@ -288,7 +300,8 @@ class OperationsController extends Controller
                 DB::raw('cu.name as caregiver_name'),
                 DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 DB::raw('gu.name as guardian_name'),
-                DB::raw('EXISTS(SELECT 1 FROM ai_log_summaries als WHERE als.session_id = cs.id) as has_summary')
+                DB::raw('EXISTS(SELECT 1 FROM ai_log_summaries als WHERE als.session_id = cs.id) as has_summary'),
+                DB::raw('(SELECT MAX(al.distance_m) FROM attendance_logs al WHERE al.session_id = cs.id AND al.out_of_range = 1 AND al.reviewed_at IS NULL) as out_of_range_m')
             )
             ->orderByRaw("FIELD(cs.status, 'in_progress', 'scheduled', 'completed')")
             ->orderBy('cs.scheduled_start')
@@ -309,9 +322,12 @@ class OperationsController extends Controller
             'duration_min' => $r->duration_min !== null ? (int) $r->duration_min : null,
             'is_manual' => (bool) $r->is_manual,
             'has_summary' => (bool) $r->has_summary,
+            // 확인 안 된 반경 밖 출퇴근의 최대 거리(m) — null 이면 없음
+            'out_of_range_m' => $r->out_of_range_m !== null ? (int) round($r->out_of_range_m) : null,
         ]);
 
         $summary = [
+            'out_of_range' => (int) DB::table('attendance_logs')->where('out_of_range', 1)->whereNull('reviewed_at')->distinct()->count('session_id'),
             'scheduled' => (int) DB::table('care_sessions')->where('status', 'scheduled')->count(),
             'in_progress' => (int) DB::table('care_sessions')->where('status', 'in_progress')->count(),
             'completed_pending' => (int) DB::table('care_sessions')->where('status', 'completed')->where('review_status', 'pending')->count(),

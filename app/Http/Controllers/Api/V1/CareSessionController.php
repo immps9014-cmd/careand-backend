@@ -89,9 +89,12 @@ class CareSessionController extends Controller
             $location[0], $location[1]
         ) : 0;
 
-        $isValid = $isManual ? true : ($distance <= $radius);
+        // 반경 안 → 정상 / 반경 밖이지만 허용 한도 안 → 받되 운영팀 경고(기능 12) / 한도 밖 → 거부
+        $hardLimit = (int) config('matching_rules.attendance_hard_limit_m', 3000);
+        $outOfRange = !$isManual && $distance > $radius;
+        $isValid = $isManual ? true : ($distance <= max($radius, $hardLimit));
 
-        DB::transaction(function () use ($session, $data, $distance, $isValid) {
+        DB::transaction(function () use ($session, $data, $distance, $isValid, $outOfRange) {
             AttendanceLog::create([
                 'session_id' => $session->id,
                 'event_type' => 'checkin',
@@ -100,6 +103,7 @@ class CareSessionController extends Controller
                 'distance_m' => $distance,
                 'accuracy_m' => $data['accuracy'] ?? null,
                 'is_valid' => $isValid,
+                'out_of_range' => $isValid && $outOfRange,
                 'logged_at' => now(),
             ]);
 
@@ -120,17 +124,23 @@ class CareSessionController extends Controller
                 'success' => false,
                 'error_code' => 'GPS_TOO_FAR',
                 'message' => sprintf(
-                    '서비스 장소에서 너무 멀리 떨어져 있습니다. (거리: %dm, 허용: %dm 이내)',
-                    round($distance), $radius
+                    '서비스 장소에서 너무 멀리 떨어져 있습니다. (거리: %dm, 허용: %dm 이내) 장소에 도착한 뒤 다시 시도해 주세요.',
+                    round($distance), max($radius, $hardLimit)
                 ),
                 'distance_m' => round($distance, 2),
             ], 422);
         }
         $this->notifyGuardian($session->match_id, NotificationService::TYPE_CARE_STARTED, ['session_id' => $session->id]);
+        if ($outOfRange) {
+            $this->alertOutOfRange($session, 'checkin', $distance, $radius);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => '체크인 완료. 케어를 시작합니다.',
+            'message' => $outOfRange
+                ? sprintf('체크인 완료. 서비스 장소에서 %dm 떨어져 있어 운영팀에 확인 요청이 전달됐어요.', round($distance))
+                : '체크인 완료. 케어를 시작합니다.',
+            'out_of_range' => $outOfRange,
             'data' => [
                 'session_id' => $session->id,
                 'distance_m' => round($distance, 2),
@@ -171,14 +181,21 @@ class CareSessionController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($session, $validated) {
+        // 퇴근 위치도 거리를 남긴다 — 반경 밖이면 운영팀 경고(기능 12). 퇴근은 막지 않는다(케어 시간 산정이 우선)
+        $loc = $session->match->request->recipientLocation();
+        $outDistance = $loc ? $this->calculateDistance((float) $validated['lat'], (float) $validated['lng'], $loc[0], $loc[1]) : 0;
+        $outRadius = $session->match->request->checkinRadiusMeters();
+        $outOut = $loc && !($session->match->is_manual ?? false) && $outDistance > $outRadius;
+
+        DB::transaction(function () use ($session, $validated, $outDistance, $outOut) {
             AttendanceLog::create([
                 'session_id' => $session->id,
                 'event_type' => 'checkout',
                 'lat' => $validated['lat'],
                 'lng' => $validated['lng'],
-                'distance_m' => 0,
+                'distance_m' => min($outDistance, 999999),
                 'is_valid' => true,
+                'out_of_range' => $outOut,
                 'logged_at' => now(),
             ]);
 
@@ -207,6 +224,10 @@ class CareSessionController extends Controller
             $match->caregiver->increment('completed_sessions');
         });
 
+        if ($outOut) {
+            $this->alertOutOfRange($session, 'checkout', $outDistance, $outRadius);
+        }
+
         // C:Writer AI 일지 자동 생성 (비동기)
         GenerateCareLogJob::dispatch($session->id);
         $this->notifyGuardian($session->match_id, NotificationService::TYPE_CARE_COMPLETED,
@@ -218,7 +239,10 @@ class CareSessionController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => '체크아웃 완료. 수고하셨습니다.',
+            'message' => $outOut
+                ? sprintf('체크아웃 완료. 서비스 장소에서 %dm 떨어져 있어 운영팀에 확인 요청이 전달됐어요.', round($outDistance))
+                : '체크아웃 완료. 수고하셨습니다.',
+            'out_of_range' => $outOut,
             'data' => [
                 'duration_min' => $session->fresh()->duration_min,
                 'ended_at' => $session->fresh()->actual_end->toIso8601String(),
@@ -395,6 +419,19 @@ class CareSessionController extends Controller
     /**
      * Haversine 공식으로 두 좌표 간 거리(미터) 계산
      */
+    /** 반경 밖 출퇴근 → 케어 진행 담당 관리자 알림(기능 12) */
+    private function alertOutOfRange(CareSession $session, string $event, float $distance, int $radius): void
+    {
+        $svc = app(NotificationService::class);
+        $ctx = $svc->matchContext((int) $session->match_id);
+        foreach ($svc->adminsFor('care-sessions') as $adminId) {
+            $svc->notifySafely($adminId, NotificationService::TYPE_ATTENDANCE_OUT_OF_RANGE, [
+                'session_id' => $session->id, 'event' => $event, 'distance_m' => (int) round($distance), 'radius_m' => $radius,
+                'caregiver_name' => $ctx?->caregiver_name, 'recipient_name' => $ctx?->recipient_name,
+            ]);
+        }
+    }
+
     private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
         $earthRadius = 6371000; // 미터

@@ -288,6 +288,7 @@ Route::prefix('v1')->group(function () {
 
             // 케어 진행 현황(Working List)
             Route::get('care-sessions', [OperationsController::class, 'careSessions']);
+            Route::post('care-sessions/{id}/attendance-review', [OperationsController::class, 'reviewAttendance'])->whereNumber('id');   // 기능 12
 
             // AI 일지 검수·승인 (#22)
             Route::prefix('care-logs')->group(function () {

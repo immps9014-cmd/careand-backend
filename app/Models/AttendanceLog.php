@@ -17,6 +17,8 @@ class AttendanceLog extends Model
         'distance_m',
         'accuracy_m',
         'is_valid',
+        'out_of_range',
+        'reviewed_at',
         'logged_at',
     ];
 
