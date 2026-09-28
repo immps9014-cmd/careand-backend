@@ -629,10 +629,15 @@ class CaregiverController extends Controller
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_end, m.scheduled_end) as scheduled_end'),
                 'r.service_domain',
                 'r.requirements',
+                'r.id as request_id',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
             )
             ->orderByDesc('m.scheduled_start')
             ->get()
+            ->map(function ($r) {
+                $r->place = in_array($r->status, ['scheduled', 'in_progress'], true) ? $this->visitPlace((int) $r->request_id) : null;
+                return $r;
+            })
             ->map(fn ($r) => [
                 'id' => $r->id,
                 'status' => $r->status,
@@ -644,9 +649,28 @@ class CaregiverController extends Controller
                 'actual_end' => $r->actual_end,
                 'duration_min' => $r->duration_min,
                 'photo_required' => (bool) (json_decode($r->requirements ?? '', true)['photo_required'] ?? false),
+                // 방문 장소(길찾기, 기능 35) — 예정·진행 중 세션만
+                'place' => $r->place,
             ]);
 
         return response()->json(['success' => true, 'data' => $rows]);
+    }
+
+    /** 방문 장소 {name, lat, lng} — 간병은 병원, 생활지원은 등록 주소, 그 외는 대상자 집. 좌표 없으면 null */
+    private function visitPlace(int $requestId): ?array
+    {
+        $req = \App\Models\MatchRequest::find($requestId);
+        $loc = $req?->recipientLocation();
+        if (!$req || !$loc) {
+            return null;
+        }
+        $rc = $req->recipient();
+        $name = match ($req->service_domain) {
+            'nursing' => $rc->hospital_name ?? '병원',
+            'living_support' => $rc->address ?? $rc->label ?? '서비스 장소',
+            default => $rc->home_address ?? '대상자 댁',
+        };
+        return ['name' => (string) $name, 'lat' => $loc[0], 'lng' => $loc[1]];
     }
 
     /**
