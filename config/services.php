@@ -13,6 +13,11 @@ return [
         'stub' => env('EXTERNAL_STUB', true),
     ],
 
+    // 스텁 모드에서 고정 인증번호(123456)를 허용할 테스트 번호 접두어(숫자만, 쉼표 구분) — 2026-09-28 S2
+    'otp' => [
+        'stub_test_prefixes' => env('OTP_STUB_TEST_PREFIXES', '0100000'),
+    ],
+
     'mailgun' => [
         'domain' => env('MAILGUN_DOMAIN'),
         'secret' => env('MAILGUN_SECRET'),

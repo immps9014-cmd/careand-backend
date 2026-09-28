@@ -28,6 +28,8 @@ class Kernel extends HttpKernel
         'api' => [
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            // 개인정보 접근 감사로그(응답 후 기록) — 2026-09-28 구현계획 S2
+            \App\Http\Middleware\AuditPersonalDataAccess::class,
         ],
     ];
 

@@ -20,8 +20,8 @@ class OtpService
      */
     public function send(string $phone): void
     {
-        // [개발/테스트] 스텁 모드에서는 발송 횟수 제한 없이 여러 번 시도 가능.
-        if (!config('services.external.stub')) {
+        // 발송 횟수 제한 — 스텁 모드에서도 테스트 번호가 아니면 적용(2026-09-28, S2)
+        if (!(config('services.external.stub') && $this->isTestNumber($phone))) {
             $key = "otp:rate:{$phone}";
             if (RateLimiter::tooManyAttempts($key, self::RATE_LIMIT_PER_HOUR)) {
                 throw new RuntimeException(
@@ -52,9 +52,11 @@ class OtpService
      */
     public function verify(string $phone, string $code): bool
     {
-        // [개발/테스트 전용] 스텁 모드에서는 고정 인증번호 123456 통과.
-        // 실 SMS 전환(EXTERNAL_STUB=false) 시 자동 비활성화되어 운영에는 영향 없음.
-        if (config('services.external.stub') && $code === '123456') {
+        // [개발/테스트 전용] 스텁 모드에서 고정 인증번호 123456 은 **테스트 번호에만** 통과.
+        // 예전엔 아무 번호나 통과해 남의 번호로 가입할 수 있었다(2026-09-28, 구현계획 S2).
+        // 테스트 번호 = OTP_STUB_TEST_PREFIXES(기본 0100000 → 010-0000-xxxx, 실제 발급되지 않는 대역).
+        // 실 SMS 전환(EXTERNAL_STUB=false) 시 자동 비활성화.
+        if (config('services.external.stub') && $code === '123456' && $this->isTestNumber($phone)) {
             Cache::forget("otp:code:{$phone}");
             return true;
         }
@@ -71,6 +73,19 @@ class OtpService
         // 검증 성공 → OTP 삭제 (1회용)
         Cache::forget("otp:code:{$phone}");
         return true;
+    }
+
+    /** 스텁 모드 고정 인증번호를 허용할 테스트 번호인지 — 숫자만 비교 */
+    private function isTestNumber(string $phone): bool
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+        $prefixes = array_filter(array_map('trim', explode(',', (string) config('services.otp.stub_test_prefixes', '0100000'))));
+        foreach ($prefixes as $p) {
+            if ($p !== '' && str_starts_with($digits, $p)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
