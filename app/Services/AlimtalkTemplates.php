@@ -29,6 +29,7 @@ class AlimtalkTemplates
         NotificationService::TYPE_SETTLEMENT_CONFIRMED => 'CAREN_SETTLE_OK',
         NotificationService::TYPE_SETTLEMENT_PAID => 'CAREN_SETTLE_PAID',
         NotificationService::TYPE_CAREGIVER_APPROVED => 'CAREN_CG_APPROVED',
+        NotificationService::TYPE_CARE_REMINDER => 'CAREN_REMIND_24H',
     ];
 
     /** 심사 통과 후 받은 템플릿 코드 — 없으면 '' (스텁 기록만) */
@@ -100,6 +101,11 @@ class AlimtalkTemplates
             'CAREN_SETTLE_PAID' => ['정산금 입금',
                 "[케어앤] 정산금 입금\n{$me} 선생님, " . number_format((int) ($p['net_amount'] ?? 0)) . '원이 등록 계좌로 입금되었어요. 수고 많으셨습니다.',
                 null],
+            'CAREN_REMIND_24H' => ['내일 방문 안내',
+                "[케어앤] 내일 방문 안내\n{$me}님, 내일 돌봄 방문이 예정되어 있어요.\n"
+                . "■ 일시: {$when}\n■ 대상: {$target}님\n■ 돌봄전문가: {$cg}\n"
+                . '일정 변경이 필요하면 미리 알려 주세요.',
+                ['일정 보기', '/schedule']],
             'CAREN_CG_APPROVED' => ['자격 심사 완료',
                 "[케어앤] 자격 심사 완료\n{$me} 선생님, 자격 심사가 완료되었어요. 이제 돌봄 요청을 받을 수 있어요.",
                 ['시작하기', '/home']],

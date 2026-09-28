@@ -46,7 +46,10 @@ class NotificationService
     public const TYPE_CAREGIVER_APPLIED = 'CAREGIVER_APPLIED';
     public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
     public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
-    public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)           // 2점 이하 후기 → CS 관리자(기능 24)
+    public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
+    public const TYPE_MATCH_OFFER_TIMEOUT = 'MATCH_OFFER_TIMEOUT';         // 지정 후보 무응답 자동 거절 → 보호자(기능 10)
+    public const TYPE_MATCH_UNMATCHED_ALERT = 'MATCH_UNMATCHED_ALERT';     // 장시간 미매칭 → 매칭 담당 관리자(기능 18)
+    public const TYPE_CARE_REMINDER = 'CARE_REMINDER';                     // 방문 전 리마인더 → 보호자·돌봄전문가(기능 11)           // 2점 이하 후기 → CS 관리자(기능 24)
 
     public function __construct(private FcmService $fcm)
     {
@@ -185,7 +188,16 @@ class NotificationService
     private function getTemplate(string $type, array $payload): ?array
     {
         return match ($type) {
-            self::TYPE_MATCH_REQUEST_ASSIGNED => [
+            self::TYPE_MATCH_REQUEST_ASSIGNED => isset($payload['offer_minutes']) ? [
+                // 보호자가 이 돌봄전문가를 지정 — 응답 시한 있음(기능 10)
+                'title' => '보호자가 선생님을 지정했어요',
+                'body' => sprintf(
+                    '%s %s 요청이에요. %d분 안에 수락해 주세요. 응답이 없으면 자동으로 넘어가요.',
+                    $payload['service_label'] ?? '돌봄',
+                    $payload['scheduled_at'] ?? '',
+                    (int) $payload['offer_minutes']
+                ),
+            ] : [
                 'title' => '새 매칭 요청',
                 'body' => sprintf(
                     '%s %s 요청이 도착했어요. (%s)',
@@ -308,6 +320,33 @@ class NotificationService
                     '%s 돌봄전문가가 %s 케어에 지원했어요. 후보를 확인해보세요.',
                     $payload['caregiver_name'] ?? '돌봄전문가',
                     $payload['recipient_name'] ?? '대상자'
+                ),
+            ],
+            self::TYPE_MATCH_OFFER_TIMEOUT => [
+                'title' => '다른 돌봄전문가를 선택해 주세요',
+                'body' => sprintf(
+                    '%s 돌봄전문가가 %d분 안에 응답하지 않아 요청이 넘어왔어요. 후보 목록에서 다른 분을 선택해 주세요.',
+                    $payload['caregiver_name'] ?? '지정한',
+                    (int) ($payload['offer_minutes'] ?? 5)
+                ),
+            ],
+            self::TYPE_MATCH_UNMATCHED_ALERT => [
+                'title' => '⚠ 장시간 미매칭 요청',
+                'body' => sprintf(
+                    '요청 #%d(%s, %s)이 %d시간째 매칭되지 않았어요. 수동 매칭을 검토해 주세요.',
+                    (int) ($payload['request_id'] ?? 0),
+                    $payload['service_label'] ?? '돌봄',
+                    $payload['scheduled_at'] ?? '',
+                    (int) ($payload['hours'] ?? 6)
+                ),
+            ],
+            self::TYPE_CARE_REMINDER => [
+                'title' => '내일 방문 안내',
+                'body' => sprintf(
+                    '%s %s 돌봄 방문이 예정되어 있어요. (돌봄전문가 %s)',
+                    $payload['scheduled_at'] ?? '',
+                    $payload['recipient_name'] ?? '대상자',
+                    $payload['caregiver_name'] ?? ''
                 ),
             ],
             self::TYPE_CAREGIVER_DOC_REJECTED => [

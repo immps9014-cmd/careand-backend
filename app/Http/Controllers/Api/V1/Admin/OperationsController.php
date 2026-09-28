@@ -863,7 +863,7 @@ class OperationsController extends Controller
     /** POST /v1/admin/matching/requests/{id}/manual-assign — 운영자 수동 매칭 */
     public function manualAssign(Request $request, int $id): JsonResponse
     {
-        $request->validate(['caregiver_id' => 'required|integer']);
+        $request->validate(['caregiver_id' => 'required|integer', 'force' => 'nullable|boolean']);
         $caregiverId = (int) $request->input('caregiver_id');
 
         $req = DB::table('match_requests')->where('id', $id)->first();
@@ -886,6 +886,20 @@ class OperationsController extends Controller
         }
         $end = $start->copy()->addDays($days - 1)->addMinutes($durationMin);
         $estimated = round($baseRate * $durationMin / 60) * $days;
+
+        // 일정 충돌(기능 21) — 운영자는 force=true 로 강행할 수 있고, 그 사실은 감사로그(요청 본문)로 남는다
+        $intervals = [];
+        for ($i = 0; $i < $days; $i++) {
+            $intervals[] = [$start->copy()->addDays($i), $start->copy()->addDays($i)->addMinutes($durationMin)];
+        }
+        $conflict = \App\Support\ScheduleConflict::find($caregiverId, $intervals, $id);
+        if ($conflict && !$request->boolean('force')) {
+            return response()->json([
+                'success' => false, 'error_code' => 'SCHEDULE_CONFLICT',
+                'message' => \App\Support\ScheduleConflict::message($conflict) . ' 그래도 배정하려면 강제 배정을 선택하세요.',
+                'conflict' => $conflict,
+            ], 409);
+        }
 
         DB::transaction(function () use ($id, $caregiverId, $req, $start, $end, $now, $durationMin, $baseRate, $estimated, $days) {
             // 1) 후보 등록(수동) — 중복 방지

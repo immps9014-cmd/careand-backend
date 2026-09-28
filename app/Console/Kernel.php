@@ -21,6 +21,13 @@ class Kernel extends ConsoleKernel
             ->appendOutputTo(storage_path('logs/settlements.log'));
 
         // 미매칭 요청 자동 만료 (매시 정각) — 예정시각 지난 open/matching → expired + 보호자 알림
+        // 매칭 응답 시한·장시간 미매칭·방문 전 리마인더(기능 10·11·18, S5)
+        $schedule->command('matching:watch')
+            ->everyMinute()
+            ->withoutOverlapping(5)
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/matching-watch.log'));
+
         $schedule->command('requests:expire-stale')
             ->hourly()
             ->onOneServer()

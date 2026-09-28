@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\MatchAlreadyTakenException;
+use App\Exceptions\ScheduleConflictException;
+use App\Support\ScheduleConflict;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Match\StoreMatchRequestRequest;
 use App\Http\Resources\MatchCandidateResource;
@@ -311,6 +313,8 @@ class MatchRequestController extends Controller
                     'error_code' => 'MATCH_ALREADY_TAKEN',
                     'message' => $e->getMessage(),
                 ], 409);
+            } catch (ScheduleConflictException $e) {
+                return response()->json(['success' => false, 'error_code' => 'SCHEDULE_CONFLICT', 'message' => $e->getMessage()], 409);
             }
             $this->notifyMatchConfirmed($match);
 
@@ -327,10 +331,32 @@ class MatchRequestController extends Controller
             ]);
         }
 
+        // 지정 전에 일정 충돌 확인 — 수락해도 확정이 안 될 후보에게 기다리게 하지 않음
+        $starts = $this->sessionStarts($matchRequest);
+        $conflict = ScheduleConflict::find((int) $candidate->caregiver_id,
+            array_map(fn ($st) => [$st->copy(), $st->copy()->addMinutes($matchRequest->duration_min)], $starts), $matchRequest->id);
+        if ($conflict) {
+            return response()->json(['success' => false, 'error_code' => 'SCHEDULE_CONFLICT',
+                'message' => ScheduleConflict::message($conflict) . ' 다른 후보를 선택해 주세요.'], 409);
+        }
+
         $matchRequest->update(['status' => 'matching']);
 
-        // TODO: 인력에게 FCM 푸시 알림 (MATCH_REQUEST_ASSIGNED)
-        // app(NotificationService::class)->notifyCaregiver($candidate->caregiver_id, 'MATCH_REQUEST_ASSIGNED', [...]);
+        // 응답 시한(기능 10) — 지나면 matching:watch 가 자동 거절하고 보호자에게 알린다
+        $timeout = (int) config('matching_rules.offer_timeout_min', 5);
+        DB::table('match_candidates')->where('id', $candidate->id)->update([
+            'offered_at' => now(), 'offer_expires_at' => now()->addMinutes($timeout), 'updated_at' => now(),
+        ]);
+        $svc = app(NotificationService::class);
+        $cgUserId = DB::table('caregivers')->where('id', $candidate->caregiver_id)->value('user_id');
+        $scheduledKst = $matchRequest->scheduled_start?->copy()->setTimezone('Asia/Seoul')->format('n월 j일 H:i') ?? '';
+        $svc->notifySafely($cgUserId ? (int) $cgUserId : null, NotificationService::TYPE_MATCH_REQUEST_ASSIGNED, [
+            'request_id' => $matchRequest->id,
+            'candidate_id' => $candidate->id,
+            'service_label' => \App\Support\ServiceDomains::label((string) $matchRequest->service_domain),
+            'scheduled_at' => $scheduledKst,
+            'offer_minutes' => $timeout,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -385,6 +411,9 @@ class MatchRequestController extends Controller
                 'error_code' => 'MATCH_ALREADY_TAKEN',
                 'message' => $e->getMessage(),
             ], 409);
+        } catch (ScheduleConflictException $e) {
+            // 수락하려는 시간에 본인의 다른 일정이 있음(기능 11)
+            return response()->json(['success' => false, 'error_code' => 'SCHEDULE_CONFLICT', 'message' => $e->getMessage()], 409);
         }
 
         $this->notifyMatchConfirmed($match);
@@ -457,6 +486,13 @@ class MatchRequestController extends Controller
 
             // 정기(recurring) 요청의 세션 시작 일시 목록 — 연속일 또는 요일 반복
             $starts = $this->sessionStarts($request);
+
+            // 일정 충돌(기능 11·21): 이 돌봄전문가의 기존 예정·진행 세션과 한 회차라도 겹치면 확정하지 않는다
+            $conflict = ScheduleConflict::find((int) $candidate->caregiver_id,
+                array_map(fn ($st) => [$st->copy(), $st->copy()->addMinutes($request->duration_min)], $starts), $request->id);
+            if ($conflict) {
+                throw new ScheduleConflictException(ScheduleConflict::message($conflict));
+            }
             $sessionCount = count($starts);
             $lastStart = end($starts);
 
