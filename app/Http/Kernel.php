@@ -44,5 +44,6 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'role' => \App\Http\Middleware\CheckRole::class,
+        'admin.perm' => \App\Http\Middleware\AdminPermission::class,   // 관리자 권한 5단계(S2-3)
     ];
 }

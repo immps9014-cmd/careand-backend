@@ -30,6 +30,11 @@ class UserResource extends JsonResource
             'caregiver' => $this->whenLoaded('caregiver'),
             'organization' => $this->whenLoaded('organization'),
             'admin' => $this->whenLoaded('admin'),
+            // 관리자 권한 5단계 — 화면 메뉴 표시용 {영역: {read, write}} (S2-3). 실제 차단은 서버 AdminPermission
+            'admin_permissions' => $this->when($this->role === 'admin' && $this->relationLoaded('admin'),
+                fn () => \App\Support\AdminRbac::permissionsFor($this->admin?->permission_level)),
+            'admin_level_label' => $this->when($this->role === 'admin' && $this->relationLoaded('admin'),
+                fn () => config('admin_rbac.levels.' . $this->admin?->permission_level)),
         ];
     }
 }

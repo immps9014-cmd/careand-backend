@@ -201,7 +201,14 @@ Route::prefix('v1')->group(function () {
         });
 
         // === 관리자 전용 ===
-        Route::prefix('admin')->middleware('role:admin')->group(function () {
+        // 권한 5단계(S2-3): role:admin 다음에 영역별 read/write 검사 — 규칙 config/admin_rbac.php
+        Route::prefix('admin')->middleware(['role:admin', 'admin.perm'])->group(function () {
+            // 관리자 계정·권한 (슈퍼관리자 전용)
+            Route::get('admins', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'index']);
+            Route::post('admins', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'store']);
+            Route::patch('admins/{id}', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'update'])->whereNumber('id');
+            Route::post('admins/{id}/reset-2fa', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'resetTwoFactor'])->whereNumber('id');
+
             // 정산
             Route::post('settlements/run', [SettlementController::class, 'runWeekly']);
             Route::post('settlements/file-tax', [SettlementController::class, 'fileTax']);
