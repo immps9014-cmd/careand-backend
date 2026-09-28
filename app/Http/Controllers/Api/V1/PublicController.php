@@ -33,12 +33,17 @@ class PublicController extends Controller
             ->limit(8)
             ->get();
 
+        // 평균 만족도는 실제 보호자 후기로 — 10건 미만이면 공개하지 않는다(null → 화면은 「집계 중」). 2026-09-29 S6 시드 평점 초기화
+        $rv = DB::table('reviews')->where('reviewer_role', 'guardian')->selectRaw('COUNT(*) n, AVG(rating) a')->first();
+        $ratingPublic = (int) $rv->n >= 10 ? round((float) $rv->a, 1) : null;
+
         return response()->json([
             'success' => true,
             'data' => [
                 'caregivers' => (int) $agg->caregivers,
                 'completed_sessions' => (int) $agg->sessions,
-                'rating_avg' => round((float) $agg->rating, 1),
+                'rating_avg' => $ratingPublic,
+                'review_count' => (int) $rv->n,
                 'regions' => $regions,
             ],
         ]);
