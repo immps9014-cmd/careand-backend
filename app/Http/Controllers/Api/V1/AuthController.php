@@ -141,7 +141,9 @@ class AuthController extends Controller
             return $user;
         });
 
-        $token = JWTAuth::fromUser($user);
+        // 페이로드 팩토리(싱글턴)가 앞선 발급의 클레임을 들고 있다(S6 시험에서 확인) — 발급 전에 비운다
+        JWTAuth::factory()->emptyClaims();
+        $token = JWTAuth::customClaims([])->fromUser($user);
 
         // login/me와 동일하게 역할 프로필을 eager-load — UserResource가 whenLoaded라
         // 미로드 시 guardian.intent가 응답에서 누락되어 가입 직후 홈 개인화가 불발됨.

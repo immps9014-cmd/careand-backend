@@ -78,7 +78,8 @@ class SocialAuthController extends Controller
             DB::table('social_accounts')->where('user_id', $user->id)->where('provider', $provider)->update(['last_login_at' => now()]);
             $this->audit($request, $user->id, "auth.social.login.{$provider}");
             $user->load(['guardian', 'caregiver', 'organization', 'admin']);
-            $token = JWTAuth::fromUser($user);
+            JWTAuth::factory()->emptyClaims();   // 앞선 발급의 클레임이 섞이지 않게(S6)
+            $token = JWTAuth::customClaims([])->fromUser($user);
             return response()->json([
                 'success' => true,
                 'user' => new UserResource($user),
