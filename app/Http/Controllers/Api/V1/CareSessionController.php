@@ -210,6 +210,10 @@ class CareSessionController extends Controller
         GenerateCareLogJob::dispatch($session->id);
         $this->notifyGuardian($session->match_id, NotificationService::TYPE_CARE_COMPLETED,
             ['session_id' => $session->id, 'duration_min' => (int) $session->fresh()->duration_min]);
+        // 매칭의 마지막 회차가 끝나면 후기 요청(기능 7) — 정기 요청은 회차마다가 아니라 한 번만
+        if ($session->match->fresh()->status === 'completed') {
+            $this->notifyGuardian($session->match_id, NotificationService::TYPE_REVIEW_REQUEST, ['match_id' => $session->match_id]);
+        }
 
         return response()->json([
             'success' => true,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\V1\GuardianController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,14 @@ class CsController extends Controller
             : 0;
         $reviewsNegative = $distribution[1] + $distribution[2];
 
+        // 낮은 평점 답변 SLA(기능 24) — 2점 이하 알림 시각부터 운영자 답변까지. 기준 24시간
+        $slaHours = 24;
+        $flagged = DB::table('reviews')->whereNotNull('flagged_at');
+        $negativeOpen = (clone $flagged)->whereNull('admin_reply')->count();
+        $slaOverdue = (clone $flagged)->whereNull('admin_reply')->where('flagged_at', '<', now()->subHours($slaHours))->count();
+        $avgReplyHours = (clone $flagged)->whereNotNull('replied_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, flagged_at, replied_at)) / 60 as h')->value('h');
+
         $chatbotTotal = DB::table('chatbot_sessions')->count();
         $chatbotOpen = DB::table('chatbot_sessions')->whereNull('ended_at')->count();
 
@@ -45,6 +54,10 @@ class CsController extends Controller
                 'reviews_avg' => (float) $reviewsAvg,
                 'reviews_negative' => $reviewsNegative,
                 'rating_distribution' => $distribution,
+                'negative_open' => $negativeOpen,
+                'sla_hours' => $slaHours,
+                'sla_overdue' => $slaOverdue,
+                'avg_reply_hours' => $avgReplyHours !== null ? round((float) $avgReplyHours, 1) : null,
                 'chatbot_total' => $chatbotTotal,
                 'chatbot_open' => $chatbotOpen,
             ],
@@ -85,7 +98,12 @@ class CsController extends Controller
 
         $query = DB::table('reviews as r')
             ->leftJoin('users as u', 'u.id', '=', 'r.reviewer_id')
+            ->leftJoin('matches as m', 'm.id', '=', 'r.match_id')
+            ->leftJoin('match_requests as mr', 'mr.id', '=', 'm.request_id')
             ->select(
+                'r.scores',
+                'r.flagged_at',
+                'mr.service_domain',
                 'r.id',
                 'r.match_id',
                 'r.reviewer_id',
@@ -108,11 +126,16 @@ class CsController extends Controller
         if ($request->boolean('negative')) {
             $query->where('r.rating', '<=', 2);
         }
+        if ($request->boolean('unanswered')) {
+            $query->whereNotNull('r.flagged_at')->whereNull('r.admin_reply');
+        }
 
         $paginated = $query->orderByDesc('r.created_at')->paginate($perPage);
 
         $items = collect($paginated->items())->map(function ($row) {
             $tags = $row->tags ? json_decode($row->tags, true) : [];
+            $scores = $row->scores ? (json_decode($row->scores, true) ?: []) : [];
+            $labels = array_column(GuardianController::criteria($row->service_domain), 'label', 'key');
 
             return [
                 'id' => $row->id,
@@ -124,6 +147,12 @@ class CsController extends Controller
                 'comment' => $row->comment,
                 'tags' => is_array($tags) ? $tags : [],
                 'is_negative' => (int) $row->rating <= 2,
+                'service_domain' => $row->service_domain,
+                'scores' => collect($scores)->map(fn ($v, $k) => ['key' => $k, 'label' => $labels[$k] ?? $k, 'score' => (int) $v])->values(),
+                'flagged_at' => $row->flagged_at,
+                // 답변 대기 시간(시간) — 2점 이하 미답변만
+                'open_hours' => ($row->flagged_at && !$row->admin_reply)
+                    ? round(\Illuminate\Support\Carbon::parse($row->flagged_at)->diffInMinutes(now()) / 60, 1) : null,
                 'admin_reply' => $row->admin_reply,
                 'replied_at' => $row->replied_at,
                 'created_at' => $row->created_at,

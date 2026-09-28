@@ -16,10 +16,14 @@ class Review extends Model
         'rating',
         'comment',
         'tags',
+        'scores',
+        'flagged_at',
     ];
 
     protected $casts = [
         'tags' => 'array',
+        'scores' => 'array',
+        'flagged_at' => 'datetime',
     ];
 
     public function match()

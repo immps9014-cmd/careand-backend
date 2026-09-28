@@ -44,6 +44,8 @@ class NotificationService
     public const TYPE_CAREGIVER_APPROVED = 'CAREGIVER_APPROVED';
     public const TYPE_CAREGIVER_REJECTED = 'CAREGIVER_REJECTED';
     public const TYPE_CAREGIVER_APPLIED = 'CAREGIVER_APPLIED';
+    public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
+    public const TYPE_REVIEW_LOW = 'REVIEW_LOW';           // 2점 이하 후기 → CS 관리자(기능 24)
 
     public function __construct(private FcmService $fcm)
     {
@@ -138,6 +140,15 @@ class NotificationService
                 : '';
         }
         return $row;
+    }
+
+    /** 해당 관리자 영역(config/admin_rbac.php)을 볼 수 있는 활성 관리자 user_id 목록 */
+    public function adminsFor(string $area): array
+    {
+        $levels = config("admin_rbac.areas.$area.read", config('admin_rbac.default.read'));
+        return DB::table('users as u')->join('admins as a', 'a.user_id', '=', 'u.id')
+            ->where('u.role', 'admin')->where('u.status', 'active')->whereNull('u.deleted_at')
+            ->whereIn('a.permission_level', $levels)->pluck('u.id')->map(fn ($i) => (int) $i)->all();
     }
 
     /** 알림 실패가 본 처리(매칭·출퇴근·결제)를 깨지 않도록 감싼 발송 */
@@ -296,6 +307,21 @@ class NotificationService
                     '%s 돌봄전문가가 %s 케어에 지원했어요. 후보를 확인해보세요.',
                     $payload['caregiver_name'] ?? '돌봄전문가',
                     $payload['recipient_name'] ?? '대상자'
+                ),
+            ],
+            self::TYPE_REVIEW_REQUEST => [
+                'title' => '케어는 어떠셨나요?',
+                'body' => sprintf(
+                    '%s 돌봄전문가와의 케어가 끝났어요. 만족도를 남겨 주시면 서비스 개선에 큰 도움이 돼요.',
+                    $payload['caregiver_name'] ?? '돌봄전문가'
+                ),
+            ],
+            self::TYPE_REVIEW_LOW => [
+                'title' => '⚠ 낮은 평점 후기',
+                'body' => sprintf(
+                    '%s 돌봄전문가에게 %d점 후기가 등록됐어요. CS 확인·답변이 필요해요.',
+                    $payload['caregiver_name'] ?? '돌봄전문가',
+                    (int) ($payload['rating'] ?? 0)
                 ),
             ],
             default => null,

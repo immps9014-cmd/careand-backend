@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Review;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -99,7 +100,7 @@ class GuardianController extends Controller
                 'm.id as match_id', 'm.scheduled_start', 'r.service_domain',
                 'c.id as caregiver_id', 'u.name as caregiver_name',
                 DB::raw('COALESCE(s.name, np.name, sa.label) as recipient_name'),
-                'rv.rating', 'rv.comment', 'rv.tags',
+                'rv.rating', 'rv.comment', 'rv.tags', 'rv.scores',
             ])
             ->map(fn ($r) => [
                 'match_id' => (int) $r->match_id,
@@ -111,6 +112,8 @@ class GuardianController extends Controller
                 'rating' => $r->rating !== null ? (int) $r->rating : null,
                 'comment' => $r->comment,
                 'tags' => $r->tags ? json_decode($r->tags, true) : [],
+                'scores' => $r->scores ? json_decode($r->scores, true) : (object) [],
+                'criteria' => self::criteria($r->service_domain),
                 'reviewed' => $r->rating !== null,
             ]);
 
@@ -134,6 +137,8 @@ class GuardianController extends Controller
             'comment' => ['nullable', 'string', 'max:1000'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:30'],
+            'scores' => ['nullable', 'array'],
+            'scores.*' => ['integer', 'between:1,5'],
         ]);
 
         // 본인 매칭 + 완료 케어 확인
@@ -145,10 +150,14 @@ class GuardianController extends Controller
                 $q->select(DB::raw(1))->from('care_sessions as cs')
                     ->whereColumn('cs.match_id', 'm.id')->where('cs.status', 'completed');
             })
-            ->select('m.id', 'm.caregiver_id')->first();
+            ->select('m.id', 'm.caregiver_id', 'r.service_domain')->first();
         if (! $match) {
             return response()->json(['success' => false, 'message' => '평가할 수 없는 케어입니다.'], 404);
         }
+
+        // 도메인 평가 항목에 있는 키만 저장
+        $allowed = array_column(self::criteria($match->service_domain), 'key');
+        $scores = array_intersect_key($v['scores'] ?? [], array_flip($allowed));
 
         $review = Review::updateOrCreate(
             ['match_id' => $match->id, 'reviewer_id' => $request->user()->id],
@@ -157,16 +166,41 @@ class GuardianController extends Controller
                 'rating' => $v['rating'],
                 'comment' => $v['comment'] ?? null,
                 'tags' => $v['tags'] ?? [],
+                'scores' => $scores ?: null,
             ]
         );
 
         $this->recomputeCaregiverRating((int) $match->caregiver_id);
+
+        // 2점 이하 → CS 담당 관리자에게 즉시 알림(기능 24). 같은 후기로 두 번 보내지 않음 — 3점 이상으로 고치면 다시 대상
+        if ($review->rating <= 2 && !$review->flagged_at) {
+            $review->update(['flagged_at' => now()]);
+            $svc = app(NotificationService::class);
+            $payload = [
+                'review_id' => $review->id, 'match_id' => (int) $match->id, 'rating' => (int) $review->rating,
+                'caregiver_name' => DB::table('caregivers as c')->join('users as u', 'u.id', '=', 'c.user_id')
+                    ->where('c.id', $match->caregiver_id)->value('u.name') ?? '돌봄전문가',
+            ];
+            foreach ($svc->adminsFor('cs') as $adminUserId) {
+                $svc->notifySafely($adminUserId, NotificationService::TYPE_REVIEW_LOW, $payload);
+            }
+        } elseif ($review->rating > 2 && $review->flagged_at && !$review->admin_reply) {
+            $review->update(['flagged_at' => null]);
+        }
 
         return response()->json([
             'success' => true,
             'message' => '케어 만족도가 등록되었습니다.',
             'data' => ['rating' => $review->rating],
         ]);
+    }
+
+    /** 도메인별 평가 항목 [{key,label}] — config/review_criteria.php */
+    public static function criteria(?string $domain): array
+    {
+        $all = config('review_criteria');
+        $items = $all[$domain] ?? $all['default'];
+        return array_map(fn ($k, $l) => ['key' => $k, 'label' => $l], array_keys($items), $items);
     }
 
     /** 돌봄전문가 평점 평균/건수를 보호자 리뷰 기준으로 재집계. */
