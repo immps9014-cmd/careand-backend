@@ -210,6 +210,7 @@ Route::prefix('v1')->group(function () {
             // Phase 2: 대시보드 KPI
             Route::prefix('dashboard')->group(function () {
                 Route::get('kpi', [DashboardController::class, 'kpi']);
+                Route::get('business-kpi', [DashboardController::class, 'businessKpi']);   // 사업계획서 KPI 3종
                 Route::get('hourly-requests', [DashboardController::class, 'hourlyRequests']);
                 Route::get('regional-demand', [DashboardController::class, 'regionalDemand']);
                 Route::get('recent-alerts', [DashboardController::class, 'recentAlerts']);

@@ -181,10 +181,15 @@ class CareSessionController extends Controller
             ]);
 
             $duration = now()->diffInMinutes($session->actual_start);
+            // KPI 「케어일지 작성시간」: 케어 중 이미 활동·음성·사진 기록이 있으면 퇴근 시각이 작성 시작
+            $hasLogInput = $session->activities()->exists()
+                || $session->voiceLogs()->exists()
+                || $session->photos()->exists();
             $session->update([
                 'actual_end' => now(),
                 'duration_min' => $duration,
                 'status' => 'completed',
+                'log_started_at' => $hasLogInput ? now() : null,
             ]);
 
             // 케어 완료 → 매칭 상태 전이. 반복(recurring) 요청은 모든 세션이 끝나야 완료,
@@ -221,6 +226,7 @@ class CareSessionController extends Controller
         $session = CareSession::findOrFail($id);
         $this->authorizeAsCaregiver($request, $session);
 
+        $session->markLogStarted();   // KPI: 퇴근 후 첫 기록이면 일지 작성 시작
         $activity = CareActivity::create(array_merge(
             $request->validated(),
             ['session_id' => $session->id, 'performed_at' => now()]
@@ -263,6 +269,7 @@ class CareSessionController extends Controller
             $durationSec = (int) $validated['duration_sec'];
         }
 
+        $session->markLogStarted();   // KPI: 퇴근 후 첫 기록이면 일지 작성 시작
         $voiceLog = VoiceLog::create([
             'session_id' => $session->id,
             'audio_url' => $audioUrl,
@@ -313,6 +320,7 @@ class CareSessionController extends Controller
             $thumbnailUrl = $validated['thumbnail_url'] ?? null;
         }
 
+        $session->markLogStarted();   // KPI: 퇴근 후 첫 기록이면 일지 작성 시작
         $photo = CarePhoto::create([
             'session_id' => $session->id,
             'photo_url' => $photoUrl,

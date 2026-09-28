@@ -166,6 +166,90 @@ class DashboardController extends Controller
     }
 
     /**
+     * GET /v1/admin/dashboard/business-kpi?period=all|30d|7d
+     * 사업계획서(협약) 핵심성과지표 3종 — 구축 전 값·목표와 함께 현재 측정값을 돌려준다(2026-09-28, 구현계획 S1).
+     *   1. 정상처리율(STT 케어용어 인식률) %  — 최신 stt_evaluations (평가 스크립트 결과)
+     *   2. 서비스 리드타임(매칭 소요시간) h    — 매칭 요청 등록 → 매칭 확정
+     *   3. 업무처리 리드타임(케어일지 작성시간) min — 일지 작성 시작 → 보호자 전송(최초 승인)
+     * 표본 수(n)를 같이 준다 — 표본이 적거나 0이면 화면에서 "측정 전"으로 보여야 한다.
+     */
+    public function businessKpi(Request $request): JsonResponse
+    {
+        $period = $request->query('period', 'all');
+        $since = match ($period) {
+            '7d' => now()->subDays(7),
+            '30d' => now()->subDays(30),
+            default => null,
+        };
+
+        $stt = DB::table('stt_evaluations')->orderByDesc('evaluated_at')->orderByDesc('id')->first();
+
+        $match = DB::table('matches as m')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->when($since, fn ($q) => $q->where('r.created_at', '>=', $since))
+            ->selectRaw('COUNT(*) AS n, AVG(TIMESTAMPDIFF(SECOND, r.created_at, m.created_at)) AS avg_sec')
+            ->first();
+
+        $log = DB::table('care_sessions')
+            ->whereNotNull('log_started_at')->whereNotNull('log_sent_at')
+            ->when($since, fn ($q) => $q->where('log_sent_at', '>=', $since))
+            ->selectRaw('COUNT(*) AS n, AVG(TIMESTAMPDIFF(SECOND, log_started_at, log_sent_at)) AS avg_sec')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'period' => $period,
+            'data' => [
+                [
+                    'key' => 'stt_term_rate',
+                    'name' => '정상처리율',
+                    'label' => 'STT 케어용어 인식률',
+                    'unit' => '%',
+                    'weight' => 0.4,
+                    'baseline' => null,
+                    'target' => 90,
+                    'direction' => 'up',
+                    'value' => $stt ? (float) $stt->rate : null,
+                    'n' => $stt ? (int) $stt->terms_total : 0,
+                    'n_label' => $stt ? "음성 {$stt->samples}건 · 용어 {$stt->terms_total}개" : null,
+                    'measured_at' => $stt->evaluated_at ?? null,
+                    'note' => $stt ? "{$stt->term_set} 기준 · {$stt->stt_engine}" : '평가 데이터 없음 — STT 평가 스크립트 실행 필요',
+                ],
+                [
+                    'key' => 'match_lead_hours',
+                    'name' => '서비스 리드타임',
+                    'label' => '매칭 소요시간',
+                    'unit' => 'h',
+                    'weight' => 0.3,
+                    'baseline' => 48,
+                    'target' => 0.5,
+                    'direction' => 'down',
+                    'value' => $match->n ? round($match->avg_sec / 3600, 2) : null,
+                    'n' => (int) $match->n,
+                    'n_label' => "매칭 {$match->n}건",
+                    'measured_at' => now()->toIso8601String(),
+                    'note' => '매칭 요청 등록 → 매칭 확정',
+                ],
+                [
+                    'key' => 'care_log_minutes',
+                    'name' => '업무처리 리드타임',
+                    'label' => '케어일지 작성시간',
+                    'unit' => 'min',
+                    'weight' => 0.3,
+                    'baseline' => 30,
+                    'target' => 5,
+                    'direction' => 'down',
+                    'value' => $log->n ? round($log->avg_sec / 60, 1) : null,
+                    'n' => (int) $log->n,
+                    'n_label' => "일지 {$log->n}건",
+                    'measured_at' => now()->toIso8601String(),
+                    'note' => '작성 시작 → 보호자 전송(승인) · 2026-09-28 이후 일지부터 측정',
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * GET /v1/admin/dashboard/regional-demand
      * 지역별 수요/공급 현황
      */

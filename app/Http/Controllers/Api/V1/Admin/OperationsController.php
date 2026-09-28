@@ -413,6 +413,8 @@ class OperationsController extends Controller
 
         // 최초 승인 시에만 보호자에게 '케어 일지 도착' 알림
         if ($status === 'approved' && $prevStatus !== 'approved') {
+            // KPI 「케어일지 작성시간」 종료 = 보호자가 일지를 볼 수 있게 된 최초 승인 시각
+            DB::table('care_sessions')->where('id', $id)->whereNull('log_sent_at')->update(['log_sent_at' => now()]);
             $this->notifyGuardianSummaryReady($id);
         }
 
