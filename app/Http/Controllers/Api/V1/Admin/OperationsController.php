@@ -946,8 +946,17 @@ class OperationsController extends Controller
             'biz_no' => ['nullable', 'string', 'max:20'],
             'representative' => ['nullable', 'string', 'max:50'],
             'biz_type' => ['nullable', 'string', 'max:40'],
-            'permission_level' => ['nullable', 'in:super,operator,cs,analyst'],
+            'permission_level' => ['nullable', 'in:super,branch,cs,analyst,developer'],
         ]);
+
+        // 관리자 계정은 슈퍼관리자만 만든다 — 회원 변경 권한(지점장)으로 슈퍼관리자를 만드는 권한 상승 차단 (S2-3)
+        if ($data['role'] === 'admin' && $request->user()?->admin?->permission_level !== 'super') {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'FORBIDDEN_PERMISSION',
+                'message' => '관리자 계정은 슈퍼관리자만 만들 수 있습니다(관리자 계정·권한 화면).',
+            ], 403);
+        }
 
         $licenseUrl = null;
         if ($request->hasFile('license_photo')) {
@@ -976,7 +985,7 @@ class OperationsController extends Controller
             } elseif ($data['role'] === 'organization') {
                 DB::table('organizations')->insert(['user_id' => $uid, 'name' => $data['name'], 'biz_no' => $data['biz_no'] ?? null, 'representative' => $data['representative'] ?? null, 'biz_type' => $data['biz_type'] ?? 'other', 'status' => 'pending', 'created_at' => $now, 'updated_at' => $now]);
             } elseif ($data['role'] === 'admin') {
-                DB::table('admins')->insert(['user_id' => $uid, 'permission_level' => $data['permission_level'] ?? 'operator', 'department' => null, 'created_at' => $now, 'updated_at' => $now]);
+                DB::table('admins')->insert(['user_id' => $uid, 'permission_level' => $data['permission_level'] ?? 'cs', 'department' => null, 'created_at' => $now, 'updated_at' => $now]);
             }
             return $uid;
         });
