@@ -347,7 +347,7 @@ class CaregiverController extends Controller
             'gender' => $c->gender,
             'age' => $c->birth_date ? \Carbon\Carbon::parse($c->birth_date)->age : null,
             'region' => $this->regionOf($c->base_address),
-            'rating' => number_format((float) $c->rating_avg, 1),
+            'rating' => (int) $c->rating_count > 0 ? number_format((float) $c->rating_avg, 1) : '신규',   // 후기 없으면 0.0 대신(09-29 평점 초기화)
             'rating_count' => (int) $c->rating_count,
             'completed_sessions' => (int) $c->completed_sessions,
             'spec' => $this->specLabel($c->specialties, $primary),
@@ -751,7 +751,7 @@ class CaregiverController extends Controller
                 'id' => (int) $c->id,
                 'name' => $c->name,
                 'domains' => $domains,
-                'rating' => number_format((float) $c->rating_avg, 1),
+                'rating' => (int) $c->rating_count > 0 ? number_format((float) $c->rating_avg, 1) : '신규',   // 후기 없으면 0.0 대신(09-29 평점 초기화)
                 'rating_count' => (int) $c->rating_count,
                 'completed_sessions' => (int) $c->completed_sessions,
                 'spec' => $this->specLabel($c->specialties, $primary),

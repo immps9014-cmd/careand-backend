@@ -35,6 +35,7 @@ class MatchCandidateResource extends JsonResource
                 'age' => $this->caregiver->birth_date ? $this->caregiver->birth_date->age : null,
                 'specialties' => $this->caregiver->specialties,
                 'rating_avg' => (float) $this->caregiver->rating_avg,
+                'rating_count' => (int) $this->caregiver->rating_count,   // 0 이면 화면은 「신규」
                 'completed_sessions' => $this->caregiver->completed_sessions,
                 'organization' => $this->caregiver->organization?->only(['id', 'name']),
             ]),
