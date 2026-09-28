@@ -134,6 +134,8 @@ class PostpartumChatbotController extends Controller
                     'breastfeeding'       => $client?->breastfeeding_intent,
                     'is_first_baby'       => $client?->is_first_baby ?? true,
                     'delivery_type'       => $client?->delivery_type,
+                    // 외부 LLM 전송 전 가릴 이름(산모) — AI 서비스 pii 가명 처리 (2026-09-28)
+                    'pii_terms'           => array_values(array_filter([$client?->name])),
                 ],
             ]);
 

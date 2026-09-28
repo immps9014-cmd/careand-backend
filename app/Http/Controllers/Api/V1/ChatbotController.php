@@ -133,7 +133,8 @@ class ChatbotController extends Controller
         ]);
 
         try {
-            $result = DB::transaction(function () use ($session, $validated) {
+            $userName = (string) $request->user()?->name;   // 외부 LLM 가명 처리용
+            $result = DB::transaction(function () use ($session, $validated, $userName) {
                 // 1. 사용자 메시지 저장
                 $userMessage = ChatbotMessage::create([
                     'session_id' => $session->id,
@@ -157,6 +158,12 @@ class ChatbotController extends Controller
                     context: [
                         'recent_messages' => $recentMessages,
                         'guardian_id' => $session->guardian_id,
+                        // 외부 LLM 전송 전 가릴 이름(보호자·돌봄 대상자) — AI 서비스 pii 가명 처리 (2026-09-28)
+                        'pii_terms' => array_values(array_filter(array_merge(
+                            [$userName],
+                            \Illuminate\Support\Facades\DB::table('seniors')->where('guardian_id', $session->guardian_id)->pluck('name')->all(),
+                            \Illuminate\Support\Facades\DB::table('nursing_patients')->where('guardian_id', $session->guardian_id)->pluck('name')->all(),
+                        ))),
                     ]
                 );
 
