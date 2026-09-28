@@ -720,7 +720,7 @@ class OperationsController extends Controller
             'senior' => [
                 'gender' => $r->senior_gender,
                 'care_grade' => $r->care_grade,
-                'special_notes' => $r->special_notes,
+                'special_notes' => \App\Support\MedicalCrypto::decrypt($r->special_notes),   // 암호문 → 평문(S2-4)
             ],
             'address' => [
                 'label' => $r->addr_label,

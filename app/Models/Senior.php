@@ -29,6 +29,9 @@ class Senior extends Model
     protected $casts = [
         'birth_date' => 'date',
         'diseases' => 'array',
+        // 의료정보 암호화(S2-4) — DB 에는 AES-256-GCM 암호문
+        'special_notes' => \App\Casts\MedicalText::class,
+        'care_grade_no' => \App\Casts\MedicalText::class,
         'home_lat' => 'decimal:7',
         'home_lng' => 'decimal:7',
     ];

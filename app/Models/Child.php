@@ -29,6 +29,7 @@ class Child extends Model
         'birth_date' => 'date',
         'home_lat' => 'decimal:7',
         'home_lng' => 'decimal:7',
+        'special_notes' => \App\Casts\MedicalText::class,   // 의료정보 암호화(S2-4)
     ];
 
     public function guardian()

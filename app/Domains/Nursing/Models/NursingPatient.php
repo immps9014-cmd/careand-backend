@@ -32,6 +32,7 @@ class NursingPatient extends Model
         'birth_date' => 'date',
         'diseases' => 'array',
         'care_requirements' => 'array',
+        'special_notes' => \App\Casts\MedicalText::class,   // 의료정보 암호화(S2-4)
     ];
 
     public function guardian()

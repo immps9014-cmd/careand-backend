@@ -27,7 +27,7 @@ class Newborn extends Model
     protected $casts = [
         'birth_datetime'     => 'datetime',
         'birth_height_cm'    => 'decimal:1',
-        'special_conditions' => 'array',
+        'special_conditions' => \App\Casts\MedicalJson::class,   // 의료정보 암호화(S2-4)
         'is_alive'           => 'boolean',
     ];
 
