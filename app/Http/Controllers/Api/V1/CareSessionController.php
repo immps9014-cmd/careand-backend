@@ -400,6 +400,9 @@ class CareSessionController extends Controller
         $data = [
             'guardian_version' => $summary->guardian_version,
             'categorized' => $summary->categorized,
+            // 일지와 함께 보는 돌봄 사진(기능 5) — 최대 5장
+            'photos' => $session->photos()->orderBy('id')->limit(5)->get(['photo_url', 'thumbnail_url', 'caption'])
+                ->map(fn ($p) => ['url' => $p->photo_url, 'thumbnail' => $p->thumbnail_url ?: $p->photo_url, 'caption' => $p->caption])->values(),
             'confidence' => $summary->confidence,
             'generated_at' => $summary->generated_at->toIso8601String(),
         ];

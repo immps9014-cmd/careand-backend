@@ -52,6 +52,7 @@ Route::prefix('v1')->group(function () {
     // ========== 공개 웹(/www, 비로그인) 읽기 전용 ==========
     // 돌봄전문가 개별 노출은 회원 전용(/app)으로 전환 — 비로그인은 집계 통계만.
     Route::prefix('public')->middleware('throttle:60,1')->group(function () {
+        Route::get('care-logs/{token}', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'show'])->where('token', '[A-Za-z0-9]{40}');   // 가족 공유(기능 5)
         Route::get('stats', [PublicController::class, 'stats']);
     });
 
@@ -164,11 +165,14 @@ Route::prefix('v1')->group(function () {
             Route::post('{id}/photos', [CareSessionController::class, 'uploadPhoto'])->whereNumber('id');
             Route::get('{id}/ai-summary', [CareSessionController::class, 'getAiSummary'])->whereNumber('id');
             Route::put('{id}/log', [CareSessionController::class, 'updateLog'])->whereNumber('id');   // 돌봄전문가 일지 검토·수정(기능 14)
+            Route::post('{id}/share', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'create'])->whereNumber('id');   // 가족 공유(기능 5)
+            Route::get('{id}/shares', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'index'])->whereNumber('id');
             // 칩 기반 케어일지(기능 40, S5)
             Route::get('{id}/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'show'])->whereNumber('id');
             Route::put('{id}/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'save'])->whereNumber('id');
         });
         Route::get('care-journal/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'catalog']);
+        Route::delete('care-log-shares/{shareId}', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'revoke'])->whereNumber('shareId');
 
         // 결제
         Route::prefix('payments')->group(function () {
