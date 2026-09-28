@@ -71,6 +71,10 @@ return [
         'mid' => env('PG_MID'),
         'api_key' => env('PG_API_KEY'),
         'sign_key' => env('PG_SIGN_KEY'),
+        // 토스페이먼츠(S4) — 테스트 키(test_)는 샌드박스. PG_LIVE=true 면 EXTERNAL_STUB 과 별개로 실제 호출
+        'live' => env('PG_LIVE', false),
+        'toss_client_key' => env('TOSS_CLIENT_KEY'),
+        'toss_secret_key' => env('TOSS_SECRET_KEY'),
     ],
 
     // 국세청 홈택스 (원천징수)

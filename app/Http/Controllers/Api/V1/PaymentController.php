@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Services\External\NhisService;
 use App\Services\External\PgService;
+use App\Services\External\TossPaymentsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -168,49 +169,13 @@ class PaymentController extends Controller
         $match = CareMatch::with('request.senior')->findOrFail($data['match_id']);
         $this->authorize('view', $match);
 
-        // 다시 분리 계산 (서버 신뢰)
+        // 다시 분리 계산 (서버 신뢰) — 토스 결제 준비와 같은 함수(resolveSplit)
         $totalAmount = (int) $match->estimated_amount;
-        $isLtcDomain = $match->request->service_domain === 'senior';
-
-        if ($isLtcDomain) {
-            $senior = $match->request->senior;
-
-            $voucher = LtcVoucher::where('senior_id', $senior->id)
-                ->where('period_month', now()->startOfMonth()->toDateString())
-                ->lockForUpdate()
-                ->first();
-
-            // 등급/바우처가 없으면 공단 부담 없이 100% 본인부담 (calculate 와 동일 정책)
-            if (!$voucher || !$senior->care_grade) {
-                if (($data['method'] ?? null) === 'voucher_only') {
-                    return response()->json([
-                        'success' => false,
-                        'error_code' => 'INVALID_METHOD',
-                        'message' => '장기요양 바우처를 사용할 수 없습니다.',
-                    ], 422);
-                }
-                $voucher = null;
-                $split = ['self_pay' => $totalAmount, 'ltc_pay' => 0];
-            } else {
-                $split = $this->nhisService->calculateSplit($totalAmount, $senior->care_grade, $voucher->copay_rate);
-                if ($split['ltc_pay'] > $voucher->remaining_amount) {
-                    $exceeded = $split['ltc_pay'] - $voucher->remaining_amount;
-                    $split['self_pay'] += $exceeded;
-                    $split['ltc_pay'] = $voucher->remaining_amount;
-                }
-            }
-        } else {
-            // 비급여 도메인(간병·가사 등): 100% 본인부담, 바우처 결제 불가
-            if (($data['method'] ?? null) === 'voucher_only') {
-                return response()->json([
-                    'success' => false,
-                    'error_code' => 'INVALID_METHOD',
-                    'message' => '장기요양 바우처를 사용할 수 없는 서비스입니다.',
-                ], 422);
-            }
-            $voucher = null;
-            $split = ['self_pay' => $totalAmount, 'ltc_pay' => 0];
+        $resolved = $this->resolveSplit($match, $data['method'] ?? null);
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
         }
+        ['split' => $split, 'voucher' => $voucher] = $resolved;
 
         // PG 결제 + DB 저장 트랜잭션
         try {
@@ -313,6 +278,169 @@ class PaymentController extends Controller
      * POST /v1/payments/{id}/cancel
      * 결제 취소 + 바우처 환원
      */
+    /**
+     * 본인부담·장기요양 분할 — 결제 정책 한 곳(approve·토스 준비 공용, 2026-09-28 S4 에서 추출).
+     * 장기요양(시니어) 도메인은 등급·당월 바우처로 나누고 바우처 잔액을 넘으면 본인부담으로 돌린다.
+     *
+     * @return array{split: array{self_pay: int, ltc_pay: int}, voucher: ?LtcVoucher}|JsonResponse
+     */
+    private function resolveSplit(CareMatch $match, ?string $method): array|JsonResponse
+    {
+        $totalAmount = (int) $match->estimated_amount;
+        $isLtcDomain = $match->request->service_domain === 'senior';
+
+        if ($isLtcDomain) {
+            $senior = $match->request->senior;
+
+            $voucher = LtcVoucher::where('senior_id', $senior->id)
+                ->where('period_month', now()->startOfMonth()->toDateString())
+                ->lockForUpdate()
+                ->first();
+
+            // 등급/바우처가 없으면 공단 부담 없이 100% 본인부담 (calculate 와 동일 정책)
+            if (!$voucher || !$senior->care_grade) {
+                if ($method === 'voucher_only') {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'INVALID_METHOD',
+                        'message' => '장기요양 바우처를 사용할 수 없습니다.',
+                    ], 422);
+                }
+                $voucher = null;
+                $split = ['self_pay' => $totalAmount, 'ltc_pay' => 0];
+            } else {
+                $split = $this->nhisService->calculateSplit($totalAmount, $senior->care_grade, $voucher->copay_rate);
+                if ($split['ltc_pay'] > $voucher->remaining_amount) {
+                    $exceeded = $split['ltc_pay'] - $voucher->remaining_amount;
+                    $split['self_pay'] += $exceeded;
+                    $split['ltc_pay'] = $voucher->remaining_amount;
+                }
+            }
+        } else {
+            // 비급여 도메인(간병·가사 등): 100% 본인부담, 바우처 결제 불가
+            if ($method === 'voucher_only') {
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'INVALID_METHOD',
+                    'message' => '장기요양 바우처를 사용할 수 없는 서비스입니다.',
+                ], 422);
+            }
+            $voucher = null;
+            $split = ['self_pay' => $totalAmount, 'ltc_pay' => 0];
+        }
+
+
+        return ['split' => $split, 'voucher' => $voucher];
+    }
+
+    /**
+     * POST /v1/payments/toss/prepare {match_id, method: card|account}
+     * 토스 결제창을 열기 전 — 서버가 금액을 다시 계산하고 주문번호를 발급한다(결제 대기 기록 생성).
+     * 본인부담이 0원(바우처로 전액)이면 결제창 없이 기존 승인 경로를 쓰도록 알린다.
+     */
+    public function tossPrepare(Request $request, TossPaymentsService $toss): JsonResponse
+    {
+        $data = $request->validate([
+            'match_id' => ['required', 'exists:matches,id'],
+            'method' => ['required', 'in:card,account'],
+        ]);
+        $match = CareMatch::with('request.senior')->findOrFail($data['match_id']);
+        $this->authorize('view', $match);
+        if (Payment::where('match_id', $match->id)->where('status', 'paid')->exists()) {
+            return response()->json(['success' => false, 'error_code' => 'ALREADY_PAID', 'message' => '이미 결제가 완료된 매칭입니다.'], 422);
+        }
+
+        $resolved = $this->resolveSplit($match, $data['method']);
+        if ($resolved instanceof JsonResponse) {
+            return $resolved;
+        }
+        $split = $resolved['split'];
+        if ($split['self_pay'] <= 0) {
+            return response()->json(['success' => true, 'data' => ['toss_required' => false]]);
+        }
+
+        $payment = Payment::create([
+            'guardian_id' => $request->user()->guardian->id,
+            'match_id' => $match->id,
+            'total_amount' => (int) $match->estimated_amount,
+            'amount_self_pay' => $split['self_pay'],
+            'amount_ltc_pay' => $split['ltc_pay'],
+            'method' => $data['method'],
+            'pg_provider' => 'toss',
+            'idempotency_key' => (string) Str::uuid(),
+            'status' => 'pending',
+        ]);
+        $orderId = 'CAREN-' . $payment->id . '-' . Str::lower(Str::random(8));
+        $payment->update(['pg_order_id' => $orderId]);
+
+        $domainLabel = config('service_domains.' . $match->request->service_domain . '.label', '돌봄');
+        return response()->json(['success' => true, 'data' => [
+            'toss_required' => true,
+            'client_key' => $toss->clientKey(),
+            'test_mode' => $toss->isTestMode(),
+            'order_id' => $orderId,
+            'order_name' => '케어앤 ' . $domainLabel . ' 서비스',
+            'amount' => (int) $split['self_pay'],
+            'customer_key' => 'caren-g' . $request->user()->guardian->id,
+            'customer_name' => $request->user()->name,
+        ]]);
+    }
+
+    /**
+     * POST /v1/payments/toss/confirm {payment_key, order_id, amount}
+     * 결제창 성공 후 — 금액이 서버 기록과 같은지 확인하고 토스에 승인 요청, 승인되면 항목·바우처 차감·완료 처리.
+     */
+    public function tossConfirm(Request $request, TossPaymentsService $toss): JsonResponse
+    {
+        $data = $request->validate([
+            'payment_key' => ['required', 'string', 'max:200'],
+            'order_id' => ['required', 'string', 'max:64'],
+            'amount' => ['required', 'integer', 'min:1'],
+        ]);
+        $payment = Payment::where('pg_order_id', $data['order_id'])
+            ->where('guardian_id', $request->user()->guardian?->id)->first();
+        if (!$payment) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_FOUND', 'message' => '결제 요청을 찾을 수 없습니다.'], 404);
+        }
+        if ($payment->status === 'paid') {   // 새로고침 등 중복 승인 요청
+            return response()->json(['success' => true, 'message' => '이미 처리된 결제입니다.', 'data' => new PaymentResource($payment->load('items'))]);
+        }
+        if ($payment->status !== 'pending') {
+            return response()->json(['success' => false, 'error_code' => 'INVALID_STATUS', 'message' => '처리할 수 없는 결제 상태입니다.'], 422);
+        }
+        // 금액 위변조 방지 — 결제창이 돌려준 금액과 서버가 계산해 둔 본인부담이 같아야 한다
+        if ((int) $data['amount'] !== (int) $payment->amount_self_pay) {
+            $payment->update(['status' => 'failed', 'pg_response' => ['reason' => 'amount_mismatch', 'requested' => $data['amount']]]);
+            return response()->json(['success' => false, 'error_code' => 'AMOUNT_MISMATCH', 'message' => '결제 금액이 일치하지 않습니다.'], 422);
+        }
+
+        $res = $toss->confirm($data['payment_key'], $data['order_id'], (int) $data['amount']);
+        if (!$res['ok']) {
+            $payment->update(['status' => 'failed', 'pg_tid' => $data['payment_key'], 'pg_response' => $res['data']]);
+            return response()->json(['success' => false, 'error_code' => 'PG_FAILED', 'message' => $res['message'] ?? '결제 승인에 실패했습니다.'], 422);
+        }
+
+        DB::transaction(function () use ($payment, $data, $res) {
+            $payment->update(['pg_tid' => $data['payment_key'], 'pg_response' => $res['data']]);
+            PaymentItem::create(['payment_id' => $payment->id, 'item_type' => 'self_pay', 'amount' => $payment->amount_self_pay, 'description' => '본인부담금']);
+            if ($payment->amount_ltc_pay > 0) {
+                PaymentItem::create(['payment_id' => $payment->id, 'item_type' => 'ltc_pay', 'amount' => $payment->amount_ltc_pay, 'description' => '장기요양 청구분']);
+                $seniorId = $payment->match?->request?->senior_id;
+                $voucher = $seniorId ? LtcVoucher::where('senior_id', $seniorId)
+                    ->where('period_month', now()->startOfMonth()->toDateString())->lockForUpdate()->first() : null;
+                if ($voucher) {
+                    $voucher->update([
+                        'used_amount' => $voucher->used_amount + $payment->amount_ltc_pay,
+                        'remaining_amount' => max(0, $voucher->remaining_amount - $payment->amount_ltc_pay),
+                    ]);
+                }
+            }
+            $payment->update(['status' => 'paid', 'paid_at' => now()]);
+        });
+
+        return response()->json(['success' => true, 'message' => '결제가 완료되었습니다.', 'data' => new PaymentResource($payment->fresh()->load('items'))]);
+    }
+
     public function cancel(Request $request, int $id): JsonResponse
     {
         $payment = Payment::with('match.request.senior')->findOrFail($id);
@@ -331,7 +459,13 @@ class PaymentController extends Controller
         try {
             DB::transaction(function () use ($payment, $reason) {
                 // 1. PG 취소
-                if ($payment->pg_tid && $payment->amount_self_pay > 0) {
+                if ($payment->pg_provider === 'toss' && $payment->pg_tid && $payment->amount_self_pay > 0) {
+                    // 토스페이먼츠 결제 취소(S4)
+                    $r = app(TossPaymentsService::class)->cancel($payment->pg_tid, (string) ($request->input('reason') ?: '고객 요청 취소'));
+                    if (!$r['ok']) {
+                        throw new \RuntimeException('PG 결제 취소 실패: ' . ($r['message'] ?? ''));
+                    }
+                } elseif ($payment->pg_tid && $payment->amount_self_pay > 0) {
                     $this->pgService->cancel(
                         $payment->pg_tid,
                         (int) $payment->amount_self_pay,

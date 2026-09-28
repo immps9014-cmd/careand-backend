@@ -18,6 +18,7 @@ class Payment extends Model
         'method',
         'pg_provider',
         'pg_tid',
+        'pg_order_id',
         'idempotency_key',
         'status',
         'pg_response',

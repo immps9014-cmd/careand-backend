@@ -162,6 +162,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/', [PaymentController::class, 'index']);
             Route::post('calculate', [PaymentController::class, 'calculate']);
             Route::post('approve', [PaymentController::class, 'approve']);
+            // 토스페이먼츠(S4): 결제창 전 준비 → 결제창 성공 후 서버 승인
+            Route::post('toss/prepare', [PaymentController::class, 'tossPrepare']);
+            Route::post('toss/confirm', [PaymentController::class, 'tossConfirm']);
             Route::post('{id}/cancel', [PaymentController::class, 'cancel'])->whereNumber('id');
         });
 
