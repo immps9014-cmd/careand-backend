@@ -420,9 +420,29 @@ class OperationsController extends Controller
             'risk_score' => ($summary && $summary->risk_score !== null) ? (float) $summary->risk_score : null,
             'verification' => ($summary && $summary->verification) ? json_decode($summary->verification, true) : null,
             'transcript' => $voice->stt_text ?? null,
+            // 본문 수정 이력(기능 14·22)
+            'edited' => $summary && $summary->edited_at ? [
+                'role' => $summary->edited_role, 'reason' => $summary->edit_reason, 'at' => $summary->edited_at,
+                'guardian_original' => $summary->guardian_original, 'medical_original' => $summary->medical_original,
+            ] : null,
+            'review_note' => $session->review_note,
             'stt_confidence' => ($voice && $voice->stt_confidence !== null) ? (float) $voice->stt_confidence : null,
             'voice_duration_sec' => $voice->duration_sec ?? null,
         ]]);
+    }
+
+    /** PATCH /v1/admin/care-logs/{id} {guardian_version?, medical_version?, reason} — 운영자 본문 수정(기능 22). 승인은 따로 */
+    public function updateCareLog(Request $request, int $id): JsonResponse
+    {
+        $v = $request->validate([
+            'guardian_version' => 'nullable|string|max:5000',
+            'medical_version' => 'nullable|string|max:5000',
+            'reason' => 'required|string|min:2|max:255',
+        ], [], ['reason' => '수정 사유']);
+        // 이미 보호자에게 간 일지도 운영자는 고칠 수 있다(오기 정정) — 보호자 알림은 다시 보내지 않는다
+        $r = app(\App\Services\CareLogEditService::class)->edit($id, (int) Auth::id(), 'admin',
+            $v['guardian_version'] ?? null, $v['medical_version'] ?? null, $v['reason']);
+        return response()->json(['success' => $r['ok'], 'error_code' => $r['code'] ?? null, 'message' => $r['message']], $r['ok'] ? 200 : 404);
     }
 
     /** POST /v1/admin/care-logs/{id}/approve */

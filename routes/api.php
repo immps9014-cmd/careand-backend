@@ -163,6 +163,7 @@ Route::prefix('v1')->group(function () {
             Route::post('{id}/voice-log', [CareSessionController::class, 'uploadVoiceLog'])->whereNumber('id');
             Route::post('{id}/photos', [CareSessionController::class, 'uploadPhoto'])->whereNumber('id');
             Route::get('{id}/ai-summary', [CareSessionController::class, 'getAiSummary'])->whereNumber('id');
+            Route::put('{id}/log', [CareSessionController::class, 'updateLog'])->whereNumber('id');   // 돌봄전문가 일지 검토·수정(기능 14)
             // 칩 기반 케어일지(기능 40, S5)
             Route::get('{id}/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'show'])->whereNumber('id');
             Route::put('{id}/chips', [\App\Http\Controllers\Api\V1\CareJournalController::class, 'save'])->whereNumber('id');
@@ -294,6 +295,7 @@ Route::prefix('v1')->group(function () {
             Route::prefix('care-logs')->group(function () {
                 Route::get('/', [OperationsController::class, 'careLogs']);
                 Route::get('{id}', [OperationsController::class, 'careLogDetail'])->whereNumber('id');
+                Route::patch('{id}', [OperationsController::class, 'updateCareLog'])->whereNumber('id');   // 본문 수정(기능 22)
                 Route::post('{id}/approve', [OperationsController::class, 'approveCareLog'])->whereNumber('id');
                 Route::post('{id}/reject', [OperationsController::class, 'rejectCareLog'])->whereNumber('id');
             });

@@ -406,6 +406,12 @@ class CareSessionController extends Controller
         // INV-7: medical_version 은 보호자에게 노출하지 않음(인력/관리자만)
         if (!$isGuardian) {
             $data['medical_version'] = $summary->medical_version;
+            // 돌봄전문가 검토용(기능 14): 전송 여부·검수 사유·수정 가능 여부
+            $data['review_status'] = $session->review_status;
+            $data['sent'] = $session->log_sent_at !== null;
+            $data['editable'] = $session->log_sent_at === null && $session->review_status !== 'approved';
+            $data['review_note'] = $session->review_note;
+            $data['edited_at'] = $summary->edited_at;
         }
 
         return response()->json([
@@ -419,6 +425,22 @@ class CareSessionController extends Controller
     /**
      * Haversine 공식으로 두 좌표 간 거리(미터) 계산
      */
+    /**
+     * PUT /v1/care-sessions/{id}/log {guardian_version, reason?} — 돌봄전문가 일지 검토·수정(기능 14)
+     * 보호자에게 가기 전만. 고친 일지는 원문 대조를 거치지 않았으므로 운영자 검수로 넘어간다.
+     */
+    public function updateLog(Request $request, int $id): JsonResponse
+    {
+        $session = CareSession::with('match')->findOrFail($id);
+        $this->authorizeAsCaregiver($request, $session);
+        $v = $request->validate(['guardian_version' => 'required|string|min:10|max:5000', 'reason' => 'nullable|string|max:255']);
+        if ($session->log_sent_at !== null || $session->review_status === 'approved') {
+            return response()->json(['success' => false, 'error_code' => 'LOG_SENT', 'message' => '이미 보호자에게 전송된 일지예요. 고칠 내용이 있으면 운영팀에 알려 주세요.'], 409);
+        }
+        $r = app(\App\Services\CareLogEditService::class)->edit($id, $request->user()->id, 'caregiver', $v['guardian_version'], null, $v['reason'] ?? null);
+        return response()->json(['success' => $r['ok'], 'error_code' => $r['code'] ?? null, 'message' => $r['message']], $r['ok'] ? 200 : 404);
+    }
+
     /** 반경 밖 출퇴근 → 케어 진행 담당 관리자 알림(기능 12) */
     private function alertOutOfRange(CareSession $session, string $event, float $distance, int $radius): void
     {
