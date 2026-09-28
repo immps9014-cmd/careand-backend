@@ -332,6 +332,10 @@ Route::prefix('v1')->group(function () {
             Route::get('members', [OperationsController::class, 'members']);
             Route::post('members', [OperationsController::class, 'createMember']);
             Route::patch('members/{id}/status', [OperationsController::class, 'updateMemberStatus'])->whereNumber('id');
+            // 블랙리스트(기능 19)
+            Route::get('blacklist', [\App\Http\Controllers\Api\V1\Admin\BlacklistController::class, 'index']);
+            Route::post('blacklist', [\App\Http\Controllers\Api\V1\Admin\BlacklistController::class, 'store']);
+            Route::post('blacklist/{id}/release', [\App\Http\Controllers\Api\V1\Admin\BlacklistController::class, 'release'])->whereNumber('id');
             Route::get('members/{id}', [OperationsController::class, 'memberDetail'])->whereNumber('id');
             Route::patch('organizations/{id}', [OperationsController::class, 'updateOrganization'])->whereNumber('id');
             Route::patch('members/{id}/credentials', [OperationsController::class, 'updateMemberCredentials'])->whereNumber('id');

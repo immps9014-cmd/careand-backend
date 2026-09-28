@@ -34,6 +34,11 @@ class AuthController extends Controller
     {
         $phone = $request->validated('phone');
 
+        // 블랙리스트 번호는 인증번호도 보내지 않는다(기능 19)
+        if (\App\Support\Blacklist::blocked($phone)) {
+            return response()->json(['success' => false, 'error_code' => 'BLACKLISTED', 'message' => '이 번호로는 가입할 수 없어요. 고객센터로 문의해 주세요.'], 403);
+        }
+
         try {
             $this->otpService->send($phone);
             return response()->json([
@@ -82,6 +87,10 @@ class AuthController extends Controller
     public function signup(SignupRequest $request): JsonResponse
     {
         $data = $request->validated();
+
+        if (\App\Support\Blacklist::blocked((string) $data['phone'])) {   // 기능 19
+            return response()->json(['success' => false, 'error_code' => 'BLACKLISTED', 'message' => '이 번호로는 가입할 수 없어요. 고객센터로 문의해 주세요.'], 403);
+        }
 
         // phone_verify_token 검증
         if (!$this->otpService->validateVerifyToken($data['phone'], $data['phone_verify_token'])) {

@@ -22,6 +22,7 @@ return [
         'dashboard'     => ['label' => '대시보드',            'read' => $all,                                   'write' => ['super']],
         'insights'      => ['label' => 'AI 인사이트 검색',     'read' => ['super', 'branch', 'analyst'],          'write' => ['super']],
         'members'       => ['label' => '회원 관리',            'read' => $ops,                                   'write' => ['super', 'branch']],
+        'blacklist'     => ['label' => '블랙리스트',            'read' => $ops,                                   'write' => ['super', 'branch']],
         'organizations' => ['label' => '기관 관리',            'read' => $ops,                                   'write' => ['super', 'branch']],
         'caregivers'    => ['label' => '돌봄전문가 자격검증',   'read' => $ops,                                   'write' => ['super', 'branch']],
         'matching'      => ['label' => '매칭 관리',            'read' => $ops,                                   'write' => ['super', 'branch']],
