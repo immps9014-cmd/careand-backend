@@ -800,6 +800,57 @@ class MatchRequestController extends Controller
     }
 
     /**
+     * POST /v1/matching/requests/{id}/invite
+     * 진행 중인(open) 요청에 돌봄전문가를 「보호자 직접 지정」 후보로 추가 — 돌봄전문가 상세의 「매칭 요청하기」가
+     * 이미 요청이 있는데도 새 요청을 만들던 문제(2026-09-29). 적격성은 새 요청의 직접 지정(GenerateMatchCandidatesJob)과 같다.
+     */
+    public function inviteCaregiver(Request $request, int $id): JsonResponse
+    {
+        $matchRequest = MatchRequest::findOrFail($id);
+        $this->authorize('update', $matchRequest);
+        $caregiverId = (int) $request->validate(['caregiver_id' => ['required', 'integer', 'exists:caregivers,id']])['caregiver_id'];
+
+        if ($matchRequest->status !== 'open') {
+            return response()->json(['success' => false, 'error_code' => 'REQUEST_NOT_OPEN',
+                'message' => '이미 매칭이 진행 중이거나 마감된 요청이에요. 새 요청으로 신청해 주세요.'], 422);
+        }
+        $eligible = Caregiver::active()
+            ->whereNotNull('license_verified_at')
+            ->whereRaw('FIND_IN_SET(?, service_domains)', [$matchRequest->service_domain])
+            ->whereKey($caregiverId)
+            ->exists();
+        $recipient = $matchRequest->recipient();
+        $blocked = $recipient && CaregiverBlock::where('caregiver_id', $caregiverId)
+            ->where('target_type', $matchRequest->service_domain)->where('target_id', $recipient->id)->exists();
+        if (!$eligible || $blocked) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_ELIGIBLE',
+                'message' => '이 돌봄전문가는 이 요청에 배정할 수 없어요. 다른 전문가를 선택하거나 새 요청으로 신청해 주세요.'], 422);
+        }
+
+        $candidate = MatchCandidate::firstOrCreate(
+            ['request_id' => $matchRequest->id, 'caregiver_id' => $caregiverId],
+            ['ai_score' => 1.0, 'ai_reasons' => ['보호자 직접 지정'], 'rank' => 0,
+             'response' => 'pending', 'bid_status' => 'invited', 'source' => 'direct']
+        );
+
+        if ($candidate->wasRecentlyCreated) {
+            $cgUserId = DB::table('caregivers')->where('id', $caregiverId)->value('user_id');
+            app(NotificationService::class)->notifySafely($cgUserId ? (int) $cgUserId : null, NotificationService::TYPE_MATCH_REQUEST_ASSIGNED, [
+                'request_id' => $matchRequest->id,
+                'service_label' => \App\Support\ServiceDomains::label((string) $matchRequest->service_domain),
+                'scheduled_at' => $matchRequest->scheduled_start?->copy()->setTimezone('Asia/Seoul')->format('n월 j일 H:i') ?? '',
+                'recipient_name' => $recipient->name ?? $recipient->label ?? '대상자',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $candidate->wasRecentlyCreated ? '진행 중인 요청의 후보로 추가했어요.' : '이미 이 요청의 후보예요.',
+            'data' => ['candidate_id' => $candidate->id, 'request_id' => $matchRequest->id],
+        ]);
+    }
+
+    /**
      * GET /v1/matching/postpartum-clients
      * 통합 요청 폼의 산모 선택기용 — 본인(user_id) 소유 산모 목록.
      * (산후 staff 서브시스템과 분리된 소비자용 스코프 — 타인 산모 노출 방지)
