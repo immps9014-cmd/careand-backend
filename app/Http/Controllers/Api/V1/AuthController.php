@@ -188,7 +188,8 @@ class AuthController extends Controller
 
         // 관리자는 비밀번호만으로 토큰을 주지 않는다 — 2단계 인증(TOTP) 필수 (사업계획서 3.3, 2026-09-28 S2).
         // 방금 발급된 토큰은 폐기하고, 5분짜리 확인 토큰으로 /auth/2fa/verify 를 거치게 한다.
-        if ($user->role === 'admin') {
+        // .env ADMIN_2FA_REQUIRED=false 면 관리자도 아이디·비밀번호만으로 로그인(2026-09-29 운영 결정 — CheckRole 도 같은 값을 본다).
+        if ($user->role === 'admin' && config('auth.admin_2fa_required', true)) {
             try { JWTAuth::setToken($token)->invalidate(); } catch (\Throwable) {}
             return $this->startTwoFactor($request, $user);
         }
