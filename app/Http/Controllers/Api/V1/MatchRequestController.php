@@ -294,6 +294,10 @@ class MatchRequestController extends Controller
             ->where('request_id', $id)
             ->firstOrFail();
 
+        if ($past = $this->pastScheduleResponse($matchRequest)) {
+            return $past;
+        }
+
         if ($candidate->response !== 'pending') {
             return response()->json([
                 'success' => false,
@@ -392,6 +396,10 @@ class MatchRequestController extends Controller
             ], 404);
         }
 
+        if ($past = $this->pastScheduleResponse(MatchRequest::find($candidate->request_id))) {
+            return $past;
+        }
+
         // 이미 처리된 제안(다른 전문가 선정으로 만료 등) — 선착순 탈락 안내.
         if ($candidate->response !== 'pending') {
             return response()->json([
@@ -447,6 +455,22 @@ class MatchRequestController extends Controller
                 'scheduled_at' => $ctx->scheduled_at,
             ]);
         }
+    }
+
+    /**
+     * 방문 시작이 이미 지난 미매칭 요청 — 선택·수락·후보 추가·지원을 막고 그 자리에서 만료 처리한다.
+     * (requests:expire-stale 가 매분 돌지만, 그 사이에 들어온 요청도 막는다. 2026-09-29 요청 49 사례)
+     */
+    private function pastScheduleResponse(?MatchRequest $req): ?JsonResponse
+    {
+        if (!$req || !$req->scheduled_start || $req->scheduled_start->isFuture()) {
+            return null;
+        }
+        DB::table('match_requests')->where('id', $req->id)->whereIn('status', ['open', 'matching'])
+            ->update(['status' => 'expired', 'updated_at' => now()]);
+
+        return response()->json(['success' => false, 'error_code' => 'REQUEST_PAST_SCHEDULE',
+            'message' => '방문 시작 시각이 지나 마감된 요청이에요. 새 일정으로 다시 신청해 주세요.'], 422);
     }
 
     private function confirmMatch(MatchCandidate $candidate, float $hourlyRate): CareMatch
@@ -810,6 +834,9 @@ class MatchRequestController extends Controller
         $this->authorize('update', $matchRequest);
         $caregiverId = (int) $request->validate(['caregiver_id' => ['required', 'integer', 'exists:caregivers,id']])['caregiver_id'];
 
+        if ($past = $this->pastScheduleResponse($matchRequest)) {
+            return $past;
+        }
         if ($matchRequest->status !== 'open') {
             return response()->json(['success' => false, 'error_code' => 'REQUEST_NOT_OPEN',
                 'message' => '이미 매칭이 진행 중이거나 마감된 요청이에요. 새 요청으로 신청해 주세요.'], 422);
@@ -1106,6 +1133,9 @@ class MatchRequestController extends Controller
         $matchRequest = MatchRequest::where('id', $id)->where('status', 'open')->first();
         if (!$matchRequest) {
             return response()->json(['success' => false, 'error_code' => 'NOT_OPEN', 'message' => '이미 마감되었거나 존재하지 않는 요청입니다.'], 404);
+        }
+        if ($past = $this->pastScheduleResponse($matchRequest)) {
+            return $past;
         }
 
         $domains = array_filter(explode(',', $caregiver->service_domains ?? ''));

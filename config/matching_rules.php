@@ -11,5 +11,9 @@ return [
     // 방문 몇 시간 전에 보호자·돌봄전문가에게 리마인더(한 세션에 한 번)
     'remind_before_hours' => (int) env('CARE_REMIND_BEFORE_HOURS', 24),
     // 출퇴근 GPS(기능 12): 도메인 반경(200m·병원 500m) 밖이어도 이 거리(m) 안이면 받아 주고 운영팀에 경고, 넘으면 거부
+    // 최소 신청 시각(분) — 지금부터 이 시간 뒤부터만 방문 시작을 고를 수 있다. 돌봄전문가가 수락·이동할 시간(2026-09-29,
+    // 16:42 에 16:44 방문을 신청해 수락 전에 일정이 지나던 사례). 긴급은 짧게.
+    'min_lead_minutes' => (int) env('MATCH_MIN_LEAD_MINUTES', 120),
+    'min_lead_minutes_emergency' => (int) env('MATCH_MIN_LEAD_MINUTES_EMERGENCY', 60),
     'attendance_hard_limit_m' => (int) env('ATTENDANCE_HARD_LIMIT_M', 3000),
 ];

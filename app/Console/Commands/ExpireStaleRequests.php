@@ -32,6 +32,9 @@ class ExpireStaleRequests extends Command
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pc', 'pc.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mc', 'mc.id', '=', 'r.mental_care_client_id')
             ->whereIn('r.status', ['open', 'matching'])
             ->whereNotNull('r.scheduled_start')
             ->where('r.scheduled_start', '<', $threshold)
@@ -40,7 +43,7 @@ class ExpireStaleRequests extends Command
                 'r.guardian_id',
                 'r.scheduled_start',
                 'g.user_id as guardian_user_id',
-                DB::raw('COALESCE(s.name, np.name, sa.label) as target_name')
+                DB::raw('COALESCE(s.name, np.name, sa.label, pc.name, ch.name, mc.name) as target_name')
             )
             ->get();
 

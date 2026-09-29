@@ -69,6 +69,21 @@ class StoreMatchRequestRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($v) {
+            // 최소 신청 시각 — 긴급은 min_lead_minutes_emergency, 그 외 min_lead_minutes 뒤부터
+            $start = $this->input('scheduled_start');
+            if ($start && ! $v->errors()->has('scheduled_start')) {
+                $lead = $this->input('mode') === 'emergency'
+                    ? (int) config('matching_rules.min_lead_minutes_emergency', 60)
+                    : (int) config('matching_rules.min_lead_minutes', 120);
+                try {
+                    if (\Illuminate\Support\Carbon::parse($start)->lt(now()->addMinutes($lead))) {
+                        $v->errors()->add('scheduled_start', sprintf('방문 시작은 지금부터 %s 뒤부터 고를 수 있어요. 돌봄전문가가 수락하고 이동할 시간이 필요해요.',
+                            $lead % 60 === 0 ? ($lead / 60) . '시간' : $lead . '분'));
+                    }
+                } catch (\Throwable) {
+                    // 형식 오류는 date_format 규칙이 잡는다
+                }
+            }
             // 정기 요청은 연속 일수(days) 또는 반복 요일(weekdays) 중 하나는 지정돼야 함
             if ($this->input('mode') === 'recurring') {
                 $rule = (array) $this->input('recurrence_rule', []);

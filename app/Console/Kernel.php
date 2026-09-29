@@ -35,8 +35,10 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/monthly-close.log'));
 
+        // 매분 — 매시 정각만 돌면 일정이 지나고 최대 59분간 수락 제안이 계속 나갔다(2026-09-29 요청 49)
         $schedule->command('requests:expire-stale')
-            ->hourly()
+            ->everyMinute()
+            ->withoutOverlapping(5)
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/expire-stale.log'));
 
