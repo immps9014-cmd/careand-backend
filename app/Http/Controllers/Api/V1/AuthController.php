@@ -134,6 +134,8 @@ class AuthController extends Controller
                     'relation' => $data['relation'] ?? null,
                     // 가입 의도 보존: 가사·산모·아이돌봄·마음돌봄 요청자 구분. 그 외는 care.
                     'intent' => in_array($data['intent'] ?? null, ['housekeeping', 'postpartum', 'childcare', 'mental_care'], true) ? $data['intent'] : 'care',
+                    // 주로 이용할 서비스(복수 선택, 선택 순서 유지) — 홈 서비스 타일 정렬에 쓴다
+                    'preferences' => ! empty($data['services']) ? ['services' => array_values($data['services'])] : null,
                 ]);
             }
             // caregiver/organization은 별도 register 단계에서 추가 정보 수집

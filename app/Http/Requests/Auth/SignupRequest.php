@@ -35,6 +35,9 @@ class SignupRequest extends FormRequest
                 'string',
                 'max:20',
             ],
+            // 가입 때 고른 「주로 이용할 서비스」(복수, 요청자만). 첫 항목이 대표 서비스 = intent. guardians.preferences.services 에 보관.
+            'services' => ['nullable', 'array', 'max:5'],
+            'services.*' => ['string', 'distinct', 'in:senior,living_support,postpartum,childcare,mental_care'],
             'agree_terms' => ['required', 'accepted'],
             'agree_privacy' => ['required', 'accepted'],
         ];
