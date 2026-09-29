@@ -628,16 +628,21 @@ class CaregiverController extends Controller
             ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
             ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
             ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            // 산모·아이·마음돌봄 대상도 이름 표시(빠지면 일정 카드에 「(미상)」) — myMatches 와 같은 조인
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->where('m.caregiver_id', $caregiver->id)
             ->select(
                 'cs.id', 'cs.status', 'cs.actual_start', 'cs.actual_end',
-                'cs.duration_min',
+                // 세션 행에 소요 시간이 비어 있으면 요청값 → 예정 시작·종료 차이 순으로
+                \Illuminate\Support\Facades\DB::raw('COALESCE(cs.duration_min, r.duration_min, TIMESTAMPDIFF(MINUTE, COALESCE(cs.scheduled_start, m.scheduled_start), COALESCE(cs.scheduled_end, m.scheduled_end))) as duration_min'),
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_start, m.scheduled_start) as scheduled_start'),
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_end, m.scheduled_end) as scheduled_end'),
                 'r.service_domain',
                 'r.requirements',
                 'r.id as request_id',
-                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label) as senior_name')
+                \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label, pp.name, ch.name, mcc.name) as senior_name')
             )
             ->orderByDesc('m.scheduled_start')
             ->get()
