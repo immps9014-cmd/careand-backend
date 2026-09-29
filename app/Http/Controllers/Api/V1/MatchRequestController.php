@@ -806,12 +806,26 @@ class MatchRequestController extends Controller
      */
     public function postpartumClients(Request $request): JsonResponse
     {
+        $user = $request->user();
         $rows = DB::table('postpartum_clients')
-            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status')
-            ->where('user_id', $request->user()->id)
+            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted')
+            ->where('user_id', $user->id)
             ->whereNull('deleted_at')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            // is_self: 산모 연락처가 회원 본인 연락처와 같으면 「본인이 산모」 레코드 — 신청 화면이 재사용해 중복 등록을 막는다.
+            // 암호문은 응답에서 뺀다.
+            ->map(function ($r) use ($user) {
+                try {
+                    $phone = decrypt($r->phone_encrypted);
+                } catch (\Throwable) {
+                    $phone = null;
+                }
+                unset($r->phone_encrypted);
+                $r->is_self = $phone !== null && $user->phone && $phone === $user->phone;
+
+                return $r;
+            });
 
         return response()->json(['success' => true, 'data' => $rows]);
     }
