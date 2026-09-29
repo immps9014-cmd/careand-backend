@@ -69,6 +69,18 @@ class CareSessionController extends Controller
             ], 422);
         }
 
+        // 출근 가능 시각: 방문 시작 N분 전부터(한국시각 안내)
+        $early = (int) config('matching_rules.checkin_early_minutes', 60);
+        if ($session->scheduled_start && now()->lt($session->scheduled_start->copy()->subMinutes($early))) {
+            $opensAt = $session->scheduled_start->copy()->subMinutes($early)->setTimezone('Asia/Seoul');
+            return response()->json([
+                'success' => false,
+                'error_code' => 'CHECKIN_TOO_EARLY',
+                'message' => '출근은 ' . $opensAt->format('n월 j일 H:i') . "부터 할 수 있어요. (방문 {$early}분 전부터)",
+                'opens_at' => $opensAt->toIso8601String(),
+            ], 422);
+        }
+
         $data = $request->validated();
         $matchRequest = $session->match->request;
         $isManual = (bool) ($session->match->is_manual ?? false);

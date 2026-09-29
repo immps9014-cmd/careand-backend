@@ -15,5 +15,7 @@ return [
     // 16:42 에 16:44 방문을 신청해 수락 전에 일정이 지나던 사례). 긴급은 짧게.
     'min_lead_minutes' => (int) env('MATCH_MIN_LEAD_MINUTES', 120),
     'min_lead_minutes_emergency' => (int) env('MATCH_MIN_LEAD_MINUTES_EMERGENCY', 60),
+    // 출근 가능 시각 — 방문 시작 이 시간(분) 전부터. 전날 출근이 받아져 케어 시작·정산 시간이 틀어지던 문제(2026-09-29)
+    'checkin_early_minutes' => (int) env('CHECKIN_EARLY_MINUTES', 60),
     'attendance_hard_limit_m' => (int) env('ATTENDANCE_HARD_LIMIT_M', 3000),
 ];
