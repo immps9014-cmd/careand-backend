@@ -1479,6 +1479,7 @@ class OperationsController extends Controller
                 $detail['guardian'] = [
                     'id' => $g->id,
                     'relation' => $g->relation,
+                    'services' => json_decode((string) $g->preferences, true)['services'] ?? [],
                     'contact_address' => $g->contact_address,
                     'seniors' => $seniors->values(),
                     'patients' => $patients->values(),
@@ -1514,7 +1515,7 @@ class OperationsController extends Controller
                 $j->on('cg.user_id', '=', 'users.id')->whereNull('cg.deleted_at');
             })
             ->leftJoin('guardians as g', 'g.user_id', '=', 'users.id')
-            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.status', 'users.created_at', 'users.deleted_at as withdrawn_at', 'cg.status as caregiver_status', 'cg.service_domains', 'g.intent as guardian_intent');
+            ->select('users.id', 'users.name', 'users.email', 'users.phone', 'users.role', 'users.status', 'users.created_at', 'users.deleted_at as withdrawn_at', 'cg.status as caregiver_status', 'cg.service_domains', 'g.intent as guardian_intent', 'g.preferences as guardian_preferences');
 
         // 탈퇴 회원은 소프트삭제(deleted_at) 상태 → status=withdrawn 필터일 때만 포함, 그 외에는 제외.
         $onlyWithdrawn = $request->input('status') === 'withdrawn';
@@ -1571,6 +1572,8 @@ class OperationsController extends Controller
             'role' => $u->role,
             // 가사요청자는 role=guardian이지만 intent로 구분. 보호자는 care(미지정 포함).
             'intent' => $u->role === 'guardian' ? ($u->guardian_intent ?? 'care') : null,
+            // 가입 때 고른 「주로 이용할 서비스」(선택 순서, 첫 항목=대표). 2026-09-29 이전 가입자는 빈 배열
+            'services' => $u->role === 'guardian' ? (json_decode((string) $u->guardian_preferences, true)['services'] ?? []) : null,
             'status' => $u->status,
             'caregiver_status' => $u->role === 'caregiver' ? ($cgStatus[$u->id] ?? null) : null,
             'service_domains' => $u->role === 'caregiver' ? $u->service_domains : null,
