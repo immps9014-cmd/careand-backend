@@ -234,6 +234,8 @@ Route::prefix('v1')->group(function () {
             Route::post('admins/{id}/reset-2fa', [\App\Http\Controllers\Api\V1\Admin\AdminAccountController::class, 'resetTwoFactor'])->whereNumber('id');
             // 개인정보 다운로드(마스킹 CSV, 사유 필수, 슈퍼관리자만 — 'exports' 영역) S2-5
             Route::get('exports/members', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'members']);
+            // 테스트 계정 아이디·비밀번호 목록(슈퍼관리자만 — 'test-accounts' 영역, 조회마다 감사로그)
+            Route::get('test-accounts', [\App\Http\Controllers\Api\V1\Admin\TestAccountController::class, 'index']);
 
             // 정산
             Route::post('settlements/run', [SettlementController::class, 'runWeekly']);

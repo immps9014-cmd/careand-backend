@@ -38,6 +38,7 @@ return [
         'reports'       => ['label' => '리포트',               'read' => ['super', 'branch', 'analyst'],          'write' => ['super']],
         'admins'        => ['label' => '관리자 계정·권한',      'read' => ['super'],                              'write' => ['super']],
         'exports'       => ['label' => '개인정보 다운로드',     'read' => ['super'],                              'write' => ['super']],
+        'test-accounts' => ['label' => '테스트 계정',          'read' => ['super'],                              'write' => ['super']],
     ],
 
     'default' => ['read' => ['super'], 'write' => ['super']],
