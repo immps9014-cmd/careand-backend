@@ -34,7 +34,7 @@ class CaregiverDocumentController extends Controller
                 'bank_name' => $row->bank_name,
                 'bank_account_masked' => self::maskAccount(MedicalCrypto::decrypt($row->bank_account)),
                 'bank_holder' => $row->bank_holder,
-                'updated_at' => $row->bank_updated_at,
+                'updated_at' => \App\Support\Kst::iso($row->bank_updated_at),
             ],
             'accept' => ['mimes' => config('caregiver_docs.mimes'), 'max_kb' => config('caregiver_docs.max_kb')],
         ]]);

@@ -149,13 +149,13 @@ class CsController extends Controller
                 'is_negative' => (int) $row->rating <= 2,
                 'service_domain' => $row->service_domain,
                 'scores' => collect($scores)->map(fn ($v, $k) => ['key' => $k, 'label' => $labels[$k] ?? $k, 'score' => (int) $v])->values(),
-                'flagged_at' => $row->flagged_at,
+                'flagged_at' => \App\Support\Kst::iso($row->flagged_at),
                 // 답변 대기 시간(시간) — 2점 이하 미답변만
                 'open_hours' => ($row->flagged_at && !$row->admin_reply)
                     ? round(\Illuminate\Support\Carbon::parse($row->flagged_at)->diffInMinutes(now()) / 60, 1) : null,
                 'admin_reply' => $row->admin_reply,
-                'replied_at' => $row->replied_at,
-                'created_at' => $row->created_at,
+                'replied_at' => \App\Support\Kst::iso($row->replied_at),
+                'created_at' => \App\Support\Kst::iso($row->created_at),
             ];
         });
 
@@ -212,9 +212,9 @@ class CsController extends Controller
             'topic' => $row->topic ?? '일반 문의',
             'message_count' => (int) $row->message_count,
             'status' => $row->ended_at ? 'closed' : 'open',
-            'started_at' => $row->started_at,
-            'last_at' => $row->last_at,
-            'ended_at' => $row->ended_at,
+            'started_at' => \App\Support\Kst::iso($row->started_at),
+            'last_at' => \App\Support\Kst::iso($row->last_at),
+            'ended_at' => \App\Support\Kst::iso($row->ended_at),
         ]);
 
         return response()->json([

@@ -57,10 +57,10 @@ class GuardianController extends Controller
                 'has_summary' => (bool) $r->has_summary,  // AI 일지 생성 여부
                 'service_domain' => $r->service_domain,
                 'recipient_name' => $r->recipient_name ?? '(미상)',
-                'scheduled_start' => $r->scheduled_start,
-                'scheduled_end' => $r->scheduled_end,
-                'actual_start' => $r->actual_start,
-                'actual_end' => $r->actual_end,
+                'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
+                'scheduled_end' => \App\Support\Kst::iso($r->scheduled_end),
+                'actual_start' => \App\Support\Kst::iso($r->actual_start),
+                'actual_end' => \App\Support\Kst::iso($r->actual_end),
                 'duration_min' => $r->duration_min,
             ]);
 
@@ -108,7 +108,7 @@ class GuardianController extends Controller
                 'caregiver_name' => $r->caregiver_name ?? '돌봄전문가',
                 'recipient_name' => $r->recipient_name ?? '(미상)',
                 'service_domain' => $r->service_domain,
-                'scheduled_start' => $r->scheduled_start,
+                'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
                 'rating' => $r->rating !== null ? (int) $r->rating : null,
                 'comment' => $r->comment,
                 'tags' => $r->tags ? json_decode($r->tags, true) : [],

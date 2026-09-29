@@ -30,7 +30,7 @@ class AdminAccountController extends Controller
                 'level_label' => config("admin_rbac.levels.{$r->permission_level}"),
                 'department' => $r->department,
                 'two_factor' => $r->totp_enabled_at !== null,
-                'created_at' => $r->created_at,
+                'created_at' => \App\Support\Kst::iso($r->created_at),
             ]);
 
         return response()->json([

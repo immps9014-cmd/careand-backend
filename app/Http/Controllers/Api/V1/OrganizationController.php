@@ -118,7 +118,7 @@ class OrganizationController extends Controller
             ->map(fn ($i) => [
                 'invite_id' => $i->id,
                 'phone' => $i->phone,
-                'invited_at' => $i->created_at,
+                'invited_at' => \App\Support\Kst::iso($i->created_at),
             ]);
 
         return response()->json([

@@ -18,7 +18,7 @@ class ReportController extends Controller
     {
         $rows = DB::table('monthly_reports')->orderByDesc('month')->limit(24)->get(['month', 'data', 'generated_at']);
         return response()->json(['success' => true, 'data' => $rows->map(fn ($r) => [
-            'month' => $r->month, 'generated_at' => $r->generated_at, 'data' => json_decode($r->data, true),
+            'month' => $r->month, 'generated_at' => \App\Support\Kst::iso($r->generated_at), 'data' => json_decode($r->data, true),
         ])]);
     }
 
@@ -32,6 +32,6 @@ class ReportController extends Controller
         Artisan::call('reports:monthly-close', ['--month' => $v['month'], '--no-notify' => true]);
         $r = DB::table('monthly_reports')->where('month', $v['month'])->first();
         return response()->json(['success' => true, 'message' => "{$v['month']} 결산을 만들었어요." . ($v['month'] === now('Asia/Seoul')->format('Y-m') ? ' (이번 달은 진행 중 값)' : ''),
-            'data' => ['month' => $r->month, 'generated_at' => $r->generated_at, 'data' => json_decode($r->data, true)]]);
+            'data' => ['month' => $r->month, 'generated_at' => \App\Support\Kst::iso($r->generated_at), 'data' => json_decode($r->data, true)]]);
     }
 }

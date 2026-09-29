@@ -479,7 +479,7 @@ class CaregiverController extends Controller
                     'tags' => $r->tags ? (json_decode($r->tags, true) ?: []) : [],
                     'scores' => collect($scores)->map(fn ($v, $k) => ['label' => $labels[$k] ?? $k, 'score' => (int) $v])->values(),
                     'service' => \App\Support\ServiceDomains::label((string) $r->service_domain),
-                    'reply' => $r->admin_reply, 'created_at' => $r->created_at,
+                    'reply' => $r->admin_reply, 'created_at' => \App\Support\Kst::iso($r->created_at),
                 ];
             });
         $from = now('Asia/Seoul')->startOfMonth()->subMonths(5)->utc();
@@ -590,7 +590,7 @@ class CaregiverController extends Controller
                     'request_id' => $r->request_id,
                     'service_domain' => $r->service_domain,
                     'mode' => $r->mode,
-                    'scheduled_start' => $r->scheduled_start,
+                    'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
                     'duration_min' => $r->duration_min,
                     'request_status' => $r->request_status,
                     'match_status' => $r->match_status,       // confirmed|in_progress|completed (본인 확정 시)
@@ -650,10 +650,10 @@ class CaregiverController extends Controller
                 'status' => $r->status,
                 'service_domain' => $r->service_domain,
                 'senior_name' => $r->senior_name ?? '(미상)',
-                'scheduled_start' => $r->scheduled_start,
-                'scheduled_end' => $r->scheduled_end,
-                'actual_start' => $r->actual_start,
-                'actual_end' => $r->actual_end,
+                'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
+                'scheduled_end' => \App\Support\Kst::iso($r->scheduled_end),
+                'actual_start' => \App\Support\Kst::iso($r->actual_start),
+                'actual_end' => \App\Support\Kst::iso($r->actual_end),
                 'duration_min' => $r->duration_min,
                 'photo_required' => (bool) (json_decode($r->requirements ?? '', true)['photo_required'] ?? false),
                 // 방문 장소(길찾기, 기능 35) — 예정·진행 중 세션만

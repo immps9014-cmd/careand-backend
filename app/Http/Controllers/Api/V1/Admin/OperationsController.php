@@ -70,7 +70,7 @@ class OperationsController extends Controller
                 'rating_avg' => (float) $r->rating_avg,
                 'completed_sessions' => (int) $r->completed_sessions,
                 'rejection_reason' => $r->rejection_reason,
-                'created_at' => $r->created_at,
+                'created_at' => \App\Support\Kst::iso($r->created_at),
                 'docs_summary' => $r->docs_summary,
             ];
         });
@@ -209,11 +209,11 @@ class OperationsController extends Controller
             'senior_name' => $r->senior_name ?? '(미상)',
             'service_domain' => $r->service_domain,
             'mode' => $r->mode,
-            'scheduled_start' => $r->scheduled_start,
-            'scheduled_end' => $r->scheduled_end,
+            'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
+            'scheduled_end' => \App\Support\Kst::iso($r->scheduled_end),
             'estimated_amount' => (int) $r->estimated_amount,
             'status' => $r->status,
-            'created_at' => $r->created_at,
+            'created_at' => \App\Support\Kst::iso($r->created_at),
         ]);
 
         $countsQ = DB::table('matches as m');
@@ -315,10 +315,10 @@ class OperationsController extends Controller
             'recipient_name' => $r->recipient_name ?? '(미상)',
             'guardian_name' => $r->guardian_name,
             'service_domain' => $r->service_domain,
-            'scheduled_start' => $r->scheduled_start,
-            'scheduled_end' => $r->scheduled_end,
-            'actual_start' => $r->actual_start,
-            'actual_end' => $r->actual_end,
+            'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
+            'scheduled_end' => \App\Support\Kst::iso($r->scheduled_end),
+            'actual_start' => \App\Support\Kst::iso($r->actual_start),
+            'actual_end' => \App\Support\Kst::iso($r->actual_end),
             'duration_min' => $r->duration_min !== null ? (int) $r->duration_min : null,
             'is_manual' => (bool) $r->is_manual,
             'has_summary' => (bool) $r->has_summary,
@@ -385,9 +385,9 @@ class OperationsController extends Controller
             'review_status' => $r->review_status,
             'review_note' => $r->review_note,
             'duration_min' => (int) $r->duration_min,
-            'actual_start' => $r->actual_start,
-            'actual_end' => $r->actual_end,
-            'reviewed_at' => $r->reviewed_at,
+            'actual_start' => \App\Support\Kst::iso($r->actual_start),
+            'actual_end' => \App\Support\Kst::iso($r->actual_end),
+            'reviewed_at' => \App\Support\Kst::iso($r->reviewed_at),
         ]);
 
         return response()->json([
@@ -564,7 +564,7 @@ class OperationsController extends Controller
             'read_24h_rate' => $r->recipients > 0 ? round($r->read_24h / $r->recipients * 100, 1) : 0,
             'domain' => $r->domain !== 'null' ? $r->domain : null,
             'branch_id' => $r->branch_id && $r->branch_id !== 'null' ? (int) $r->branch_id : null,
-            'sent_at' => $r->sent_at,
+            'sent_at' => \App\Support\Kst::iso($r->sent_at),
             // 개인 지정(1인) 발송이면 true — 프론트 이력 표에서 "개인" 뱃지 표시
             'is_direct' => (bool) $r->has_direct,
         ]);
@@ -814,12 +814,12 @@ class OperationsController extends Controller
             'guardian_name' => $r->guardian_name,
             'service_domain' => $r->service_domain,
             'mode' => $r->mode,
-            'scheduled_start' => $r->scheduled_start,
+            'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
             'duration_min' => (int) $r->duration_min,
             'status' => $r->status,
             'special_request' => $r->special_request,
-            'created_at' => $r->created_at,
-            'matched_at' => $r->matched_at,
+            'created_at' => \App\Support\Kst::iso($r->created_at),
+            'matched_at' => \App\Support\Kst::iso($r->matched_at),
             'senior' => [
                 'gender' => $r->senior_gender,
                 'care_grade' => $r->care_grade,
@@ -904,12 +904,12 @@ class OperationsController extends Controller
             'guardian_name' => $r->guardian_name,
             'mode' => $r->mode,
             'service_domain' => $r->service_domain,
-            'scheduled_start' => $r->scheduled_start,
+            'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
             'status' => $r->status,
             'candidate_count' => (int) $r->candidate_count,
             'matched_caregiver_name' => $r->matched_caregiver_name,
             'matched_caregiver_id' => $r->matched_caregiver_id ? (int) $r->matched_caregiver_id : null,
-            'created_at' => $r->created_at,
+            'created_at' => \App\Support\Kst::iso($r->created_at),
         ]);
 
         $countsQ = DB::table('match_requests as r');
@@ -1271,7 +1271,8 @@ class OperationsController extends Controller
             $delta = 0;
             $newStart = $match->scheduled_start ? \Illuminate\Support\Carbon::parse($match->scheduled_start) : $now->copy();
             if (!empty($data['scheduled_start'])) {
-                $new = \Illuminate\Support\Carbon::parse($data['scheduled_start']);
+                // 관리자 입력(시간대 없는 값)은 한국시각으로 해석 — 화면이 한국시각으로 보여 주므로(2026-09-29)
+                $new = \App\Support\Kst::parseInput($data['scheduled_start']);
                 $old = $match->scheduled_start ? \Illuminate\Support\Carbon::parse($match->scheduled_start) : $new->copy();
                 $delta = $new->getTimestamp() - $old->getTimestamp();
                 $newStart = $new;
@@ -1676,7 +1677,7 @@ class OperationsController extends Controller
             'items' => $items->map(fn ($i) => [
                 'id' => $i->id,
                 'session_id' => $i->session_id,
-                'scheduled_start' => $i->scheduled_start,
+                'scheduled_start' => \App\Support\Kst::iso($i->scheduled_start),
                 'hours' => (float) $i->hours,
                 'hourly_rate' => (int) $i->hourly_rate,
                 'amount' => (int) $i->amount,
@@ -1717,10 +1718,10 @@ class OperationsController extends Controller
             'net_amount' => (int) $s->net_amount,
             'status' => $s->status,
             'hometax_filing_no' => $s->hometax_filing_no,
-            'paid_at' => $s->paid_at,
-            'caregiver_ack_at' => $s->caregiver_ack_at,
+            'paid_at' => \App\Support\Kst::iso($s->paid_at),
+            'caregiver_ack_at' => \App\Support\Kst::iso($s->caregiver_ack_at),
             'dispute_status' => $s->dispute_status,
-            'disputed_at' => $s->disputed_at,
+            'disputed_at' => \App\Support\Kst::iso($s->disputed_at),
         ]);
 
         $agg = DB::table('settlements')->selectRaw(
