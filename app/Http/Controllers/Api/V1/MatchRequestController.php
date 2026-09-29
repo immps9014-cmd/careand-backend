@@ -918,7 +918,7 @@ class MatchRequestController extends Controller
 
         $rows = \App\Models\MentalCareClient::where('guardian_id', $guardian->id)
             ->orderByDesc('created_at')
-            ->get(['id', 'name', 'relation', 'gender']);
+            ->get(['id', 'name', 'relation', 'gender', 'home_address']); // 주소: 신청 화면 본인 대상 안내용(본인 소유 대상만)
 
         return response()->json(['success' => true, 'data' => $rows]);
     }
