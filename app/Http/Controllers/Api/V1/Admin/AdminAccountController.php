@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * 관리자 계정·권한 관리 — 슈퍼관리자 전용(config/admin_rbac.php 'admins' 영역) (2026-09-28, 구현계획 S2-3).
- * 새 관리자는 첫 로그인 때 2단계 인증을 등록해야 접속할 수 있다.
+ * 새 관리자는 첫 로그인 때 2단계 인증을 등록해야 접속할 수 있다(ADMIN_2FA_REQUIRED=true 일 때 — 2026-09-29 부터 꺼짐).
  */
 class AdminAccountController extends Controller
 {
@@ -37,6 +37,8 @@ class AdminAccountController extends Controller
             'success' => true,
             'data' => $rows,
             'levels' => config('admin_rbac.levels'),
+            // .env ADMIN_2FA_REQUIRED — 꺼져 있으면 화면이 2단계 인증 열·버튼·안내를 숨긴다(2026-09-29)
+            'two_factor_required' => (bool) config('auth.admin_2fa_required', true),
             'areas' => collect(config('admin_rbac.areas'))->map(fn ($v) => ['label' => $v['label'], 'read' => $v['read'], 'write' => $v['write']]),
         ]);
     }
@@ -62,7 +64,11 @@ class AdminAccountController extends Controller
         });
         $this->audit($request, 'admin.account.create', $admin->user_id, ['level' => $data['permission_level']]);
 
-        return response()->json(['success' => true, 'message' => '관리자 계정을 만들었습니다. 첫 로그인 때 2단계 인증을 등록합니다.', 'id' => $admin->id], 201);
+        $message = config('auth.admin_2fa_required', true)
+            ? '관리자 계정을 만들었습니다. 첫 로그인 때 2단계 인증을 등록합니다.'
+            : '관리자 계정을 만들었습니다. 아이디와 비밀번호로 로그인합니다.';
+
+        return response()->json(['success' => true, 'message' => $message, 'id' => $admin->id], 201);
     }
 
     /** PATCH /v1/admin/admins/{id} — 등급·부서·상태 변경 */
