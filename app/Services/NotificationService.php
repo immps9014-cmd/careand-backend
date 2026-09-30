@@ -121,6 +121,8 @@ class NotificationService
                         'tag' => $type . ':' . $notification->id,
                         'urgent' => in_array($type, self::URGENT_PUSH, true),
                         'notification_id' => $notification->id,
+                        // 홈 화면 아이콘 숫자 배지 — 이 알림을 포함한 안 읽은 수
+                        'badge' => Notification::where('user_id', $user->id)->where('is_read', false)->count(),
                     ])->afterCommit();
                 }
             } catch (\Throwable $e) {
@@ -154,8 +156,10 @@ class NotificationService
             in_array($type, [self::TYPE_CARE_SUMMARY_READY, self::TYPE_SAFETY_ALERT, self::TYPE_CARE_COMPLETED], true) && $guardian
                 => $sid ? "/logs/{$sid}" : '/logs',
             $type === self::TYPE_CARE_STARTED && $guardian => '/schedule',
-            in_array($type, [self::TYPE_MATCH_CONFIRMED, self::TYPE_MATCH_OFFER_TIMEOUT, self::TYPE_MATCH_REQUEST_EXPIRED], true) && $guardian
-                => $rid ? "/request/{$rid}" : '/home',
+            // 회원앱 알림 목록(notifications/page.tsx linkFor)과 같은 목적지 — 확정되면 다음 할 일은 결제
+            $type === self::TYPE_MATCH_CONFIRMED && $guardian => isset($payload['match_id']) ? "/payments/{$payload['match_id']}" : '/home',
+            $type === self::TYPE_MATCH_REQUEST_EXPIRED && $guardian => '/request/new',
+            $type === self::TYPE_MATCH_OFFER_TIMEOUT && $guardian => $rid ? "/request/{$rid}" : '/home',
             in_array($type, [self::TYPE_PAYMENT_PAID, self::TYPE_PAYMENT_FAILED], true) => '/payments',
             str_starts_with($type, 'SETTLEMENT_') => '/settlements',
             $type === self::TYPE_REVIEW_REQUEST => '/satisfaction',
