@@ -77,7 +77,7 @@ class ChatbotController extends Controller
         $welcome = ChatbotMessage::create([
             'session_id' => $session->id,
             'role' => 'assistant',
-            'content' => "안녕하세요 {$request->user()->name} 님 👋\n어르신 케어 관련 무엇이든 편하게 물어보세요.",
+            'content' => "안녕하세요 {$request->user()->name} 님 👋\n돌봄 신청·요금·이용 방법 등 무엇이든 편하게 물어보세요.",
         ]);
 
         return response()->json([
