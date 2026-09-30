@@ -172,6 +172,8 @@ class MatchRequestController extends Controller
                 'senior:id,name,care_grade',
                 'nursingPatient:id,name,hospital_name',
                 'serviceAddress:id,label,address',
+                // 산후·아이·마음돌봄 대상 이름(홈 요청 카드 표시명 — recipient_name)
+                'postpartumClient:id,name', 'childcareChild:id,name', 'mentalCareClient:id,name',
                 'category:id,name',
                 // 확정 매칭의 케어자·케어 일정·결제 상태(매칭완료 카드에 노출)
                 'match' => fn ($q) => $q->with(['caregiver.user:id,name', 'payment:id,match_id,status']),
@@ -366,6 +368,69 @@ class MatchRequestController extends Controller
             'success' => true,
             'message' => '인력에게 매칭 요청이 전송되었습니다. 응답 대기 중입니다.',
             'candidate' => new MatchCandidateResource($candidate),
+        ]);
+    }
+
+    /**
+     * POST /v1/matching/requests/{id}/cancel
+     * 보호자가 확정 전(open·matching) 요청을 취소한다. 확정(matched) 뒤에는 결제 취소·일정 조정이
+     * 얽히므로 고객센터로 넘긴다. 지정해 둔 후보가 있으면 그 돌봄전문가에게 취소를 알린다.
+     */
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $matchRequest = MatchRequest::findOrFail($id);
+        $this->authorize('update', $matchRequest);
+
+        $request->validate(['reason' => ['nullable', 'string', 'max:200']]);
+
+        if (!in_array($matchRequest->status, ['open', 'matching'], true)) {
+            $msg = match ($matchRequest->status) {
+                'matched' => '돌봄전문가가 이미 확정된 요청이에요. 취소나 일정 변경은 고객센터로 문의해 주세요.',
+                'cancelled' => '이미 취소된 요청이에요.',
+                default => '마감된 요청이라 취소할 수 없어요.',
+            };
+            return response()->json(['success' => false, 'error_code' => 'NOT_CANCELLABLE', 'message' => $msg], 422);
+        }
+
+        $offered = [];
+        try {
+        DB::transaction(function () use ($matchRequest, &$offered) {
+            // 경합 방지: 잠근 뒤 상태를 다시 본다(그 사이 돌봄전문가가 수락했을 수 있음)
+            $fresh = MatchRequest::whereKey($matchRequest->id)->lockForUpdate()->first();
+            if (!in_array($fresh->status, ['open', 'matching'], true)) {
+                throw new \RuntimeException('NOT_CANCELLABLE');
+            }
+            $offered = DB::table('match_candidates')
+                ->where('request_id', $fresh->id)->where('response', 'pending')->whereNotNull('offered_at')
+                ->pluck('caregiver_id')->all();
+            DB::table('match_candidates')->where('request_id', $fresh->id)->where('response', 'pending')
+                ->update(['response' => 'expired', 'updated_at' => now()]);
+            $fresh->update(['status' => 'cancelled']);
+        });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() !== 'NOT_CANCELLABLE') throw $e;
+            return response()->json(['success' => false, 'error_code' => 'NOT_CANCELLABLE',
+                'message' => '방금 돌봄전문가가 확정돼 취소할 수 없어요. 고객센터로 문의해 주세요.'], 409);
+        }
+
+        if ($offered) {
+            $svc = app(NotificationService::class);
+            $scheduledKst = $matchRequest->scheduled_start?->copy()->setTimezone('Asia/Seoul')->format('n월 j일 H:i') ?? '';
+            foreach (DB::table('caregivers')->whereIn('id', $offered)->pluck('user_id') as $uid) {
+                $svc->notifySafely($uid ? (int) $uid : null, NotificationService::TYPE_MATCH_REQUEST_CANCELLED, [
+                    'request_id' => $matchRequest->id,
+                    'service_label' => \App\Support\ServiceDomains::label((string) $matchRequest->service_domain),
+                    'scheduled_at' => $scheduledKst,
+                ]);
+            }
+        }
+
+        Log::info('[MATCH] 보호자 요청 취소', ['request_id' => $matchRequest->id, 'reason' => $request->input('reason')]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '요청을 취소했어요.',
+            'data' => new MatchRequestResource($matchRequest->fresh()),
         ]);
     }
 

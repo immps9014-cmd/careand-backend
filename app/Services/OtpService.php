@@ -99,6 +99,15 @@ class OtpService
     }
 
     /**
+     * 토큰 확인만 하고 지우지 않는다 — 아이디 찾기 뒤 비밀번호 재설정으로 이어갈 때.
+     */
+    public function peekVerifyToken(string $phone, string $token): bool
+    {
+        $stored = Cache::get("otp:verify_token:{$phone}");
+        return $stored !== null && hash_equals((string) $stored, $token);
+    }
+
+    /**
      * 회원가입 시 토큰 검증
      */
     public function validateVerifyToken(string $phone, string $token): bool

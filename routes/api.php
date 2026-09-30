@@ -47,6 +47,9 @@ Route::prefix('v1')->group(function () {
         Route::get('oauth/{provider}/url', [\App\Http\Controllers\Api\V1\SocialAuthController::class, 'url'])->where('provider', 'kakao|google')->middleware('throttle:20,1');
         Route::post('oauth/{provider}/callback', [\App\Http\Controllers\Api\V1\SocialAuthController::class, 'callback'])->where('provider', 'kakao|google')->middleware('throttle:10,1');
         Route::post('refresh', [AuthController::class, 'refresh'])->middleware('throttle:20,1');
+        // 아이디 찾기 · 비밀번호 재설정 — 휴대폰 인증 토큰으로
+        Route::post('find-id', [\App\Http\Controllers\Api\V1\AccountRecoveryController::class, 'findId'])->middleware('throttle:10,1');
+        Route::post('reset-password', [\App\Http\Controllers\Api\V1\AccountRecoveryController::class, 'resetPassword'])->middleware('throttle:10,1');
     });
 
     // ========== 공개 웹(/www, 비로그인) 읽기 전용 ==========
@@ -151,6 +154,7 @@ Route::prefix('v1')->group(function () {
             Route::get('requests/{id}/candidates', [MatchRequestController::class, 'candidates'])
                 ->whereNumber('id')->name('api.v1.matching.candidates');
             Route::post('requests/{id}/select', [MatchRequestController::class, 'selectCandidate'])->whereNumber('id');
+            Route::post('requests/{id}/cancel', [MatchRequestController::class, 'cancel'])->whereNumber('id');   // 보호자 요청 취소(확정 전)
             Route::post('requests/{id}/invite', [MatchRequestController::class, 'inviteCaregiver'])->whereNumber('id');
             Route::post('candidates/{candidateId}/bid', [MatchRequestController::class, 'submitBid'])->whereNumber('candidateId');
             Route::post('candidates/{candidateId}/accept', [MatchRequestController::class, 'acceptByCaregiver'])->whereNumber('candidateId');

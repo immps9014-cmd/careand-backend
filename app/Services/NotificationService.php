@@ -47,6 +47,7 @@ class NotificationService
     public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
     public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
+    public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
     public const TYPE_MATCH_OFFER_TIMEOUT = 'MATCH_OFFER_TIMEOUT';         // 지정 후보 무응답 자동 거절 → 보호자(기능 10)
     public const TYPE_MATCH_UNMATCHED_ALERT = 'MATCH_UNMATCHED_ALERT';     // 장시간 미매칭 → 매칭 담당 관리자(기능 18)
     public const TYPE_CARE_REMINDER = 'CARE_REMINDER';
@@ -210,6 +211,11 @@ class NotificationService
                     $payload['service_label'] ?? '케어',
                     $payload['scheduled_at'] ?? ''
                 ),
+            ],
+            self::TYPE_MATCH_REQUEST_CANCELLED => [
+                'title' => '요청이 취소됐어요',
+                'body' => sprintf('%s %s 요청을 보호자가 취소했어요. 따로 하실 일은 없어요.',
+                    $payload['service_label'] ?? '돌봄', $payload['scheduled_at'] ?? ''),
             ],
             self::TYPE_MATCH_REQUEST_EXPIRED => [
                 'title' => '매칭 미성사 안내',

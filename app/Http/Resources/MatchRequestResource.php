@@ -20,6 +20,16 @@ class MatchRequestResource extends JsonResource
             'matched_at' => $this->matched_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
 
+            // 도메인 무관 대상 표시명 — 관계가 로드된 경우에만(목록 N+1 방지)
+            'recipient_name' => $this->when(
+                $this->relationLoaded(match ($this->service_domain) {
+                    'nursing' => 'nursingPatient', 'living_support' => 'serviceAddress',
+                    'postpartum' => 'postpartumClient', 'childcare' => 'childcareChild',
+                    'mental_care' => 'mentalCareClient', default => 'senior',
+                }),
+                fn () => $this->resource->recipientName(),
+            ),
+
             'requirements' => $this->requirements,
             'price_estimate' => $this->price_estimate,
             'budget_hourly' => $this->budget_hourly !== null ? (float) $this->budget_hourly : null,
