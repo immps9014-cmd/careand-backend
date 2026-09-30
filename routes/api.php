@@ -54,6 +54,9 @@ Route::prefix('v1')->group(function () {
 
     // ========== 공개 웹(/www, 비로그인) 읽기 전용 ==========
     // 돌봄전문가 개별 노출은 회원 전용(/app)으로 전환 — 비로그인은 집계 통계만.
+    // 웹 푸시 공개키(VAPID) — 구독 전에 필요, 비밀 아님
+    Route::get('push/public-key', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'publicKey'])->middleware('throttle:60,1');
+
     Route::prefix('public')->middleware('throttle:60,1')->group(function () {
         Route::get('care-logs/{token}', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'show'])->where('token', '[A-Za-z0-9]{40}');   // 가족 공유(기능 5)
         Route::get('stats', [PublicController::class, 'stats']);
@@ -211,6 +214,11 @@ Route::prefix('v1')->group(function () {
             Route::post('{id}/resolve', [AnomalyAlertController::class, 'resolve'])->whereNumber('id');
             Route::post('{id}/dismiss', [AnomalyAlertController::class, 'dismiss'])->whereNumber('id');
         });
+
+        // 웹 푸시 구독(PWA 1단계)
+        Route::post('push/subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'store']);
+        Route::delete('push/subscriptions', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'destroy']);
+        Route::post('push/test', [\App\Http\Controllers\Api\V1\PushSubscriptionController::class, 'test'])->middleware('throttle:5,1');
 
         // 챗봇 (보호자)
         Route::prefix('chatbot')->group(function () {

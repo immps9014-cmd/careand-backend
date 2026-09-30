@@ -102,6 +102,14 @@ return [
     ],
 
     // FCM
+    // 웹 푸시(PWA, VAPID) — 키 쌍은 .env 에만. 공개키는 브라우저 구독에 쓰이므로 비밀 아님, 개인키는 비밀.
+    'webpush' => [
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key_pem' => env('VAPID_PRIVATE_KEY_PEM'),   // PEM 을 base64 한 줄로 인코딩해 보관
+        'subject' => env('VAPID_SUBJECT', 'https://caren.aiclaude.kr'),
+        'enabled' => env('WEBPUSH_ENABLED', true),
+    ],
+
     'fcm' => [
         'server_key' => env('FCM_SERVER_KEY'),
         'sender_id' => env('FCM_SENDER_ID'),

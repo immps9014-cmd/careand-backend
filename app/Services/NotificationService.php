@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\SendAlimtalkJob;
+use App\Jobs\SendWebPushJob;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\External\FcmService;
@@ -109,6 +110,24 @@ class NotificationService
             return $notification;
         });
 
+        // 웹 푸시(PWA 1단계) — 구독한 기기가 있을 때만 큐에 올린다. 관리자는 관리자 콘솔을 쓰므로 제외.
+        if ($user->role !== 'admin') {
+            try {
+                if (DB::table('push_subscriptions')->where('user_id', $user->id)->exists()) {
+                    SendWebPushJob::dispatch($user->id, [
+                        'title' => $template['title'],
+                        'body' => $template['body'],
+                        'url' => self::pushUrl($type, $user->role, $payload),
+                        'tag' => $type . ':' . $notification->id,
+                        'urgent' => in_array($type, self::URGENT_PUSH, true),
+                        'notification_id' => $notification->id,
+                    ])->afterCommit();
+                }
+            } catch (\Throwable $e) {
+                Log::warning('웹 푸시 큐 등록 실패', ['user_id' => $user->id, 'type' => $type, 'error' => $e->getMessage()]);
+            }
+        }
+
         if ($user->role !== 'admin' && isset(AlimtalkTemplates::BY_TYPE[$type])) {
             try {
                 SendAlimtalkJob::dispatch($user->id, $type, $payload, $notification->id)->afterCommit();
@@ -118,6 +137,34 @@ class NotificationService
         }
 
         return $notification;
+    }
+
+    /** 잠든 폰도 바로 깨워야 하는 알림(푸시 Urgency: high) — 안전·이상징후·응답 시한이 있는 지정 요청 */
+    private const URGENT_PUSH = [
+        self::TYPE_SAFETY_ALERT, self::TYPE_ANOMALY_CRITICAL, self::TYPE_ANOMALY_HIGH, self::TYPE_MATCH_REQUEST_ASSIGNED,
+    ];
+
+    /** 푸시를 눌렀을 때 열 회원앱 화면(/app 기준). 모르는 종류는 알림 목록으로. */
+    public static function pushUrl(string $type, string $role, array $payload): string
+    {
+        $guardian = $role !== 'caregiver';
+        $sid = $payload['session_id'] ?? null;
+        $rid = $payload['request_id'] ?? null;
+        return '/app' . match (true) {
+            in_array($type, [self::TYPE_CARE_SUMMARY_READY, self::TYPE_SAFETY_ALERT, self::TYPE_CARE_COMPLETED], true) && $guardian
+                => $sid ? "/logs/{$sid}" : '/logs',
+            $type === self::TYPE_CARE_STARTED && $guardian => '/schedule',
+            in_array($type, [self::TYPE_MATCH_CONFIRMED, self::TYPE_MATCH_OFFER_TIMEOUT, self::TYPE_MATCH_REQUEST_EXPIRED], true) && $guardian
+                => $rid ? "/request/{$rid}" : '/home',
+            in_array($type, [self::TYPE_PAYMENT_PAID, self::TYPE_PAYMENT_FAILED], true) => '/payments',
+            str_starts_with($type, 'SETTLEMENT_') => '/settlements',
+            $type === self::TYPE_REVIEW_REQUEST => '/satisfaction',
+            $type === self::TYPE_CAREGIVER_DOC_REJECTED => '/documents',
+            $type === self::TYPE_CARE_REMINDER => '/schedule',
+            in_array($type, [self::TYPE_MATCH_REQUEST_ASSIGNED, self::TYPE_MATCH_REQUEST_CANCELLED, self::TYPE_MATCH_CONFIRMED,
+                self::TYPE_CAREGIVER_APPROVED, self::TYPE_CAREGIVER_REJECTED, self::TYPE_ANOMALY_HIGH, self::TYPE_ANOMALY_CRITICAL], true) => '/home',
+            default => '/notifications',
+        };
     }
 
     /**
