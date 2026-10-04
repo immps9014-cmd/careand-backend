@@ -31,7 +31,7 @@ class MnhAdminController extends Controller
     {
         $year = (int) ($request->query('year') ?: Carbon::now('Asia/Seoul')->year);
         $rows = MnhSupportType::where('year', $year)
-            ->orderBy('fetus_type')->orderBy('birth_order')->orderBy('income_tier')->orderBy('period')->get();
+            ->orderByRaw("FIELD(fetus_type,'single','twins','triplets_plus')")->orderByRaw("FIELD(birth_order,'first','second','third_plus','any')")->orderBy('income_tier')->orderByRaw("FIELD(period,'short','standard','extended')")->get();
         $years = MnhSupportType::distinct()->orderByDesc('year')->pluck('year');
         $used = MnhContract::whereIn('support_type_id', $rows->pluck('id'))->groupBy('support_type_id')
             ->selectRaw('support_type_id, count(*) n')->pluck('n', 'support_type_id');
