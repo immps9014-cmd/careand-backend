@@ -240,7 +240,7 @@ class GenerateMatchCandidatesJob implements ShouldQueue
             'senior' => '시니어돌봄',
             'nursing' => '병원간병',
             'living_support' => '생활지원',
-            'postpartum' => '산후관리',
+            'postpartum' => '산모신생아 건강관리',
             'childcare' => '아이돌봄',
             'mental_care' => '마음돌봄',
         ];

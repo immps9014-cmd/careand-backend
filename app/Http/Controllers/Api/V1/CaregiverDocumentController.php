@@ -48,7 +48,7 @@ class CaregiverDocumentController extends Controller
             return response()->json(['success' => false, 'message' => '돌봄전문가 회원만 사용할 수 있습니다.'], 403);
         }
         $v = $request->validate([
-            'doc_type' => ['required', 'string', 'in:' . implode(',', array_keys(CaregiverDocumentService::types()))],
+            'doc_type' => ['required', 'string', 'in:' . implode(',', array_keys(CaregiverDocumentService::typesFor($cg->id)))],
             'file' => ['required', 'file', 'max:' . config('caregiver_docs.max_kb'), 'mimes:' . implode(',', config('caregiver_docs.mimes'))],
             'issued_at' => ['nullable', 'date', 'before_or_equal:today'],
         ], [

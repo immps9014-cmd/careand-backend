@@ -60,7 +60,7 @@ class EpdsCalculatorService
                 $scores,
                 [
                     'postpartum_client_id' => $client->id,
-                    'assessment_date'      => now()->toDateString(),
+                    'assessment_date'      => now('Asia/Seoul')->toDateString(), // 한국 날짜(1일 1회 기준도 KST)
                     'total_score'          => $totalScore,
                     'risk_level'           => $riskLevel,
                     'llm_sentiment_score'  => $llmSentiment,
@@ -151,7 +151,7 @@ class EpdsCalculatorService
             return 'medical_referral';
         }
         if ($riskLevel === 'high') {
-            return 'rematch';
+            return 'counseling'; // 심리지원(마음돌봄) 연결 권고 — 요구사항분석 PDF(2026-10-05). 이전엔 rematch
         }
         return 'none';
     }
@@ -182,7 +182,51 @@ class EpdsCalculatorService
             'q10'        => $assessment->q10_score,
         ]);
 
-        // 실제 운영: NotificationService 통해 본사 운영팀, 산모, 가족 보호자에게 분리 발송
-        // app(NotificationService::class)->notifyEpdsHighRisk($client, $assessment);
+        // CS 담당 관리자에게 알림(2026-10-05) — 문항 응답은 넣지 않고 판정·총점만. 이름은 마스킹
+        $svc = app(\App\Services\NotificationService::class);
+        $name = (string) $client->name;
+        $payload = [
+            'postpartum_client_id' => $client->id,
+            'client_name' => $name !== '' ? mb_substr($name, 0, 1) . '○○' : '산모',
+            'risk_level' => $assessment->risk_level,
+            'total' => (int) $assessment->total_score,
+            'self_harm' => (int) $assessment->q10_score >= 1,
+        ];
+        foreach ($svc->adminsFor('cs') as $adminUserId) {
+            $svc->notifySafely($adminUserId, \App\Services\NotificationService::TYPE_EPDS_HIGH_RISK, $payload);
+        }
+    }
+
+    /**
+     * 수검자 보고서 — 하위척도·판정 설명·권고(마음돌봄 연결, 위기 연락처). 회원 화면과 이력이 같이 쓴다.
+     */
+    public static function report(EpdsAssessment $a): array
+    {
+        $q = fn (int $i) => (int) $a->{"q{$i}_score"};
+        $anxiety = $q(3) + $q(4) + $q(5);
+        $levels = [
+            'low' => ['label' => '양호', 'message' => '지난 한 주 동안의 마음 상태는 안정적인 편이에요. 출산 후에는 기분이 자주 바뀔 수 있으니 2주 뒤에 한 번 더 확인해 보세요.'],
+            'medium' => ['label' => '주의', 'message' => '우울감이 조금 있는 편이에요. 충분히 쉬고 가족과 이야기를 나눠 보세요. 2주 넘게 이어지면 상담을 받아 보시길 권해요.'],
+            'high' => ['label' => '상담 권고', 'message' => '산후우울이 의심되는 점수예요. 혼자 견디지 마시고 전문 상담을 받아 보세요. 케어앤 마음돌봄으로 상담 선생님을 연결해 드릴 수 있어요.'],
+            'critical' => ['label' => '즉시 도움 필요', 'message' => '지금 많이 힘드신 상태예요. 오늘 바로 전문가와 이야기해 주세요. 아래 번호는 24시간 연결돼요.'],
+        ];
+        $lv = $levels[$a->risk_level] ?? $levels['low'];
+
+        return [
+            'id' => $a->id,
+            'date' => optional($a->assessment_date)->toDateString(),
+            'total' => (int) $a->total_score,
+            'max' => 30,
+            'risk_level' => $a->risk_level,
+            'risk_label' => $lv['label'],
+            'message' => $lv['message'],
+            'subscales' => [
+                ['key' => 'anhedonia', 'label' => '즐거움·기대', 'score' => $q(1) + $q(2), 'max' => 6],
+                ['key' => 'anxiety', 'label' => '불안', 'score' => $anxiety, 'max' => 9, 'flag' => $anxiety >= 6],
+                ['key' => 'depression', 'label' => '우울·감당', 'score' => $q(6) + $q(7) + $q(8) + $q(9) + $q(10), 'max' => 15],
+            ],
+            'self_harm' => $q(10) >= 1,
+            'recommend_mental_care' => in_array($a->risk_level, ['medium', 'high', 'critical'], true) || $anxiety >= 6,
+        ];
     }
 }

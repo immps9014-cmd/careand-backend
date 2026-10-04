@@ -208,9 +208,13 @@ class CaregiverController extends Controller
             ->where('status', 'active')
             ->findOrFail($id);
 
+        // 이용자 공개 서류(산모신생아 건강관리 구비서류 중 PDF 붉은색 항목) — 확인 완료분의 종류·유효기간만, 파일은 비공개
+        $data = (new CaregiverResource($caregiver))->resolve($request);
+        $data['verified_documents'] = app(\App\Services\CaregiverDocumentService::class)->publicSummary($caregiver->id);
+
         return response()->json([
             'success' => true,
-            'data' => new CaregiverResource($caregiver),
+            'data' => $data,
         ]);
     }
 
@@ -590,8 +594,9 @@ class CaregiverController extends Controller
             ->orderByDesc('mc.created_at')
             ->get();
         $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
+        $homes = \App\Support\PostpartumCareProfile::summaries($rows->pluck('postpartum_client_id'));
         $rows = $rows
-            ->map(function ($r) use ($babies) {
+            ->map(function ($r) use ($babies, $homes) {
                 $est = $r->price_estimate ? json_decode($r->price_estimate, true) : null;
 
                 return [
@@ -612,6 +617,7 @@ class CaregiverController extends Controller
                     'payment_status' => $r->payment_status,   // 보호자 결제 상태
                     'senior_name' => $r->senior_name ?? '(미상)',
                     'newborn_summary' => $babies[$r->postpartum_client_id] ?? null, // 산후: 「아기 1명 · 생후 12일」
+                    'household_summary' => $homes[$r->postpartum_client_id] ?? null, // 「조리원 14일 후 · 반려동물: 고양이 · CCTV: 거실」
                     'category' => $r->category_name,
                     'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements), // 함께 필요한 돌봄
                     // 역경매 입찰 (입찰 화면용)
@@ -665,6 +671,7 @@ class CaregiverController extends Controller
             ->orderByDesc('m.scheduled_start')
             ->get();
         $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
+        $homes = \App\Support\PostpartumCareProfile::summaries($rows->pluck('postpartum_client_id'));
         // 결제 완료된 매칭 — 미결제면 출근이 막히므로 앱이 미리 「보호자 결제 대기」를 보여 준다
         $paidMatches = \Illuminate\Support\Facades\DB::table('payments')->whereIn('match_id', $rows->pluck('match_id')->unique())
             ->where('status', 'paid')->pluck('match_id')->flip();
@@ -679,6 +686,7 @@ class CaregiverController extends Controller
                 'service_domain' => $r->service_domain,
                 'senior_name' => $r->senior_name ?? '(미상)',
                 'newborn_summary' => $babies[$r->postpartum_client_id] ?? null,
+                'household_summary' => $homes[$r->postpartum_client_id] ?? null,
                 'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements),
                 'paid' => isset($paidMatches[$r->match_id]),
                 'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),

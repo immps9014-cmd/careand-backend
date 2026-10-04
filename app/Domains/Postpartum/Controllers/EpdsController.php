@@ -29,7 +29,7 @@ class EpdsController extends Controller
 
         // 1산모 1일 1평가 (uk_epds_client_date) — DB 제약 위반 전에 422로 안내
         $already = \App\Domains\Postpartum\Models\EpdsAssessment::where('postpartum_client_id', $client->id)
-            ->whereDate('assessment_date', now()->toDateString())
+            ->whereDate('assessment_date', now('Asia/Seoul')->toDateString())
             ->exists();
         if ($already) {
             return response()->json([

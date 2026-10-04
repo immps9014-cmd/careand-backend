@@ -48,6 +48,7 @@ class NotificationService
     public const TYPE_CAREGIVER_APPLIED = 'CAREGIVER_APPLIED';
     public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
     public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
+    public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
     public const TYPE_MATCH_OFFER_TIMEOUT = 'MATCH_OFFER_TIMEOUT';         // 지정 후보 무응답 자동 거절 → 보호자(기능 10)
@@ -448,6 +449,14 @@ class NotificationService
                 'body' => sprintf(
                     '%s 돌봄전문가와의 케어가 끝났어요. 만족도를 남겨 주시면 서비스 개선에 큰 도움이 돼요.',
                     $payload['caregiver_name'] ?? '돌봄전문가'
+                ),
+            ],
+            self::TYPE_EPDS_HIGH_RISK => [
+                'title' => !empty($payload['self_harm']) ? '⚠ 산후우울 검사 — 자해 생각 응답' : '⚠ 산후우울 검사 고위험',
+                'body' => sprintf(
+                    '산모 %s(#%d)의 에딘버러 검사에서 「%s」 판정(총점 %d/30)이 나왔어요. 오늘 안에 연락해 상담·마음돌봄 연결을 안내해 주세요.',
+                    $payload['client_name'] ?? '산모', (int) ($payload['postpartum_client_id'] ?? 0),
+                    ($payload['risk_level'] ?? '') === 'critical' ? '즉시 도움 필요' : '상담 권고', (int) ($payload['total'] ?? 0)
                 ),
             ],
             self::TYPE_REVIEW_LOW => [

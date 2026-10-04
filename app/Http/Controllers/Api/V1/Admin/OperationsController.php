@@ -43,10 +43,11 @@ class OperationsController extends Controller
         $paginated = $query->orderByDesc('c.created_at')->paginate($perPage);
 
         // 서류 요약(기능 20, S5): 필수 서류 중 확인 완료 수 / 검토 대기 수
-        $required = array_keys(array_filter(config('caregiver_docs.types', []), fn ($t) => $t['required']));
+        // 필수 종류는 직군마다 다르다(산모신생아 건강관리 구비서류, 2026-10-05) → 돌봄전문가별 typesFor
         $docRows = DB::table('caregiver_documents')->whereIn('caregiver_id', collect($paginated->items())->pluck('id'))
             ->where('status', '!=', 'replaced')->get(['caregiver_id', 'doc_type', 'status'])->groupBy('caregiver_id');
-        $items = collect($paginated->items())->map(function ($r) use ($required, $docRows) {
+        $items = collect($paginated->items())->map(function ($r) use ($docRows) {
+            $required = array_keys(array_filter(\App\Services\CaregiverDocumentService::typesFor((int) $r->id), fn ($t) => $t['required']));
             $d = $docRows[$r->id] ?? collect();
             $r->docs_summary = [
                 'required' => count($required),
@@ -835,6 +836,10 @@ class OperationsController extends Controller
                         'birth_weight_g' => (int) $b->birth_weight_g,
                     ])->values()
                 : [],
+            // 산모신생아: 가정 정보·희망사항·희망 제공인력(관리자는 전체, 돌봄전문가는 household 한 줄만)
+            'care_profile' => $r->postpartum_client_id
+                ? \App\Support\PostpartumCareProfile::decode(DB::table('postpartum_clients')->where('id', $r->postpartum_client_id)->value('care_profile'))
+                : null,
             'created_at' => \App\Support\Kst::iso($r->created_at),
             'matched_at' => \App\Support\Kst::iso($r->matched_at),
             'senior' => [

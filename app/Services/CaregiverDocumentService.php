@@ -21,6 +21,36 @@ class CaregiverDocumentService
         return config('caregiver_docs.types', []);
     }
 
+    /**
+     * 이 돌봄전문가에게 해당하는 서류 종류 — domains 가 있으면 직군(service_domains)과 겹칠 때만.
+     * 각 항목에 required(직군 반영)를 다시 계산해 둔다.
+     */
+    public static function typesFor(int $caregiverId): array
+    {
+        $domains = array_filter(array_map('trim', explode(',', (string) DB::table('caregivers')->where('id', $caregiverId)->value('service_domains'))));
+        $out = [];
+        foreach (self::types() as $type => $meta) {
+            if (!empty($meta['domains']) && !array_intersect($meta['domains'], $domains)) {
+                continue;
+            }
+            $meta['required'] = (bool) ($meta['required'] ?? false)
+                || (!empty($meta['required_domains']) && array_intersect($meta['required_domains'], $domains));
+            $out[$type] = $meta;
+        }
+        return $out;
+    }
+
+    /**
+     * 이용자에게 공개하는 서류 — 확인 완료·유효기간 안의 public 서류만 [{type,label,issued_at,expires_at}] (파일·반려사유 없음)
+     */
+    public function publicSummary(int $caregiverId): array
+    {
+        return collect($this->checklist($caregiverId))
+            ->filter(fn ($c) => $c['public'] && $c['status'] === 'verified')
+            ->map(fn ($c) => ['type' => $c['type'], 'label' => $c['label'], 'issued_at' => $c['document']['issued_at'], 'expires_at' => $c['document']['expires_at']])
+            ->values()->all();
+    }
+
     public function store(int $caregiverId, string $type, UploadedFile $file, ?string $issuedAt): int
     {
         $raw = file_get_contents($file->getRealPath());
@@ -61,14 +91,14 @@ class CaregiverDocumentService
     }
 
     /**
-     * 종류별 현재 상태 — [{type,label,required,hint,status(missing|submitted|verified|rejected|expired),document}]
+     * 종류별 현재 상태 — [{type,label,required,hint,public,needs_issued_at,status(missing|submitted|verified|rejected|expired),document}]
      */
     public function checklist(int $caregiverId): array
     {
         $current = DB::table('caregiver_documents')->where('caregiver_id', $caregiverId)
             ->where('status', '!=', 'replaced')->orderByDesc('id')->get()->keyBy('doc_type');
         $out = [];
-        foreach (self::types() as $type => $meta) {
+        foreach (self::typesFor($caregiverId) as $type => $meta) {
             $d = $current[$type] ?? null;
             $status = $d ? $d->status : 'missing';
             if ($d && $d->expires_at && $d->expires_at < now()->toDateString()) {
@@ -79,6 +109,8 @@ class CaregiverDocumentService
                 'label' => $meta['label'],
                 'required' => (bool) $meta['required'],
                 'hint' => $meta['hint'] ?? null,
+                'public' => (bool) ($meta['public'] ?? false),
+                'needs_issued_at' => !empty($meta['valid_days']),
                 'status' => $status,
                 'document' => $d ? [
                     'id' => $d->id, 'original_name' => $d->original_name, 'mime' => $d->mime, 'size_bytes' => (int) $d->size_bytes,

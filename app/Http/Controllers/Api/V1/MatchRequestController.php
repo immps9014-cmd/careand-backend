@@ -959,7 +959,7 @@ class MatchRequestController extends Controller
     {
         $user = $request->user();
         $rows = DB::table('postpartum_clients')
-            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted')
+            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted', 'care_profile')
             ->where('user_id', $user->id)
             ->whereNull('deleted_at')
             ->orderByDesc('created_at')
@@ -973,6 +973,7 @@ class MatchRequestController extends Controller
                     $phone = null;
                 }
                 unset($r->phone_encrypted);
+                $r->care_profile = \App\Support\PostpartumCareProfile::decode($r->care_profile);
                 $r->is_self = $phone !== null && $user->phone && $phone === $user->phone;
 
                 return $r;
@@ -1049,6 +1050,87 @@ class MatchRequestController extends Controller
     }
 
     /**
+     * GET /v1/matching/postpartum-clients/{id}/epds
+     * 에딘버러 산후우울 검사 — 문항(config/epds.php)·이력 보고서·오늘 응시 가능 여부. 본인 소유 산모만(2026-10-05).
+     * (레거시 /postpartum/epds/* 는 정책이 staff 용이라 회원 경로로 쓰지 않는다)
+     */
+    public function postpartumEpds(Request $request, int $id): JsonResponse
+    {
+        if (!$this->ownsPostpartumClient($request, $id)) {
+            return response()->json(['success' => false, 'message' => '산모 정보를 찾을 수 없어요.'], 404);
+        }
+        $rows = \App\Domains\Postpartum\Models\EpdsAssessment::where('postpartum_client_id', $id)
+            ->orderByDesc('assessment_date')->limit(20)->get();
+
+        return response()->json(['success' => true, 'data' => [
+            'period' => config('epds.period'),
+            'questions' => config('epds.questions'),
+            'crisis_contacts' => config('epds.crisis_contacts'),
+            'can_take_today' => !$rows->contains(fn ($r) => optional($r->assessment_date)->toDateString() === now('Asia/Seoul')->toDateString()),
+            'history' => $rows->map(fn ($r) => \App\Domains\Postpartum\Services\EpdsCalculatorService::report($r))->values(),
+        ]]);
+    }
+
+    /**
+     * POST /v1/matching/postpartum-clients/{id}/epds {answers:[10개, 각 0~3]}
+     * 응시 → 판정·보고서. 고위험이면 CS 관리자 알림(EpdsCalculatorService). 하루 한 번.
+     */
+    public function submitPostpartumEpds(Request $request, int $id): JsonResponse
+    {
+        if (!$this->ownsPostpartumClient($request, $id)) {
+            return response()->json(['success' => false, 'message' => '산모 정보를 찾을 수 없어요.'], 404);
+        }
+        $v = $request->validate([
+            'answers' => ['required', 'array', 'size:10'],
+            'answers.*' => ['required', 'integer', 'between:0,3'],
+        ], ['answers.size' => '10개 문항에 모두 답해 주세요.', 'answers.*.required' => '10개 문항에 모두 답해 주세요.']);
+
+        $already = \App\Domains\Postpartum\Models\EpdsAssessment::where('postpartum_client_id', $id)
+            ->whereDate('assessment_date', now('Asia/Seoul')->toDateString())->exists();
+        if ($already) {
+            return response()->json(['success' => false, 'error_code' => 'EPDS_ALREADY_TODAY', 'message' => '오늘은 이미 검사를 마쳤어요. 내일 다시 할 수 있어요.'], 422);
+        }
+        $scores = [];
+        foreach (array_values($v['answers']) as $i => $score) {
+            $scores['q' . ($i + 1) . '_score'] = (int) $score;
+        }
+        $client = \App\Domains\Postpartum\Models\PostpartumClient::findOrFail($id);
+        $a = app(\App\Domains\Postpartum\Services\EpdsCalculatorService::class)->submit($client, $scores);
+
+        return response()->json(['success' => true, 'data' => \App\Domains\Postpartum\Services\EpdsCalculatorService::report($a)], 201);
+    }
+
+    private function ownsPostpartumClient(Request $request, int $id): bool
+    {
+        return DB::table('postpartum_clients')
+            ->where('id', $id)->where('user_id', $request->user()->id)->whereNull('deleted_at')
+            ->exists();
+    }
+
+    /**
+     * PUT /v1/matching/postpartum-clients/{id}/care-profile
+     * 가정 정보(조리원·가족·반려동물·CCTV)·희망사항·희망 제공인력 저장 — 본인 소유 산모만. 통째로 덮어쓴다.
+     * (요구사항분석 PDF 「이용자 회원가입」 6~10번, 2026-10-05) 형식은 App\Support\PostpartumCareProfile.
+     */
+    public function updatePostpartumCareProfile(Request $request, int $id): JsonResponse
+    {
+        $owned = DB::table('postpartum_clients')
+            ->where('id', $id)->where('user_id', $request->user()->id)->whereNull('deleted_at')
+            ->exists();
+        if (!$owned) {
+            return response()->json(['success' => false, 'message' => '산모 정보를 찾을 수 없어요.'], 404);
+        }
+        $data = $request->validate(\App\Support\PostpartumCareProfile::rules());
+        $profile = \App\Support\PostpartumCareProfile::normalize($data['care_profile'] ?? null);
+        DB::table('postpartum_clients')->where('id', $id)->update([
+            'care_profile' => $profile ? json_encode($profile, JSON_UNESCAPED_UNICODE) : null,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => '가정 정보를 저장했어요.', 'data' => ['care_profile' => $profile]]);
+    }
+
+    /**
      * POST /v1/matching/postpartum-clients
      * 산모 간이 등록 — 통합 요청 폼용. 매칭에 필요한 최소 필드만. user_id=본인.
      * (고급 필드/바우처는 산후 전용 서브시스템에서 관리)
@@ -1064,7 +1146,8 @@ class MatchRequestController extends Controller
             'delivery_date' => ['required', 'date'],
             'delivery_type' => ['required', 'in:natural,cesarean,vbac'],
             'is_first_baby' => ['nullable', 'boolean'],
-        ]);
+        ] + \App\Support\PostpartumCareProfile::rules());
+        $profile = \App\Support\PostpartumCareProfile::normalize($data['care_profile'] ?? null);
 
         $id = DB::table('postpartum_clients')->insertGetId([
             'user_id'         => $request->user()->id,
@@ -1077,6 +1160,7 @@ class MatchRequestController extends Controller
             'delivery_date'   => $data['delivery_date'],
             'delivery_type'   => $data['delivery_type'],
             'is_first_baby'   => (int) ($data['is_first_baby'] ?? 1),
+            'care_profile'    => $profile ? json_encode($profile, JSON_UNESCAPED_UNICODE) : null,
             'status'          => 'active',
             'created_at'      => now(),
             'updated_at'      => now(),
@@ -1445,6 +1529,7 @@ class MatchRequestController extends Controller
             'category' => $r->category?->name,
             'extra_categories' => MatchRequest::extraCategoryNames($r->requirements),
             'newborn_summary' => $r->postpartum_client_id ? (MatchRequest::newbornSummaries(collect([$r->postpartum_client_id]))[$r->postpartum_client_id] ?? null) : null,
+            'household_summary' => $r->postpartum_client_id ? (\App\Support\PostpartumCareProfile::summaries(collect([$r->postpartum_client_id]))[$r->postpartum_client_id] ?? null) : null,
             'recipient_name' => $this->maskName($r->recipientName()),
             'recipient_age' => $this->ageFrom($recipient->birth_date ?? null),
             'recipient_gender' => $recipient->gender ?? null,

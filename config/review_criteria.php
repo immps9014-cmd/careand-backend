@@ -12,7 +12,15 @@ return [
     'nursing'        => $common + ['care_skill' => '간병 전문성', 'hygiene' => '위생·청결'],
     'housekeeping'   => $common + ['quality' => '작업 완성도', 'tidiness' => '정리·마무리'],
     'living_support' => $common + ['quality' => '작업 완성도', 'tidiness' => '정리·마무리'],
-    'postpartum'     => $common + ['newborn_care' => '신생아 돌봄', 'mother_care' => '산모 회복 도움'],
+    // 산모신생아 건강관리 — 요구사항분석 PDF 「이용자 평가서」 6항목(기타사항은 후기 본문 comment). 2026-10-05
+    'postpartum'     => [
+        'newborn_care'  => '신생아 케어 안심도',
+        'mother_care'   => '산모 맞춤 케어·음식',
+        'hygiene'       => '위생·청결 상태',
+        'work_sense'    => '일처리 속도·센스',
+        'communication' => '소통·정서적 편안함',
+        'privacy'       => '사생활 보호·매너',
+    ],
     'childcare'      => $common + ['child_bond' => '아이와의 교감', 'safety' => '안전 관리'],
     'mental_care'    => $common + ['empathy' => '공감·경청', 'privacy' => '비밀 유지'],
     'default'        => $common,

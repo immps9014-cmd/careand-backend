@@ -29,7 +29,7 @@ class InsightsController extends Controller
         'senior'         => '방문요양',
         'nursing'        => '병원간병',
         'living_support' => '생활지원',
-        'postpartum'     => '산모산후',
+        'postpartum'     => '산모신생아',
         'childcare'      => '아이돌봄',
         'mental_care'    => '마음돌봄',
     ];

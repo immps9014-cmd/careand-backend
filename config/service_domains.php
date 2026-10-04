@@ -115,10 +115,10 @@ return [
 
     // ── 아래는 잠복(Phase 2~4에서 오픈) ─────────────────────────────────
 
-    // Phase 2: 산모·산후관리 오픈 (통합 generic 흐름 편입). subject=postpartum_clients(user_id 스코프).
+    // Phase 2: 산모신생아 건강관리(구 산모·산후관리) 오픈 (통합 generic 흐름 편입). subject=postpartum_clients(user_id 스코프).
     'postpartum' => [
         'order'            => 40,
-        'label'            => '산모·산후관리',
+        'label'            => '산모신생아 건강관리',
         'desc'             => '산모·신생아',
         'icon'             => 'baby',
         'is_active'        => true,
@@ -128,10 +128,10 @@ return [
             'hasSubject'  => ['table' => 'postpartum_clients', 'fk' => 'postpartum_client_id'],
             'requestedBy' => ['self'],
         ],
-        'domain_label'     => '산후 케어',
+        'domain_label'     => '산모신생아 건강관리',
         'qualification'    => [
             'license_required' => true,
-            'license_label'    => '산후관리 관련 자격번호',
+            'license_label'    => '산모신생아 건강관리 관련 자격번호',
             'verify'           => 'auto', // 자격종류별 자동조회(산후관리사→민간자격, 간호사→국시원, 간호조무사→복지부)
             'accepted_types'   => ['산후관리사', '간호사', '간호조무사'],
         ],

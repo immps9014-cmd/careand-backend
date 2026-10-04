@@ -193,7 +193,7 @@ class StoreMatchRequestRequest extends FormRequest
             'duration_min.between' => '소요 시간이 허용 범위를 벗어났습니다.',
             'senior_id.required_if' => '시니어 돌봄 요청에는 어르신 선택이 필요합니다.',
             'nursing_patient_id.required_if' => '간병 요청에는 환자 선택이 필요합니다.',
-            'postpartum_client_id.required_if' => '산후관리 요청에는 산모 선택이 필요합니다.',
+            'postpartum_client_id.required_if' => '산모신생아 건강관리 요청에는 산모 선택이 필요합니다.',
             'childcare_child_id.required_if' => '아이돌봄 요청에는 아동 선택이 필요합니다.',
             'mental_care_client_id.required_if' => '마음돌봄 요청에는 대상 선택이 필요합니다.',
         ];
