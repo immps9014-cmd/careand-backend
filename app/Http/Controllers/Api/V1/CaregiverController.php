@@ -548,10 +548,19 @@ class CaregiverController extends Controller
             ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
             ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             // 본인이 확정된 매칭에 한해 결제·케어 진행상태를 실어 진행 파이프라인에 사용.
-            ->leftJoin('matches as mt', function ($j) {
-                $j->on('mt.request_id', '=', 'r.id')->on('mt.caregiver_id', '=', 'mc.caregiver_id');
-            })
-            ->leftJoin('payments as pmt', 'pmt.match_id', '=', 'mt.id')
+            // 매칭·결제는 한 줄씩만 붙인다 — 결제 재시도(실패→대기→완료)마다 같은 매칭이 여러 줄로 복제되던 문제(2026-10-04).
+            // 매칭: (요청, 돌봄전문가)당 최신 1건 / 결제: 매칭당 「완료 1건이라도 있으면 paid, 아니면 최신 상태」
+            ->leftJoinSub(
+                \Illuminate\Support\Facades\DB::table('matches')->selectRaw('request_id, caregiver_id, MAX(id) as id')->groupBy('request_id', 'caregiver_id'),
+                'mtl', fn ($j) => $j->on('mtl.request_id', '=', 'r.id')->on('mtl.caregiver_id', '=', 'mc.caregiver_id')
+            )
+            ->leftJoin('matches as mt', 'mt.id', '=', 'mtl.id')
+            ->leftJoinSub(
+                \Illuminate\Support\Facades\DB::table('payments')->selectRaw(
+                    "match_id, IF(SUM(status = 'paid') > 0, 'paid', SUBSTRING_INDEX(GROUP_CONCAT(status ORDER BY id DESC), ',', 1)) as status"
+                )->groupBy('match_id'),
+                'pmt', 'pmt.match_id', '=', 'mt.id'
+            )
             ->leftJoin('service_categories as cat', 'cat.id', '=', 'r.category_id')
             ->where('mc.caregiver_id', $caregiver->id)
             // 매칭이 안 된 채 지나간 제안은 숨긴다(요양보호사 홈 '새 매칭 제안').
@@ -598,6 +607,8 @@ class CaregiverController extends Controller
                     'duration_min' => $r->duration_min,
                     'request_status' => $r->request_status,
                     'match_status' => $r->match_status,       // confirmed|in_progress|completed (본인 확정 시)
+                    // 수락했지만 보호자가 다른 전문가와 확정한 요청 — 「진행 중」 목록에서 빼야 남의 매칭이 안 보인다(10-04)
+                    'matched_other' => $r->request_status === 'matched' && $r->match_status === null,
                     'payment_status' => $r->payment_status,   // 보호자 결제 상태
                     'senior_name' => $r->senior_name ?? '(미상)',
                     'newborn_summary' => $babies[$r->postpartum_client_id] ?? null, // 산후: 「아기 1명 · 생후 12일」
