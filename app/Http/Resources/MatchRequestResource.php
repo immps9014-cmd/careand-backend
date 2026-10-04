@@ -59,6 +59,9 @@ class MatchRequestResource extends JsonResource
                 'base_rate' => (float) $this->category->base_rate,
             ]),
 
+            // 산모신생아 바우처 계약에서 만들어진 요청이면 계약 id(회원 화면이 계약 상세로 잇는다)
+            'mnh_contract_id' => $this->mnh_contract_id,
+
             // 확정 매칭 정보 — 매칭완료 카드에 케어자 이름·케어 일정·결제 상태 노출
             'match' => $this->whenLoaded('match', fn () => $this->match ? [
                 'id' => $this->match->id,
@@ -66,7 +69,7 @@ class MatchRequestResource extends JsonResource
                 'scheduled_start' => $this->match->scheduled_start?->toIso8601String(),
                 'scheduled_end' => $this->match->scheduled_end?->toIso8601String(),
                 'caregiver_name' => $this->match->caregiver?->user?->name,
-                'payment_status' => $this->match->payment?->status,
+                'payment_status' => \App\Support\MatchPaid::displayStatus((int) $this->match->id, $this->match->payment?->status),
             ] : null),
         ];
     }

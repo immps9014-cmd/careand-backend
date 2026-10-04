@@ -229,7 +229,8 @@ class MatchRequestController extends Controller
                 // 실제 매칭된 돌봄전문가 — 「수락」한 후보가 여럿이어도 이 사람만 진행 중(2026-10-04)
                 $matchedCaregiverId = (int) $match->caregiver_id;
                 // 결제 레코드가 없으면 미결제(null)
-                $paymentStatus = Payment::where('match_id', $match->id)->value('status');
+                // 바우처 계약은 선납 여부(paid|voucher) — 앱 결제 대상이 아니다
+                $paymentStatus = \App\Support\MatchPaid::displayStatus((int) $match->id, Payment::where('match_id', $match->id)->value('status'));
             }
         }
 

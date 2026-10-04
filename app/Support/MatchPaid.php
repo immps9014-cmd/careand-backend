@@ -36,4 +36,20 @@ final class MatchPaid
         return DB::table('matches as m')->join('match_requests as r', 'r.id', '=', 'm.request_id')
             ->where('m.id', $matchId)->whereNotNull('r.mnh_contract_id')->exists();
     }
+
+    /**
+     * 화면용 결제 상태 — 바우처 계약 매칭은 선납이면 'paid', 아니면 'voucher'(앱 결제 대상 아님 → 「결제하기」 숨김).
+     * 그 밖엔 payments.status 그대로(없으면 null).
+     */
+    public static function displayStatus(int $matchId, ?string $paymentStatus): ?string
+    {
+        $prepaid = DB::table('matches as m')->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->join('mnh_contracts as c', 'c.id', '=', 'r.mnh_contract_id')
+            ->where('m.id', $matchId)->value(DB::raw('c.prepaid_at IS NOT NULL'));
+        if ($prepaid === null) {
+            return $paymentStatus;
+        }
+
+        return (int) $prepaid === 1 ? 'paid' : 'voucher';
+    }
 }

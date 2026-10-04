@@ -587,7 +587,8 @@ class CaregiverController extends Controller
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
                 'r.price_estimate',
-                'mt.status as match_status', 'pmt.status as payment_status', 'r.postpartum_client_id', 'r.requirements',
+                'mt.status as match_status', 'pmt.status as payment_status', 'r.postpartum_client_id', 'r.requirements', 'r.mnh_contract_id',
+                \Illuminate\Support\Facades\DB::raw('(SELECT c.prepaid_at IS NOT NULL FROM mnh_contracts c WHERE c.id = r.mnh_contract_id) as mnh_prepaid'),
                 'cat.name as category_name',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name')
             )
@@ -614,7 +615,7 @@ class CaregiverController extends Controller
                     'match_status' => $r->match_status,       // confirmed|in_progress|completed (본인 확정 시)
                     // 수락했지만 보호자가 다른 전문가와 확정한 요청 — 「진행 중」 목록에서 빼야 남의 매칭이 안 보인다(10-04)
                     'matched_other' => $r->request_status === 'matched' && $r->match_status === null,
-                    'payment_status' => $r->payment_status,   // 보호자 결제 상태
+                    'payment_status' => $r->mnh_contract_id ? ($r->mnh_prepaid ? 'paid' : 'voucher') : $r->payment_status,   // 보호자 결제 상태(바우처는 선납)
                     'senior_name' => $r->senior_name ?? '(미상)',
                     'newborn_summary' => $babies[$r->postpartum_client_id] ?? null, // 산후: 「아기 1명 · 생후 12일」
                     'household_summary' => $homes[$r->postpartum_client_id] ?? null, // 「조리원 14일 후 · 반려동물: 고양이 · CCTV: 거실」
