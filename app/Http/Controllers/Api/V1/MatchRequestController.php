@@ -216,11 +216,18 @@ class MatchRequestController extends Controller
         $matchId = null;
         $paymentStatus = null;
         $matchStatus = null;
+        $matchedCaregiverId = null;
         if ($matchRequest->status === 'matched') {
-            $match = CareMatch::where('request_id', $id)->first();
+            // 살아 있는 매칭을 우선(취소된 옛 매칭이 먼저 잡히지 않게), 없으면 최근 것
+            $match = CareMatch::where('request_id', $id)
+                ->orderByRaw("status IN ('confirmed','in_progress','completed') DESC")
+                ->orderByDesc('id')
+                ->first();
             if ($match) {
                 $matchId = (int) $match->id;
                 $matchStatus = $match->status; // 케어 진행: confirmed|in_progress|completed
+                // 실제 매칭된 돌봄전문가 — 「수락」한 후보가 여럿이어도 이 사람만 진행 중(2026-10-04)
+                $matchedCaregiverId = (int) $match->caregiver_id;
                 // 결제 레코드가 없으면 미결제(null)
                 $paymentStatus = Payment::where('match_id', $match->id)->value('status');
             }
@@ -233,6 +240,7 @@ class MatchRequestController extends Controller
             'match_id' => $matchId,
             'match_status' => $matchStatus,
             'payment_status' => $paymentStatus,
+            'matched_caregiver_id' => $matchedCaregiverId,
             'data' => MatchCandidateResource::collection($candidates),
             'message' => $candidates->isEmpty()
                 ? 'AI가 추천 후보를 산출 중입니다. 잠시 후 다시 확인해주세요.'
