@@ -71,11 +71,13 @@ class CareSessionController extends Controller
 
         // 보호자 결제 완료 전엔 출근 불가(결제는 매칭 단위). 방문 하루 전 미결제면 보호자에게 결제 안내가 간다(matching:watch).
         if (config('matching_rules.checkin_requires_payment', true)
-            && !\App\Models\Payment::where('match_id', $session->match_id)->where('status', 'paid')->exists()) {
+            && !\App\Support\MatchPaid::is((int) $session->match_id)) {
             return response()->json([
                 'success' => false,
                 'error_code' => 'PAYMENT_REQUIRED',
-                'message' => '보호자 결제가 아직 끝나지 않았어요. 결제가 끝나면 출근할 수 있어요. 급하면 고객센터로 연락해 주세요.',
+                'message' => \App\Support\MatchPaid::isVoucherContract((int) $session->match_id)
+                    ? '이용자 본인부담금 선납이 아직 확인되지 않았어요. 운영팀 확인 후 출근할 수 있어요.'
+                    : '보호자 결제가 아직 끝나지 않았어요. 결제가 끝나면 출근할 수 있어요. 급하면 고객센터로 연락해 주세요.',
             ], 422);
         }
 
@@ -153,6 +155,9 @@ class CareSessionController extends Controller
             ], 422);
         }
         $this->notifyGuardian($session->match_id, NotificationService::TYPE_CARE_STARTED, ['session_id' => $session->id]);
+        // 바우처 계약: 계약 상태(서비스 중) + 기관 출근 확인 알림
+        \App\Services\MnhContractService::onSessionChange((int) $session->match_id);
+        \App\Services\MnhContractService::notifyCheckin((int) $session->id);
         if ($outOfRange) {
             $this->alertOutOfRange($session, 'checkin', $distance, $radius);
         }
@@ -237,8 +242,9 @@ class CareSessionController extends Controller
             // 케어 완료 → 매칭 상태 전이. 반복(recurring) 요청은 모든 세션이 끝나야 완료,
             // 남은 세션이 있으면 진행중 유지(진행 파이프라인 '케어완료'/'케어시작' 판정).
             $match = $session->match;
+            // 취소된 회차(바우처 연기·교체 등)는 남은 일정으로 치지 않는다
             $hasRemaining = CareSession::where('match_id', $match->id)
-                ->where('status', '!=', 'completed')
+                ->whereNotIn('status', ['completed', 'cancelled'])
                 ->exists();
             $match->update(['status' => $hasRemaining ? 'in_progress' : 'completed']);
 
@@ -249,6 +255,8 @@ class CareSessionController extends Controller
         if ($outOut) {
             $this->alertOutOfRange($session, 'checkout', $outDistance, $outRadius);
         }
+
+        \App\Services\MnhContractService::onSessionChange((int) $session->match_id);
 
         // C:Writer AI 일지 자동 생성 (비동기)
         GenerateCareLogJob::dispatch($session->id);

@@ -27,6 +27,7 @@ return [
         'caregivers'    => ['label' => '돌봄전문가 자격검증',   'read' => $ops,                                   'write' => ['super', 'branch']],
         'matching'      => ['label' => '매칭 관리',            'read' => $ops,                                   'write' => ['super', 'branch']],
         'contracts'     => ['label' => '계약·일정',            'read' => $ops,                                   'write' => ['super', 'branch']],
+        'mnh'           => ['label' => '산모신생아 바우처',     'read' => $ops,                                   'write' => ['super', 'branch']],
         'care-sessions' => ['label' => '케어 진행 현황',        'read' => $ops,                                   'write' => ['super', 'branch']],
         'care-logs'     => ['label' => 'AI 일지 검수',          'read' => $ops,                                   'write' => $ops],
         'monitoring'    => ['label' => '케어 모니터링',         'read' => $ops,                                   'write' => $ops],

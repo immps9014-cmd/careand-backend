@@ -48,6 +48,8 @@ class NotificationService
     public const TYPE_CAREGIVER_APPLIED = 'CAREGIVER_APPLIED';
     public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
     public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
+    public const TYPE_MNH_CONTRACT = 'MNH_CONTRACT';         // 바우처 계약 배정·교체 → 이용자·돌봄전문가(2026-10-05)
+    public const TYPE_MNH_CHECKIN = 'MNH_CHECKIN';           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
@@ -450,6 +452,32 @@ class NotificationService
                     '%s 돌봄전문가와의 케어가 끝났어요. 만족도를 남겨 주시면 서비스 개선에 큰 도움이 돼요.',
                     $payload['caregiver_name'] ?? '돌봄전문가'
                 ),
+            ],
+            self::TYPE_MNH_CONTRACT => match ($payload['event'] ?? '') {
+                'applied' => [
+                    'title' => '바우처 계약 신청',
+                    'body' => sprintf('%s 신청이 들어왔어요(개시 희망 %s). 본인부담금 선납 확인과 담당 배정을 진행해 주세요.', $payload['contract_no'] ?? '', $payload['start_date'] ?? ''),
+                ],
+                'released' => [
+                    'title' => '바우처 일정 담당 변경',
+                    'body' => sprintf('%s부터 다른 돌봄전문가가 맡게 됐어요. 그 전 일정은 그대로예요.', $payload['start_date'] ?? ''),
+                ],
+                'swapped' => [
+                    'title' => '담당 산모신생아 건강관리사가 바뀌었어요',
+                    'body' => sprintf('%s부터 %s 관리사가 방문해요. 종료 예정일 %s.', $payload['start_date'] ?? '', $payload['caregiver_name'] ?? '새', $payload['end_date'] ?? ''),
+                ],
+                default => !empty($payload['for_caregiver']) ? [
+                    'title' => '바우처 일정이 배정됐어요',
+                    'body' => sprintf('산모신생아 건강관리 %s ~ %s 일정이 배정됐어요. 내 일정에서 확인해 주세요.', $payload['start_date'] ?? '', $payload['end_date'] ?? ''),
+                ] : [
+                    'title' => '담당 관리사가 배정됐어요',
+                    'body' => sprintf('%s 관리사가 %s부터 방문해요(종료 예정 %s). 마이페이지 바우처 계약에서 확인하세요.', $payload['caregiver_name'] ?? '담당', $payload['start_date'] ?? '', $payload['end_date'] ?? ''),
+                ],
+            },
+            self::TYPE_MNH_CHECKIN => [
+                'title' => '바우처 출근',
+                'body' => sprintf('%s 관리사가 %s 산모 댁에 %s 출근했어요. (계약 %s)', $payload['caregiver_name'] ?? '담당',
+                    $payload['client_name'] ?? '', $payload['at'] ?? '', $payload['contract_no'] ?? ''),
             ],
             self::TYPE_EPDS_HIGH_RISK => [
                 'title' => !empty($payload['self_harm']) ? '⚠ 산후우울 검사 — 자해 생각 응답' : '⚠ 산후우울 검사 고위험',

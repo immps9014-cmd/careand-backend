@@ -673,8 +673,7 @@ class CaregiverController extends Controller
         $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
         $homes = \App\Support\PostpartumCareProfile::summaries($rows->pluck('postpartum_client_id'));
         // 결제 완료된 매칭 — 미결제면 출근이 막히므로 앱이 미리 「보호자 결제 대기」를 보여 준다
-        $paidMatches = \Illuminate\Support\Facades\DB::table('payments')->whereIn('match_id', $rows->pluck('match_id')->unique())
-            ->where('status', 'paid')->pluck('match_id')->flip();
+        $paidMatches = \App\Support\MatchPaid::ids($rows->pluck('match_id'));
         $rows = $rows
             ->map(function ($r) {
                 $r->place = in_array($r->status, ['scheduled', 'in_progress'], true) ? $this->visitPlace((int) $r->request_id) : null;

@@ -130,6 +130,15 @@ Route::prefix('v1')->group(function () {
             Route::delete('me/invites/{inviteId}', [OrganizationController::class, 'cancelInvite'])->whereNumber('inviteId');
         });
 
+        // 산모신생아 바우처 기간형 계약(CAREN-MNH-01 2단계, 2026-10-05)
+        Route::prefix('mnh')->group(function () {
+            Route::get('options', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'options']);
+            Route::get('contracts', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'index']);
+            Route::post('contracts', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'store']);
+            Route::get('contracts/{id}', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'show'])->whereNumber('id');
+            Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'cancel'])->whereNumber('id');
+        });
+
         // 매칭
         Route::prefix('matching')->group(function () {
             Route::get('categories', [MatchRequestController::class, 'categories']);
@@ -314,6 +323,28 @@ Route::prefix('v1')->group(function () {
 
             // 계약·일정 관리 (#21)
             Route::get('contracts', [OperationsController::class, 'contracts']);
+
+            // 산모신생아 바우처(CAREN-MNH-01 2단계) — 제공기관 = 케어앤
+            Route::prefix('mnh')->group(function () {
+                Route::get('support-types', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'supportTypes']);
+                Route::post('support-types', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'storeSupportType']);
+                Route::post('support-types/copy', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'copySupportTypes']);
+                Route::patch('support-types/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'updateSupportType'])->whereNumber('id');
+                Route::delete('support-types/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deleteSupportType'])->whereNumber('id');
+                Route::get('contracts', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'contracts']);
+                Route::get('calendar', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'calendar']);
+                Route::get('caregivers', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'caregivers']);
+                Route::get('contracts/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'show'])->whereNumber('id');
+                Route::patch('contracts/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'update'])->whereNumber('id');
+                Route::post('contracts/{id}/prepaid', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'prepaid'])->whereNumber('id');
+                Route::delete('contracts/{id}/prepaid', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'clearPrepaid'])->whereNumber('id');
+                Route::post('contracts/{id}/assign', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'assign'])->whereNumber('id');
+                Route::post('contracts/{id}/swap', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'swap'])->whereNumber('id');
+                Route::post('contracts/{id}/postpone', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'postpone'])->whereNumber('id');
+                Route::post('contracts/{id}/restore', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'restore'])->whereNumber('id');
+                Route::post('contracts/{id}/notes', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'note'])->whereNumber('id');
+                Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancel'])->whereNumber('id');
+            });
 
             // 케어 진행 현황(Working List)
             Route::get('care-sessions', [OperationsController::class, 'careSessions']);

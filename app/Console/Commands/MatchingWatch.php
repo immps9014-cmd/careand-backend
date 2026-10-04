@@ -91,7 +91,7 @@ class MatchingWatch extends Command
                 'recipient_name' => $ctx->recipient_name, 'caregiver_name' => $ctx->caregiver_name,
             ];
             // 미결제면 보호자에겐 방문 안내 대신 결제 안내 — 결제 전엔 출근이 막힌다(CareSessionController::checkin)
-            $paid = DB::table('payments')->where('match_id', $s->match_id)->where('status', 'paid')->exists();
+            $paid = \App\Support\MatchPaid::is((int) $s->match_id);
             $svc->notifySafely((int) $ctx->guardian_user_id, $paid ? NotificationService::TYPE_CARE_REMINDER : NotificationService::TYPE_PAYMENT_DUE, $payload);
             $svc->notifySafely((int) $ctx->caregiver_user_id, NotificationService::TYPE_CARE_REMINDER, $payload);
         }

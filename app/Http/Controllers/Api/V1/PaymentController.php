@@ -357,6 +357,9 @@ class PaymentController extends Controller
         if (Payment::where('match_id', $match->id)->where('status', 'paid')->exists()) {
             return response()->json(['success' => false, 'error_code' => 'ALREADY_PAID', 'message' => '이미 결제가 완료된 매칭입니다.'], 422);
         }
+        if (\App\Support\MatchPaid::isVoucherContract((int) $match->id)) {
+            return response()->json(['success' => false, 'error_code' => 'VOUCHER_CONTRACT', 'message' => '바우처 계약은 본인부담금을 제공기관에 먼저 내요. 앱 결제는 필요 없어요.'], 422);
+        }
 
         $resolved = $this->resolveSplit($match, $data['method']);
         if ($resolved instanceof JsonResponse) {
