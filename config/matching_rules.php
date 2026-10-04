@@ -18,4 +18,6 @@ return [
     // 출근 가능 시각 — 방문 시작 이 시간(분) 전부터. 전날 출근이 받아져 케어 시작·정산 시간이 틀어지던 문제(2026-09-29)
     'checkin_early_minutes' => (int) env('CHECKIN_EARLY_MINUTES', 60),
     'attendance_hard_limit_m' => (int) env('ATTENDANCE_HARD_LIMIT_M', 3000),
+    // 보호자 결제 완료 전엔 출근 불가 — 결제 없이 케어가 시작·완료되던 문제(2026-10-04 사용자 결정 「출근 차단」)
+    'checkin_requires_payment' => (bool) env('CHECKIN_REQUIRES_PAYMENT', true),
 ];

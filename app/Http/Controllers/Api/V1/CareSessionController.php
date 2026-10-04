@@ -69,6 +69,16 @@ class CareSessionController extends Controller
             ], 422);
         }
 
+        // 보호자 결제 완료 전엔 출근 불가(결제는 매칭 단위). 방문 하루 전 미결제면 보호자에게 결제 안내가 간다(matching:watch).
+        if (config('matching_rules.checkin_requires_payment', true)
+            && !\App\Models\Payment::where('match_id', $session->match_id)->where('status', 'paid')->exists()) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'PAYMENT_REQUIRED',
+                'message' => '보호자 결제가 아직 끝나지 않았어요. 결제가 끝나면 출근할 수 있어요. 급하면 고객센터로 연락해 주세요.',
+            ], 422);
+        }
+
         // 출근 가능 시각: 방문 시작 N분 전부터(한국시각 안내)
         $early = (int) config('matching_rules.checkin_early_minutes', 60);
         if ($session->scheduled_start && now()->lt($session->scheduled_start->copy()->subMinutes($early))) {

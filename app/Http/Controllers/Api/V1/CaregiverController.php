@@ -648,12 +648,15 @@ class CaregiverController extends Controller
                 \Illuminate\Support\Facades\DB::raw('COALESCE(cs.scheduled_end, m.scheduled_end) as scheduled_end'),
                 'r.service_domain',
                 'r.requirements',
-                'r.id as request_id', 'r.postpartum_client_id',
+                'r.id as request_id', 'r.postpartum_client_id', 'cs.match_id',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, sa.label, pp.name, ch.name, mcc.name) as senior_name')
             )
             ->orderByDesc('m.scheduled_start')
             ->get();
         $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
+        // 결제 완료된 매칭 — 미결제면 출근이 막히므로 앱이 미리 「보호자 결제 대기」를 보여 준다
+        $paidMatches = \Illuminate\Support\Facades\DB::table('payments')->whereIn('match_id', $rows->pluck('match_id')->unique())
+            ->where('status', 'paid')->pluck('match_id')->flip();
         $rows = $rows
             ->map(function ($r) {
                 $r->place = in_array($r->status, ['scheduled', 'in_progress'], true) ? $this->visitPlace((int) $r->request_id) : null;
@@ -666,6 +669,7 @@ class CaregiverController extends Controller
                 'senior_name' => $r->senior_name ?? '(미상)',
                 'newborn_summary' => $babies[$r->postpartum_client_id] ?? null,
                 'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements),
+                'paid' => isset($paidMatches[$r->match_id]),
                 'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
                 'scheduled_end' => \App\Support\Kst::iso($r->scheduled_end),
                 'actual_start' => \App\Support\Kst::iso($r->actual_start),

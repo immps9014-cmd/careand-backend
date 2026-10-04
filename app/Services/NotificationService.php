@@ -37,6 +37,7 @@ class NotificationService
     public const TYPE_SAFETY_ALERT = 'SAFETY_ALERT';   // 돌봄 기록의 안전 알림 10종(기능 41)
     public const TYPE_PAYMENT_PAID = 'PAYMENT_PAID';
     public const TYPE_PAYMENT_FAILED = 'PAYMENT_FAILED';
+    public const TYPE_PAYMENT_DUE = 'PAYMENT_DUE';   // 방문 전 미결제 → 보호자 결제 안내(결제 전엔 출근 불가, 2026-10-04)
     public const TYPE_SETTLEMENT_CONFIRMED = 'SETTLEMENT_CONFIRMED';
     public const TYPE_SETTLEMENT_PAID = 'SETTLEMENT_PAID';
     public const TYPE_MATCH_REQUEST_EXPIRED = 'MATCH_REQUEST_EXPIRED';
@@ -157,7 +158,7 @@ class NotificationService
                 => $sid ? "/logs/{$sid}" : '/logs',
             $type === self::TYPE_CARE_STARTED && $guardian => '/schedule',
             // 회원앱 알림 목록(notifications/page.tsx linkFor)과 같은 목적지 — 확정되면 다음 할 일은 결제
-            $type === self::TYPE_MATCH_CONFIRMED && $guardian => isset($payload['match_id']) ? "/payments/{$payload['match_id']}" : '/home',
+            in_array($type, [self::TYPE_MATCH_CONFIRMED, self::TYPE_PAYMENT_DUE], true) && $guardian => isset($payload['match_id']) ? "/payments/{$payload['match_id']}" : '/home',
             $type === self::TYPE_MATCH_REQUEST_EXPIRED && $guardian => '/request/new',
             $type === self::TYPE_MATCH_OFFER_TIMEOUT && $guardian => $rid ? "/request/{$rid}" : '/home',
             in_array($type, [self::TYPE_PAYMENT_PAID, self::TYPE_PAYMENT_FAILED], true) => '/payments',
@@ -333,6 +334,14 @@ class NotificationService
             self::TYPE_PAYMENT_PAID => [
                 'title' => '결제 완료',
                 'body' => sprintf('%s원 결제가 완료되었어요.', number_format($payload['amount'] ?? 0)),
+            ],
+            self::TYPE_PAYMENT_DUE => [
+                'title' => '결제가 필요해요',
+                'body' => sprintf(
+                    '%s %s 돌봄 방문 전에 결제를 마쳐 주세요. 결제가 끝나야 돌봄전문가가 출근할 수 있어요.',
+                    $payload['scheduled_at'] ?? '',
+                    $payload['recipient_name'] ?? '대상자'
+                ),
             ],
             self::TYPE_PAYMENT_FAILED => [
                 'title' => '결제 실패',

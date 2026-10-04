@@ -90,7 +90,9 @@ class MatchingWatch extends Command
                 'scheduled_at' => Carbon::parse($s->scheduled_start, 'UTC')->setTimezone('Asia/Seoul')->format('n월 j일 H:i'),
                 'recipient_name' => $ctx->recipient_name, 'caregiver_name' => $ctx->caregiver_name,
             ];
-            $svc->notifySafely((int) $ctx->guardian_user_id, NotificationService::TYPE_CARE_REMINDER, $payload);
+            // 미결제면 보호자에겐 방문 안내 대신 결제 안내 — 결제 전엔 출근이 막힌다(CareSessionController::checkin)
+            $paid = DB::table('payments')->where('match_id', $s->match_id)->where('status', 'paid')->exists();
+            $svc->notifySafely((int) $ctx->guardian_user_id, $paid ? NotificationService::TYPE_CARE_REMINDER : NotificationService::TYPE_PAYMENT_DUE, $payload);
             $svc->notifySafely((int) $ctx->caregiver_user_id, NotificationService::TYPE_CARE_REMINDER, $payload);
         }
 
