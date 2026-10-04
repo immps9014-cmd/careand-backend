@@ -552,6 +552,7 @@ class CaregiverController extends Controller
                 $j->on('mt.request_id', '=', 'r.id')->on('mt.caregiver_id', '=', 'mc.caregiver_id');
             })
             ->leftJoin('payments as pmt', 'pmt.match_id', '=', 'mt.id')
+            ->leftJoin('service_categories as cat', 'cat.id', '=', 'r.category_id')
             ->where('mc.caregiver_id', $caregiver->id)
             // 매칭이 안 된 채 지나간 제안은 숨긴다(요양보호사 홈 '새 매칭 제안').
             // 이미 응답한 건(수락/거절 등)은 이력으로 보존하고, '대기중(pending)' 제안만
@@ -573,12 +574,13 @@ class CaregiverController extends Controller
                 'r.id as request_id', 'r.service_domain', 'r.mode',
                 'r.scheduled_start', 'r.duration_min', 'r.status as request_status',
                 'r.price_estimate',
-                'mt.status as match_status', 'pmt.status as payment_status', 'r.postpartum_client_id',
+                'mt.status as match_status', 'pmt.status as payment_status', 'r.postpartum_client_id', 'r.requirements',
+                'cat.name as category_name',
                 \Illuminate\Support\Facades\DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name')
             )
             ->orderByDesc('mc.created_at')
             ->get();
-        $babies = $this->newbornSummaries($rows->pluck('postpartum_client_id'));
+        $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
         $rows = $rows
             ->map(function ($r) use ($babies) {
                 $est = $r->price_estimate ? json_decode($r->price_estimate, true) : null;
@@ -599,6 +601,8 @@ class CaregiverController extends Controller
                     'payment_status' => $r->payment_status,   // 보호자 결제 상태
                     'senior_name' => $r->senior_name ?? '(미상)',
                     'newborn_summary' => $babies[$r->postpartum_client_id] ?? null, // 산후: 「아기 1명 · 생후 12일」
+                    'category' => $r->category_name,
+                    'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements), // 함께 필요한 돌봄
                     // 역경매 입찰 (입찰 화면용)
                     'bid_hourly' => $r->bid_hourly !== null ? (float) $r->bid_hourly : null,
                     'bid_note' => $r->bid_note,
@@ -649,7 +653,7 @@ class CaregiverController extends Controller
             )
             ->orderByDesc('m.scheduled_start')
             ->get();
-        $babies = $this->newbornSummaries($rows->pluck('postpartum_client_id'));
+        $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
         $rows = $rows
             ->map(function ($r) {
                 $r->place = in_array($r->status, ['scheduled', 'in_progress'], true) ? $this->visitPlace((int) $r->request_id) : null;
@@ -661,6 +665,7 @@ class CaregiverController extends Controller
                 'service_domain' => $r->service_domain,
                 'senior_name' => $r->senior_name ?? '(미상)',
                 'newborn_summary' => $babies[$r->postpartum_client_id] ?? null,
+                'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements),
                 'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
                 'scheduled_end' => \App\Support\Kst::iso($r->scheduled_end),
                 'actual_start' => \App\Support\Kst::iso($r->actual_start),
@@ -672,33 +677,6 @@ class CaregiverController extends Controller
             ]);
 
         return response()->json(['success' => true, 'data' => $rows]);
-    }
-
-    /**
-     * 산모 id → 「아기 2명 · 생후 12일」(가장 어린 아기 기준). 아기 정보가 없으면 키 없음.
-     * 이름·체중은 넣지 않는다 — 돌봄전문가 목록엔 돌봄 준비에 필요한 만큼만.
-     * birth_datetime 은 출생일 00:00 으로 저장돼 있어 날짜만 잘라 한국 날짜와 비교한다.
-     */
-    private function newbornSummaries(\Illuminate\Support\Collection $clientIds): array
-    {
-        $ids = $clientIds->filter()->unique()->values();
-        if ($ids->isEmpty()) {
-            return [];
-        }
-        $today = now('Asia/Seoul')->startOfDay();
-
-        return \Illuminate\Support\Facades\DB::table('newborns')
-            ->whereIn('postpartum_client_id', $ids)
-            ->where('is_alive', 1)
-            ->get(['postpartum_client_id', 'birth_datetime'])
-            ->groupBy('postpartum_client_id')
-            ->map(function ($bs) use ($today) {
-                $latest = $bs->max(fn ($b) => substr((string) $b->birth_datetime, 0, 10));
-                $days = (int) \Carbon\Carbon::parse($latest, 'Asia/Seoul')->diffInDays($today);
-
-                return '아기 ' . $bs->count() . '명 · 생후 ' . max($days, 0) . '일';
-            })
-            ->all();
     }
 
     /** 방문 장소 {name, lat, lng} — 간병은 병원, 생활지원은 등록 주소, 그 외는 대상자 집. 좌표 없으면 null */

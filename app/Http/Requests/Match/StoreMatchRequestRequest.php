@@ -61,6 +61,10 @@ class StoreMatchRequestRequest extends FormRequest
             'requirements.preferred_gender' => ['nullable', 'in:M,F'],
             // 직접 지정(찜한 전문가 등) — 해당 전문가를 최상단 직접 후보로 초대
             'requirements.preferred_caregiver_id' => ['nullable', 'integer', 'exists:caregivers,id'],
+            // 함께 필요한 세부 종류(복수 선택, 2026-10-04) — 산후는 산모·야간·신생아를 한 번에 맡기는 일이 있다.
+            // 요금은 category_id(고른 것 중 가장 높은 종류)로만 계산하고, 이건 돌봄전문가에게 보여 주는 용도.
+            'requirements.extra_category_ids' => ['nullable', 'array', 'max:5'],
+            'requirements.extra_category_ids.*' => ['integer', 'distinct', 'exists:service_categories,id,is_active,1'],
             // 보호자 희망 상한 시급(선택). 가격 레이어 산출/역경매 가드레일에 사용
             'budget_hourly' => ['nullable', 'numeric', 'min:0'],
         ];
@@ -104,6 +108,15 @@ class StoreMatchRequestRequest extends FormRequest
                     $v->errors()->add('category_id', '선택한 카테고리가 서비스 도메인과 일치하지 않습니다.');
                 }
                 $catCode = $cat->code ?? null;
+            }
+
+            $extra = (array) data_get($this->input('requirements'), 'extra_category_ids', []);
+            if ($extra) {
+                $bad = DB::table('service_categories')->whereIn('id', $extra)
+                    ->where('domain', '!=', $this->input('service_domain'))->exists();
+                if ($bad || in_array((int) $this->input('category_id'), array_map('intval', $extra), true)) {
+                    $v->errors()->add('requirements.extra_category_ids', '함께 고른 세부 종류가 올바르지 않습니다.');
+                }
             }
 
             // 동행(LS_COMPANION)은 방문 장소·이동수단 필수, 복귀 미동일 시 복귀 장소 필수. (P2-2)

@@ -31,6 +31,7 @@ class MatchRequestResource extends JsonResource
             ),
 
             'requirements' => $this->requirements,
+            'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($this->requirements), // 함께 필요한 세부 종류 이름
             'price_estimate' => $this->price_estimate,
             'budget_hourly' => $this->budget_hourly !== null ? (float) $this->budget_hourly : null,
 

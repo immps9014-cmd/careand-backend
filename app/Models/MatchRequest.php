@@ -107,6 +107,48 @@ class MatchRequest extends Model
         };
     }
 
+    /**
+     * 산모 id → 「아기 2명 · 생후 12일」(가장 어린 아기 기준). 아기 정보가 없으면 키 없음.
+     * 이름·체중은 넣지 않는다 — 돌봄전문가 목록엔 돌봄 준비에 필요한 만큼만.
+     * birth_datetime 은 출생일 00:00 으로 저장돼 있어 날짜만 잘라 한국 날짜와 비교한다.
+     */
+    public static function newbornSummaries(\Illuminate\Support\Collection $clientIds): array
+    {
+        $ids = $clientIds->filter()->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+        $today = now('Asia/Seoul')->startOfDay();
+
+        return \Illuminate\Support\Facades\DB::table('newborns')
+            ->whereIn('postpartum_client_id', $ids)
+            ->where('is_alive', 1)
+            ->get(['postpartum_client_id', 'birth_datetime'])
+            ->groupBy('postpartum_client_id')
+            ->map(function ($bs) use ($today) {
+                $latest = $bs->max(fn ($b) => substr((string) $b->birth_datetime, 0, 10));
+                $days = (int) \Carbon\Carbon::parse($latest, 'Asia/Seoul')->diffInDays($today);
+
+                return '아기 ' . $bs->count() . '명 · 생후 ' . max($days, 0) . '일';
+            })
+            ->all();
+    }
+
+    /** requirements.extra_category_ids → 세부 종류 이름들(함께 필요한 돌봄). 없으면 [] */
+    public static function extraCategoryNames(mixed $requirements): array
+    {
+        if (is_string($requirements)) {
+            $requirements = json_decode($requirements, true);
+        }
+        $ids = array_map('intval', (array) data_get($requirements, 'extra_category_ids', []));
+        if (!$ids) {
+            return [];
+        }
+        $names = \Illuminate\Support\Facades\DB::table('service_categories')->whereIn('id', $ids)->pluck('name', 'id');
+
+        return array_values(array_filter(array_map(fn ($id) => $names[$id] ?? null, $ids)));
+    }
+
     public function recipientName(): ?string
     {
         // 가사는 대상이 사람이 아니라 주소 — label('우리집' 등)이 표시명

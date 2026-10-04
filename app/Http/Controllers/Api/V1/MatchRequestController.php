@@ -1435,6 +1435,8 @@ class MatchRequestController extends Controller
             'request_id' => $r->id,
             'service_domain' => $r->service_domain,
             'category' => $r->category?->name,
+            'extra_categories' => MatchRequest::extraCategoryNames($r->requirements),
+            'newborn_summary' => $r->postpartum_client_id ? (MatchRequest::newbornSummaries(collect([$r->postpartum_client_id]))[$r->postpartum_client_id] ?? null) : null,
             'recipient_name' => $this->maskName($r->recipientName()),
             'recipient_age' => $this->ageFrom($recipient->birth_date ?? null),
             'recipient_gender' => $recipient->gender ?? null,
