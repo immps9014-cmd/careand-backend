@@ -138,6 +138,7 @@ Route::prefix('v1')->group(function () {
             // 산모 선택기(통합 요청 폼) — 본인 소유 산모 목록/간이등록
             Route::get('postpartum-clients', [MatchRequestController::class, 'postpartumClients']);
             Route::post('postpartum-clients', [MatchRequestController::class, 'storePostpartumClient']);
+            Route::post('postpartum-clients/{id}/newborns', [MatchRequestController::class, 'storePostpartumNewborn'])->whereNumber('id');
             // 아동 선택기(통합 요청 폼) — 본인 소유 아동 목록/등록
             Route::get('children', [MatchRequestController::class, 'children']);
             Route::post('children', [MatchRequestController::class, 'storeChild']);

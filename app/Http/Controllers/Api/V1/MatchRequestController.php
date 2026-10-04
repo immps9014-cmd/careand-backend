@@ -970,7 +970,74 @@ class MatchRequestController extends Controller
                 return $r;
             });
 
+        // 산모별 아기(신생아) — 신청 화면이 산모를 고르면 아기 정보를 보여주고 추가하게 한다(2026-10-04).
+        $babies = DB::table('newborns')
+            ->whereIn('postpartum_client_id', $rows->pluck('id'))
+            ->where('is_alive', 1)
+            ->orderBy('birth_order')->orderBy('id')
+            ->get(['id', 'postpartum_client_id', 'name', 'gender', 'birth_datetime', 'birth_weight_g'])
+            ->groupBy('postpartum_client_id');
+        $rows = $rows->map(function ($r) use ($babies) {
+            $r->newborns = ($babies[$r->id] ?? collect())->map(fn ($b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'gender' => $b->gender,
+                'birth_date' => substr((string) $b->birth_datetime, 0, 10),
+                'birth_weight_g' => (int) $b->birth_weight_g,
+            ])->values();
+
+            return $r;
+        });
+
         return response()->json(['success' => true, 'data' => $rows]);
+    }
+
+    /**
+     * POST /v1/matching/postpartum-clients/{id}/newborns
+     * 아기(신생아) 간이 등록 — 통합 요청 폼용. 본인(user_id) 소유 산모에만.
+     * birth_datetime 은 출생일만 받아 그 날 00:00 으로 저장한다(시각 변환 없이 날짜 그대로 읽고 쓴다).
+     * (재태주수·아프가 등 의료 필드는 산후 전용 서브시스템 /postpartum/clients/{id}/newborns 에서)
+     */
+    public function storePostpartumNewborn(Request $request, int $id): JsonResponse
+    {
+        $owned = DB::table('postpartum_clients')
+            ->where('id', $id)->where('user_id', $request->user()->id)->whereNull('deleted_at')
+            ->exists();
+        if (!$owned) {
+            return response()->json(['success' => false, 'message' => '산모 정보를 찾을 수 없어요.'], 404);
+        }
+
+        $data = $request->validate([
+            'name'           => ['required', 'string', 'max:50'],
+            'gender'         => ['required', 'in:M,F'],
+            'birth_date'     => ['required', 'date_format:Y-m-d', 'before_or_equal:' . now('Asia/Seoul')->toDateString()],
+            'birth_weight_g' => ['required', 'integer', 'min:500', 'max:7000'],
+        ], [
+            'birth_date.before_or_equal' => '출생일은 오늘이나 그 이전 날짜여야 해요.',
+            'birth_weight_g.min' => '출생 체중은 500g 이상으로 입력해 주세요.',
+            'birth_weight_g.max' => '출생 체중은 7,000g 이하로 입력해 주세요.',
+        ]);
+
+        $order = (int) DB::table('newborns')->where('postpartum_client_id', $id)->max('birth_order') + 1;
+        $newbornId = DB::table('newborns')->insertGetId([
+            'postpartum_client_id' => $id,
+            'name'           => $data['name'],
+            'gender'         => $data['gender'],
+            'birth_datetime' => $data['birth_date'] . ' 00:00:00',
+            'birth_weight_g' => $data['birth_weight_g'],
+            'birth_order'    => min($order, 5),
+            'is_alive'       => 1,
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        return response()->json(['success' => true, 'data' => [
+            'id' => $newbornId,
+            'name' => $data['name'],
+            'gender' => $data['gender'],
+            'birth_date' => $data['birth_date'],
+            'birth_weight_g' => (int) $data['birth_weight_g'],
+        ]], 201);
     }
 
     /**
