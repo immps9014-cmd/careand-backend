@@ -777,9 +777,11 @@ class OperationsController extends Controller
             ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
             ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id')
+            ->leftJoin('service_categories as cat', 'cat.id', '=', 'r.category_id')
             ->select(
                 'r.id', 'r.mode', 'r.service_domain', 'r.scheduled_start', 'r.duration_min',
                 'r.status', 'r.special_request', 'r.matched_at', 'r.created_at',
+                'r.requirements', 'r.postpartum_client_id', 'cat.name as category_name',
                 DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 DB::raw('gu.name as guardian_name'),
                 's.gender as senior_gender', 's.care_grade', 's.special_notes', 's.home_address',
@@ -818,6 +820,21 @@ class OperationsController extends Controller
             'duration_min' => (int) $r->duration_min,
             'status' => $r->status,
             'special_request' => $r->special_request,
+            // 세부 종류 — 첫째가 요금 기준, 나머지는 함께 고른 종류(복수 선택)
+            'category' => $r->category_name,
+            'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements),
+            // 산후: 산모의 아기(신생아) — 관리자는 이름·체중까지 본다
+            'newborns' => $r->postpartum_client_id
+                ? DB::table('newborns')->where('postpartum_client_id', $r->postpartum_client_id)->where('is_alive', 1)
+                    ->orderBy('birth_order')->orderBy('id')
+                    ->get(['name', 'gender', 'birth_datetime', 'birth_weight_g'])
+                    ->map(fn ($b) => [
+                        'name' => $b->name,
+                        'gender' => $b->gender,
+                        'birth_date' => substr((string) $b->birth_datetime, 0, 10),
+                        'birth_weight_g' => (int) $b->birth_weight_g,
+                    ])->values()
+                : [],
             'created_at' => \App\Support\Kst::iso($r->created_at),
             'matched_at' => \App\Support\Kst::iso($r->matched_at),
             'senior' => [
@@ -878,8 +895,9 @@ class OperationsController extends Controller
             ->leftJoin('users as cu', 'cu.id', '=', 'cg.user_id')
             ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
             ->leftJoin('users as gu', 'gu.id', '=', 'g.user_id')
+            ->leftJoin('service_categories as cat', 'cat.id', '=', 'r.category_id')
             ->select(
-                'r.id', 'r.senior_id',
+                'r.id', 'r.senior_id', 'r.requirements', 'cat.name as category_name',
                 DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as senior_name'),
                 DB::raw('gu.name as guardian_name'),
                 'r.mode', 'r.service_domain', 'r.scheduled_start',
@@ -904,6 +922,8 @@ class OperationsController extends Controller
             'guardian_name' => $r->guardian_name,
             'mode' => $r->mode,
             'service_domain' => $r->service_domain,
+            'category' => $r->category_name,
+            'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements),
             'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),
             'status' => $r->status,
             'candidate_count' => (int) $r->candidate_count,
