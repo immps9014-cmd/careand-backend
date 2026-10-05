@@ -160,6 +160,10 @@ class MnhContractController extends Controller
         if ($c->status !== 'applied' || $c->match_request_id) {
             return $this->fail('CONTACT_OPS', '담당 배정 뒤에는 운영팀을 통해 취소할 수 있어요.');
         }
+        if ($c->prepaid_at) {
+            // 낸 본인부담금을 돌려받아야 하므로 운영팀이 환불액과 함께 취소한다
+            return $this->fail('CONTACT_OPS', '본인부담금 납부가 확인된 신청은 운영팀을 통해 취소할 수 있어요.');
+        }
         try {
             $this->svc->cancel($c, (string) ($request->input('reason') ?: '이용자 취소'), $request->user()->id);
         } catch (MnhContractException $e) {

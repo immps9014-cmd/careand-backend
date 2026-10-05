@@ -43,6 +43,8 @@ final class MnhContractPresenter
             'prepaid_amount' => $c->prepaid_amount,
             'prepaid_at' => Kst::iso($c->prepaid_at),
             'prepaid_receipt_no' => $c->prepaid_receipt_no,
+            'refund_amount' => $c->refund_amount,
+            'refunded_at' => Kst::iso($c->refunded_at),
             'caregiver_id' => $c->caregiver_id,
             'caregiver_name' => $caregiverName,
             'member_note' => $c->member_note,

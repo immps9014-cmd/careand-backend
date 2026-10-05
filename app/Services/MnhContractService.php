@@ -484,12 +484,21 @@ class MnhContractService
         });
     }
 
-    public function cancel(MnhContract $c, string $reason, ?int $actor): void
+    /** 계약 취소. 선납이 있으면 돌려준 금액($refund, 0~선납액)을 받아 매출에서 뺀다(VoucherRevenue). */
+    public function cancel(MnhContract $c, string $reason, ?int $actor, ?int $refund = null): void
     {
         if (in_array($c->status, ['completed', 'cancelled'], true)) {
             throw new MnhContractException('CLOSED', '이미 종료·취소된 계약이에요.');
         }
-        DB::transaction(function () use ($c, $reason, $actor) {
+        if ($c->prepaid_at) {
+            if ($refund === null) {
+                throw new MnhContractException('REFUND_REQUIRED', '선납이 확인된 계약이에요. 돌려준 금액을 적어 주세요(돌려주지 않았으면 0).');
+            }
+            if ($refund < 0 || $refund > (int) $c->prepaid_amount) {
+                throw new MnhContractException('REFUND_RANGE', sprintf('환불액은 0원에서 선납액 %s원 사이여야 해요.', number_format((int) $c->prepaid_amount)));
+            }
+        }
+        DB::transaction(function () use ($c, $reason, $actor, $refund) {
             $now = now();
             if ($c->match_request_id) {
                 $ids = $this->sessions($c)->where('status', 'scheduled')->pluck('id');
@@ -499,8 +508,9 @@ class MnhContractService
                 DB::table('match_requests')->where('id', $c->match_request_id)
                     ->update(['status' => $hasDone ? 'matched' : 'cancelled', 'updated_at' => $now]);
             }
-            $c->update(['status' => 'cancelled', 'cancel_reason' => $reason]);
-            $this->log($c, 'cancelled', null, ['reason' => $reason], $actor);
+            $c->update(['status' => 'cancelled', 'cancel_reason' => $reason]
+                + ($c->prepaid_at ? ['refund_amount' => $refund, 'refunded_at' => $refund > 0 ? $now : null] : []));
+            $this->log($c, 'cancelled', null, ['reason' => $reason] + ($c->prepaid_at ? ['refund_amount' => $refund] : []), $actor);
         });
     }
 

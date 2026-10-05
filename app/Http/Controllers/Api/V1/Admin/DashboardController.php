@@ -10,6 +10,7 @@ use App\Models\MatchRequest;
 use App\Models\Payment;
 use App\Models\Senior;
 use App\Models\User;
+use App\Support\VoucherRevenue;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -27,12 +28,14 @@ class DashboardController extends Controller
             return [
                 'matches_in_progress' => CareMatch::whereIn('status', ['confirmed', 'in_progress'])->count(),
                 'matches_today' => CareMatch::whereDate('created_at', today())->count(),
+                // 결제 매출 + 산모신생아 바우처 선납(환불 차감) — VoucherRevenue
                 'revenue_today' => (int) Payment::where('status', 'paid')
                     ->whereDate('paid_at', today())
-                    ->sum('total_amount'),
+                    ->sum('total_amount') + VoucherRevenue::net(today(), today()->addDay()),
                 'revenue_this_week' => (int) Payment::where('status', 'paid')
                     ->where('paid_at', '>=', now()->startOfWeek())
-                    ->sum('total_amount'),
+                    ->sum('total_amount') + VoucherRevenue::net(now()->startOfWeek(), now()->addSecond()),
+                'voucher_revenue_this_week' => VoucherRevenue::net(now()->startOfWeek(), now()->addSecond()),
                 'high_alerts_unresolved' => AnomalyAlert::high()->unresolved()->count(),
                 'pending_caregivers' => Caregiver::where('status', 'pending')->count(),
                 'active_users' => User::where('status', 'active')->count(),
@@ -48,7 +51,7 @@ class DashboardController extends Controller
                 now()->subWeek()->startOfWeek(),
                 now()->subWeek()->endOfWeek(),
             ])
-            ->sum('total_amount');
+            ->sum('total_amount') + VoucherRevenue::net(now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek());
 
         $kpi['revenue_change_pct'] = $lastWeekRevenue > 0
             ? round((($kpi['revenue_this_week'] - $lastWeekRevenue) / $lastWeekRevenue) * 100, 1)
@@ -98,6 +101,9 @@ class DashboardController extends Controller
 
         $revenue = (int) $matchQ()->join('payments as p', 'p.match_id', '=', 'm.id')
             ->where('p.status', 'paid')->where('p.paid_at', '>=', $from)->sum('p.total_amount');
+        $withVoucher = !$domain || $domain === VoucherRevenue::DOMAIN;
+        $voucher = $withVoucher ? VoucherRevenue::net($from, now()->addSecond(), $branch ? (int) $branch : null) : 0;
+        $revenue += $voucher;
         $sessionsDone = DB::table('care_sessions as cs')->join('matches as m', 'm.id', '=', 'cs.match_id')
             ->join('match_requests as r', 'r.id', '=', 'm.request_id')->join('caregivers as c', 'c.id', '=', 'm.caregiver_id')
             ->where('cs.status', 'completed')->where('cs.actual_end', '>=', $from)
@@ -112,11 +118,12 @@ class DashboardController extends Controller
         $activeCount = (clone $activeCg)->count();
         $ratingAvg = (clone $activeCg)->where('rating_count', '>', 0)->avg('rating_avg');
 
-        $byBranch = DB::table('branches as b')->orderBy('b.id')->get(['b.id', 'b.name'])->map(function ($b) use ($from, $domain) {
+        $byBranch = DB::table('branches as b')->orderBy('b.id')->get(['b.id', 'b.name'])->map(function ($b) use ($from, $domain, $withVoucher) {
             $rev = (int) DB::table('payments as p')->join('matches as m', 'm.id', '=', 'p.match_id')
                 ->join('match_requests as r', 'r.id', '=', 'm.request_id')->join('caregivers as c', 'c.id', '=', 'm.caregiver_id')
                 ->where('c.branch_id', $b->id)->where('p.status', 'paid')->where('p.paid_at', '>=', $from)
-                ->when($domain, fn ($q) => $q->where('r.service_domain', $domain))->sum('p.total_amount');
+                ->when($domain, fn ($q) => $q->where('r.service_domain', $domain))->sum('p.total_amount')
+                + ($withVoucher ? VoucherRevenue::net($from, now()->addSecond(), (int) $b->id) : 0);
             $cg = DB::table('caregivers')->where('status', 'active')->whereNull('deleted_at')->where('branch_id', $b->id)->count();
             return ['branch_id' => $b->id, 'name' => $b->name, 'revenue' => $rev, 'active_caregivers' => $cg];
         });
@@ -136,6 +143,7 @@ class DashboardController extends Controller
             'matched' => $reqMatched,
             'match_rate' => $reqTotal ? round($reqMatched / $reqTotal * 100, 1) : null,
             'revenue' => $revenue,
+            'voucher_revenue' => $voucher,
             'sessions_completed' => $sessionCount,
             'active_caregivers' => $activeCount,
             'utilization' => $activeCount ? round(min($workedCaregivers, $activeCount) / $activeCount * 100, 1) : null,
@@ -177,6 +185,9 @@ class DashboardController extends Controller
             ->select('r.service_domain', DB::raw('SUM(p.total_amount) as amt'))
             ->groupBy('r.service_domain')
             ->pluck('amt', 'service_domain');
+
+        $revenueWeek[VoucherRevenue::DOMAIN] = (int) ($revenueWeek[VoucherRevenue::DOMAIN] ?? 0)
+            + VoucherRevenue::net(now()->startOfWeek(), now()->addSecond());
 
         $result = [];
         foreach (['senior', 'postpartum', 'nursing', 'living_support'] as $domain) {

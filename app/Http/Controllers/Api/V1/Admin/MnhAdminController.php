@@ -410,9 +410,10 @@ class MnhAdminController extends Controller
     /** POST /v1/admin/mnh/contracts/{id}/cancel {reason} */
     public function cancel(Request $request, int $id): JsonResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500']]);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500'], 'refund_amount' => ['nullable', 'integer', 'min:0']]);
+        $refund = isset($data['refund_amount']) ? (int) $data['refund_amount'] : null;
 
-        return $this->run($id, fn ($c) => $this->svc->cancel($c, $data['reason'], $request->user()->id), '계약을 취소했어요. 지난 기록은 남아 있어요.');
+        return $this->run($id, fn ($c) => $this->svc->cancel($c, $data['reason'], $request->user()->id, $refund), '계약을 취소했어요. 지난 기록은 남아 있어요.');
     }
 
     /** GET /v1/admin/mnh/caregivers?all=1 — 배정 후보(기본은 산모신생아 직군, all=1 이면 활동 중 전체) */

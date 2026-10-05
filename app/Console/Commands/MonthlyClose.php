@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\NotificationService;
+use App\Support\VoucherRevenue;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -45,18 +46,41 @@ class MonthlyClose extends Command
             ->selectRaw('COUNT(*) n, AVG(TIMESTAMPDIFF(SECOND, log_started_at, log_sent_at))/60 m')->first();
         $reviews = $in(DB::table('reviews'), 'created_at');
 
+        // 산모신생아 바우처 선납(환불 차감) — 결제 기록 밖이라 따로 더한다(전액 본인부담금, 도메인 postpartum, 지점 = 담당 관리사)
+        $vEntries = VoucherRevenue::entries($from, $to);
+        $v = VoucherRevenue::summary($from, $to);
+        $domainRows = $byDomain->map(fn ($r) => ['domain' => $r->k, 'label' => \App\Support\ServiceDomains::label((string) $r->k),
+            'count' => (int) $r->n, 'amount' => (int) $r->amt, 'self_pay' => (int) $r->self_pay, 'ltc_pay' => (int) $r->ltc_pay])->keyBy('domain');
+        if ($vEntries->isNotEmpty()) {
+            $d = $domainRows[VoucherRevenue::DOMAIN] ?? ['domain' => VoucherRevenue::DOMAIN, 'label' => \App\Support\ServiceDomains::label(VoucherRevenue::DOMAIN),
+                'count' => 0, 'amount' => 0, 'self_pay' => 0, 'ltc_pay' => 0];
+            $d['count'] += $v['prepaid_count'];
+            $d['amount'] += $v['net'];
+            $d['self_pay'] += $v['net'];
+            $domainRows[VoucherRevenue::DOMAIN] = $d;
+        }
+        $branchNames = DB::table('branches')->pluck('name', 'id');
+        $branchRows = $byBranch->map(fn ($r) => ['branch' => $r->k, 'count' => (int) $r->n, 'amount' => (int) $r->amt])->keyBy('branch');
+        foreach ($vEntries as $e) {
+            $k = $branchNames[$e->branch_id] ?? '지점 미지정';
+            $b = $branchRows[$k] ?? ['branch' => $k, 'count' => 0, 'amount' => 0];
+            $b['count'] += $e->kind === 'prepaid' ? 1 : 0;
+            $b['amount'] += $e->amount;
+            $branchRows[$k] = $b;
+        }
+
         $data = [
             'month' => $month,
             'revenue' => [
-                'paid_count' => (clone $paid)->count(),
-                'total' => (int) (clone $paid)->sum('p.total_amount'),
-                'self_pay' => (int) (clone $paid)->sum('p.amount_self_pay'),
+                'paid_count' => (clone $paid)->count() + $v['prepaid_count'],
+                'total' => (int) (clone $paid)->sum('p.total_amount') + $v['net'],
+                'self_pay' => (int) (clone $paid)->sum('p.amount_self_pay') + $v['net'],
                 'ltc_pay' => (int) (clone $paid)->sum('p.amount_ltc_pay'),
-                'cancelled_count' => (clone $cancelled)->count(),
-                'cancelled_amount' => (int) (clone $cancelled)->sum('total_amount'),
-                'by_domain' => $byDomain->map(fn ($r) => ['domain' => $r->k, 'label' => \App\Support\ServiceDomains::label((string) $r->k),
-                    'count' => (int) $r->n, 'amount' => (int) $r->amt, 'self_pay' => (int) $r->self_pay, 'ltc_pay' => (int) $r->ltc_pay])->values(),
-                'by_branch' => $byBranch->map(fn ($r) => ['branch' => $r->k, 'count' => (int) $r->n, 'amount' => (int) $r->amt])->values(),
+                'cancelled_count' => (clone $cancelled)->count() + $v['refund_count'],
+                'cancelled_amount' => (int) (clone $cancelled)->sum('total_amount') + $v['refund_amount'],
+                'voucher' => $v,
+                'by_domain' => $domainRows->values(),
+                'by_branch' => $branchRows->values(),
             ],
             'settlement' => [
                 'count' => (clone $settle)->count(),

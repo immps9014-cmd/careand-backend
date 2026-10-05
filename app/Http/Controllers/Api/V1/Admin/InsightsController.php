@@ -7,6 +7,7 @@ use App\Models\CareMatch;
 use App\Models\MatchRequest;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\VoucherRevenue;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -363,9 +364,11 @@ class InsightsController extends Controller
             ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(total_amount),0) as gross, COALESCE(SUM(amount_self_pay),0) as self_pay')
             ->first();
 
-        $cnt = (int) ($agg->cnt ?? 0);
-        $gross = (int) ($agg->gross ?? 0);
-        $selfPay = (int) ($agg->self_pay ?? 0);
+        // 산모신생아 바우처 선납(환불 차감)은 결제 기록 밖이라 따로 더한다 — 전액 본인부담금
+        $v = VoucherRevenue::summary($start, $end->copy()->addSecond());
+        $cnt = (int) ($agg->cnt ?? 0) + $v['prepaid_count'];
+        $gross = (int) ($agg->gross ?? 0) + $v['net'];
+        $selfPay = (int) ($agg->self_pay ?? 0) + $v['net'];
         $avg = $cnt > 0 ? (int) round($gross / $cnt) : 0;
 
         $byDomain = DB::table('payments as p')
@@ -376,6 +379,9 @@ class InsightsController extends Controller
             ->select('r.service_domain', DB::raw('SUM(p.total_amount) as amt'))
             ->groupBy('r.service_domain')
             ->pluck('amt', 'service_domain');
+        if ($v['net'] !== 0) {
+            $byDomain[VoucherRevenue::DOMAIN] = (int) ($byDomain[VoucherRevenue::DOMAIN] ?? 0) + $v['net'];
+        }
 
         return [
             'key' => 'revenue',
@@ -386,6 +392,7 @@ class InsightsController extends Controller
                 ['label' => '결제 건수', 'value' => $cnt, 'unit' => '건'],
                 ['label' => '평균 결제액', 'value' => $avg, 'unit' => '원'],
                 ['label' => '본인부담 합계', 'value' => $selfPay, 'unit' => '원'],
+                ['label' => '바우처 선납(환불 차감)', 'value' => $v['net'], 'unit' => '원'],
             ],
             'breakdown' => [
                 'title' => '도메인별 매출',
@@ -412,6 +419,18 @@ class InsightsController extends Controller
             ->groupBy('region')
             ->orderByDesc('amt')
             ->get();
+        // 바우처 선납은 산모 주소 기준 지역으로 합친다
+        $voucher = VoucherRevenue::entries($start, $end->copy()->addSecond());
+        if ($voucher->isNotEmpty()) {
+            $merged = $rows->keyBy('region')->map(fn ($r) => (object) ['region' => $r->region, 'amt' => (int) $r->amt, 'cnt' => (int) $r->cnt]);
+            foreach ($voucher as $e) {
+                $cur = $merged[$e->region] ?? (object) ['region' => $e->region, 'amt' => 0, 'cnt' => 0];
+                $cur->amt += $e->amount;
+                $cur->cnt += $e->kind === 'prepaid' ? 1 : 0;
+                $merged[$e->region] = $cur;
+            }
+            $rows = $merged->sortByDesc('amt')->values();
+        }
 
         $total = (int) $rows->sum('amt');
         $cnt = (int) $rows->sum('cnt');
