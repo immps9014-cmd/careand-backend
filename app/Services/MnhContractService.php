@@ -283,6 +283,8 @@ class MnhContractService
         });
 
         $this->notifyAssigned($c, $caregiverId, $dates[0]);
+        // 3단계: 개시 전 서명 서류(이용계약서·개인정보 동의·준수사항) 발행
+        app(MnhDocumentService::class)->autoIssue($c->fresh(), 'assigned', $actor);
     }
 
     /** 인력 교체 — $fromDate(KST) 이후 예정 세션을 새 담당 매칭으로 옮긴다 */
@@ -440,6 +442,7 @@ class MnhContractService
         if (in_array($c->status, ['confirmed', 'active'], true) && $live->isNotEmpty() && $live->every(fn ($s) => $s->status === 'completed')) {
             $c->update(['status' => 'completed']);
             $svc->log($c, 'completed', self::todayKst());
+            app(MnhDocumentService::class)->autoIssue($c, 'completed');   // 만족도 모니터링
         }
     }
 

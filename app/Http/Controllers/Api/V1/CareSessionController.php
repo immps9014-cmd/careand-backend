@@ -81,6 +81,21 @@ class CareSessionController extends Controller
             ], 422);
         }
 
+        // 바우처 계약: 개시 전 서명 서류가 남았으면 출근 불가(MNH_DOCS_ENFORCE=true 일 때만, 3단계)
+        if (config('mnh_docs.enforce')) {
+            $contractId = \Illuminate\Support\Facades\DB::table('match_requests')->where('id', $session->match->request_id)->value('mnh_contract_id');
+            if ($contractId && ($c = \App\Models\MnhContract::find($contractId))) {
+                $missing = app(\App\Services\MnhDocumentService::class)->contractStatus($c)['missing_before_start'];
+                if ($missing) {
+                    return response()->json([
+                        'success' => false,
+                        'error_code' => 'DOCS_UNSIGNED',
+                        'message' => '이용자 서명이 남은 서류가 있어 출근할 수 없어요: ' . implode(', ', $missing) . '. 운영팀에 알려 주세요.',
+                    ], 422);
+                }
+            }
+        }
+
         // 출근 가능 시각: 방문 시작 N분 전부터(한국시각 안내)
         $early = (int) config('matching_rules.checkin_early_minutes', 60);
         if ($session->scheduled_start && now()->lt($session->scheduled_start->copy()->subMinutes($early))) {

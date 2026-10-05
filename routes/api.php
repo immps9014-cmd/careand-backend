@@ -137,6 +137,13 @@ Route::prefix('v1')->group(function () {
             Route::post('contracts', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'store']);
             Route::get('contracts/{id}', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'show'])->whereNumber('id');
             Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'cancel'])->whereNumber('id');
+            // 전자서명 서류(3단계)
+            Route::get('contracts/{id}/documents', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'forContract'])->whereNumber('id');
+            Route::get('my-documents', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'mine']);
+            Route::get('documents/{id}', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'show'])->whereNumber('id');
+            Route::post('documents/{id}/sign', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'sign'])->whereNumber('id');
+            Route::get('documents/{id}/pdf', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdf'])->whereNumber('id');
+            Route::get('sessions/{sessionId}/provision-record', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'provisionRecord'])->whereNumber('sessionId');
         });
 
         // 매칭
@@ -344,6 +351,18 @@ Route::prefix('v1')->group(function () {
                 Route::post('contracts/{id}/restore', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'restore'])->whereNumber('id');
                 Route::post('contracts/{id}/notes', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'note'])->whereNumber('id');
                 Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancel'])->whereNumber('id');
+                // 전자서명 서류(3단계)
+                Route::get('contracts/{id}/documents', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'forContract'])->whereNumber('id');
+                Route::post('contracts/{id}/documents', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'issue'])->whereNumber('id');
+                Route::get('documents/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'show'])->whereNumber('id');
+                Route::post('documents/{id}/reissue', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'reissue'])->whereNumber('id');
+                Route::post('documents/{id}/void', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'void'])->whereNumber('id');
+                Route::get('documents/{id}/pdf', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'pdf'])->whereNumber('id');
+                Route::get('templates', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'templates']);
+                Route::put('templates/{type}', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'saveTemplate'])->where('type', '[a-z_]+');
+                Route::post('templates/{type}/preview', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'preview'])->where('type', '[a-z_]+');
+                Route::get('employment', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'employment']);
+                Route::post('employment', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'issueEmployment']);
             });
 
             // 케어 진행 현황(Working List)

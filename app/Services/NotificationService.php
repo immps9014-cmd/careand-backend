@@ -49,7 +49,8 @@ class NotificationService
     public const TYPE_REVIEW_REQUEST = 'REVIEW_REQUEST';   // 케어 종료 → 보호자 후기 요청(기능 7)
     public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
     public const TYPE_MNH_CONTRACT = 'MNH_CONTRACT';         // 바우처 계약 배정·교체 → 이용자·돌봄전문가(2026-10-05)
-    public const TYPE_MNH_CHECKIN = 'MNH_CHECKIN';           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
+    public const TYPE_MNH_CHECKIN = 'MNH_CHECKIN';
+    public const TYPE_MNH_DOC_SIGN = 'MNH_DOC_SIGN';         // 바우처 서류 서명 요청 → 이용자·돌봄전문가(3단계)           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
@@ -474,6 +475,11 @@ class NotificationService
                     'body' => sprintf('%s 관리사가 %s부터 방문해요(종료 예정 %s). 마이페이지 바우처 계약에서 확인하세요.', $payload['caregiver_name'] ?? '담당', $payload['start_date'] ?? '', $payload['end_date'] ?? ''),
                 ],
             },
+            self::TYPE_MNH_DOC_SIGN => [
+                'title' => '전자서명이 필요한 서류가 있어요',
+                'body' => sprintf('「%s」를 확인하고 서명해 주세요. %s', $payload['label'] ?? '서류',
+                    !empty($payload['for_caregiver']) ? '마이페이지 → 내 계약서에서 할 수 있어요.' : '마이페이지 → 바우처 계약에서 할 수 있어요.'),
+            ],
             self::TYPE_MNH_CHECKIN => [
                 'title' => '바우처 출근',
                 'body' => sprintf('%s 관리사가 %s 산모 댁에 %s 출근했어요. (계약 %s)', $payload['caregiver_name'] ?? '담당',

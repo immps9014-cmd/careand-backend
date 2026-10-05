@@ -267,6 +267,8 @@ class MnhAdminController extends Controller
             'prepaid_at' => $paidAt, 'prepaid_by' => $request->user()->id]);
         $this->svc->log($c, 'prepaid', $paidAt->copy()->setTimezone('Asia/Seoul')->toDateString(),
             ['amount' => $data['amount'], 'method' => $data['method'], 'receipt_no' => $data['receipt_no'] ?? null], $request->user()->id);
+        // 3단계: 본인부담금 영수증 발행(이미 있으면 그대로 — 금액을 고쳤으면 서류에서 「다시 발행」)
+        app(\App\Services\MnhDocumentService::class)->autoIssue($c->fresh(), 'prepaid', $request->user()->id);
         $warn = $c->self_pay !== null && (int) $data['amount'] !== (int) $c->self_pay
             ? sprintf(' 본인부담금 %s원과 금액이 달라요.', number_format($c->self_pay)) : '';
 
