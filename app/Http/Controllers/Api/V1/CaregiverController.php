@@ -320,7 +320,7 @@ class CaregiverController extends Controller
                 ->pluck('caregiver_id')->all()
         );
 
-        $data = $rows->map(fn ($c) => $this->browseRowToArray($c, $rates, $oLat, $oLng, isset($favSet[(int) $c->id])))->values();
+        $data = $rows->map(fn ($c) => $this->browseRowToArray($c, $rates, $oLat, $oLng, isset($favSet[(int) $c->id]), $domain ?: null))->values();
 
         // 정렬: ①보호자 기준 지역(시·군·구) 일치 우선 → ②거리(가까운 순) → ③기존(평점) 순.
         //      기준 지역이 없으면 거리순, 거리도 없으면 전문가 지역명 순으로 폴백.
@@ -370,10 +370,10 @@ class CaregiverController extends Controller
     }
 
     /** 브라우즈/찜 목록 공통 행 매핑 */
-    private function browseRowToArray($c, $rates, ?float $oLat, ?float $oLng, bool $favorited): array
+    private function browseRowToArray($c, $rates, ?float $oLat, ?float $oLng, bool $favorited, ?string $focus = null): array
     {
         $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
-        $primary = $domains[0] ?? 'senior';
+        $primary = $focus && in_array($focus, $domains, true) ? $focus : ($domains[0] ?? 'senior');
         $rate = isset($rates[$primary]) ? (int) $rates[$primary] : null;
 
         $dist = null;
@@ -400,7 +400,7 @@ class CaregiverController extends Controller
             'rating' => (int) $c->rating_count > 0 ? number_format((float) $c->rating_avg, 1) : '신규',   // 후기 없으면 0.0 대신(09-29 평점 초기화)
             'rating_count' => (int) $c->rating_count,
             'completed_sessions' => (int) $c->completed_sessions,
-            'spec' => $this->specLabel($c->specialties, $primary),
+            'spec' => $this->specLabel($c->specialties, $primary, count($domains) > 1 && $focus ? $focus : null),
             'base_rate' => $rate,
             'distance_km' => $dist,
             'tag' => $tag,
@@ -813,9 +813,10 @@ class CaregiverController extends Controller
             ->limit(20)
             ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
 
-        $data = $rows->map(function ($c) use ($rates, $oLat, $oLng) {
+        $data = $rows->map(function ($c) use ($rates, $oLat, $oLng, $domain) {
             $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
-            $primary = $domains[0] ?? 'senior';
+            // 분야 탭으로 고른 경우엔 그 분야 기준(시급·분야 글자) — 여러 분야 전문가가 다른 분야 글자로 보이던 문제(2026-10-05)
+            $primary = $domain && in_array($domain, $domains, true) ? $domain : ($domains[0] ?? 'senior');
             $rate = isset($rates[$primary]) ? (int) $rates[$primary] : null;
 
             $dist = null;
@@ -839,7 +840,7 @@ class CaregiverController extends Controller
                 'rating' => (int) $c->rating_count > 0 ? number_format((float) $c->rating_avg, 1) : '신규',   // 후기 없으면 0.0 대신(09-29 평점 초기화)
                 'rating_count' => (int) $c->rating_count,
                 'completed_sessions' => (int) $c->completed_sessions,
-                'spec' => $this->specLabel($c->specialties, $primary),
+                'spec' => $this->specLabel($c->specialties, $primary, count($domains) > 1 && $domain ? $domain : null),
                 'base_rate' => $rate,
                 'distance_km' => $dist,
                 'tag' => $tag,
@@ -855,8 +856,12 @@ class CaregiverController extends Controller
         return response()->json(['success' => true, 'data' => $data]);
     }
 
-    private function specLabel(?string $specialtiesJson, string $domain): string
+    /** $focus: 여러 분야 전문가를 특정 분야 탭에서 보일 때 — 다른 분야 전문분야 대신 그 분야 이름을 보인다 */
+    private function specLabel(?string $specialtiesJson, string $domain, ?string $focus = null): string
     {
+        if ($focus) {
+            return \App\Support\ServiceDomains::label($focus);
+        }
         // 도메인/전문분야 라벨은 레지스트리(SSOT)로 일원화 — \App\Support\ServiceDomains
         $arr = json_decode($specialtiesJson ?? '[]', true);
         if (is_array($arr) && count($arr) > 0) {
