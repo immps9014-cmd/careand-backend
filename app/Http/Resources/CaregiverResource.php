@@ -29,6 +29,8 @@ class CaregiverResource extends JsonResource
             'base_lng' => $this->base_lng,
             'default_rate' => $this->default_rate !== null ? (float) $this->default_rate : null,
             'auto_bid' => (bool) $this->auto_bid,
+            // 프로필 사진 — 서명 링크(6시간). 이 리소스는 로그인 회원 응답에만 쓰인다
+            'photo_url' => \App\Support\CaregiverProfileExtras::photoUrl((int) $this->id, $this->photo_path, $this->photo_updated_at),
 
             'organization' => $this->whenLoaded('organization', fn () => $this->organization ? [
                 'id' => $this->organization->id,

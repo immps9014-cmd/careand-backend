@@ -34,6 +34,8 @@ class CaregiverDocumentAdminController extends Controller
             'checklist' => $this->docs->checklist($id),
             'missing_required' => $this->docs->missingRequired($id),
             'enforce_on_approve' => (bool) config('caregiver_docs.enforce_on_approve'),
+            // 비상연락처·사진·희망사항(2026-10-05) — 관리자는 비상연락처 원문을 본다(감사로그 대상 경로)
+            'extras' => \App\Support\CaregiverProfileExtras::forOwnerOrAdmin($id),
             'payout' => [
                 'bank_name' => $cg->bank_name,
                 'bank_account_masked' => CaregiverDocumentController::maskAccount(MedicalCrypto::decrypt($cg->bank_account)),

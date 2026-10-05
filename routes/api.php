@@ -64,6 +64,8 @@ Route::prefix('v1')->group(function () {
 
     // ========== Phase 1+2: 인증 필요 ==========
     // 바우처 서류 PDF — 5분짜리 서명 링크(앱이 외부 브라우저로 연다, 인증 헤더 불필요). 링크 발급은 아래 인증 구간의 pdf-link
+    Route::get('caregivers/{id}/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'photo'])->whereNumber('id')
+        ->middleware(['signed:relative', 'throttle:120,1'])->name('caregiver.photo');   // 인력 사진 — 서명 링크로만
     Route::get('mnh/documents/{id}/pdf-signed', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdfSigned'])->whereNumber('id')
         ->middleware(['signed:relative', 'throttle:30,1'])->name('mnh.doc.pdf.signed');
 
@@ -113,6 +115,12 @@ Route::prefix('v1')->group(function () {
             Route::get('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'index']);
             Route::post('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'store']);
             Route::put('me/payout-account', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'updatePayout']);
+            // 비상연락처·사진·희망사항(2026-10-05)
+            Route::get('me/extras', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'show']);
+            Route::put('me/emergency-contact', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'updateEmergency']);
+            Route::put('me/work-preferences', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'updatePreferences']);
+            Route::post('me/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'uploadPhoto'])->middleware('throttle:20,1');
+            Route::delete('me/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'deletePhoto']);
             Route::get('{id}', [CaregiverController::class, 'show'])->whereNumber('id');
         });
 

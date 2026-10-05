@@ -78,6 +78,7 @@ class PurgePersonalData extends Command
                     // 제출 서류(신분증·통장·범죄경력) 파일과 기록 삭제 — S5
                     foreach (DB::table('caregivers')->where('user_id', $u->id)->pluck('id') as $cgId) {
                         app(\App\Services\CaregiverDocumentService::class)->purge((int) $cgId);
+                        \App\Support\CaregiverProfileExtras::purge((int) $cgId);   // 비상연락처·사진·희망사항
                     }
                     $gid = DB::table('guardians')->where('user_id', $u->id)->value('id');
                     if ($gid) {

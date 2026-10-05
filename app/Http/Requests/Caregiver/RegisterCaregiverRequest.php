@@ -30,6 +30,18 @@ class RegisterCaregiverRequest extends FormRequest
             'base_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'base_lng' => ['nullable', 'numeric', 'between:-180,180'],
             'org_id' => ['nullable', 'exists:organizations,id'],
+            // 비상연락처·희망사항(2026-10-05) — 가입 때 받을 수 있게(선택, 관리자 승인 전에 채우면 됨). 사진은 가입 뒤 별도 업로드
+            'emergency_contact' => ['nullable', 'array'],
+            'emergency_contact.name' => ['required_with:emergency_contact', 'string', 'max:30'],
+            'emergency_contact.relation' => ['required_with:emergency_contact', 'string', 'max:20'],
+            'emergency_contact.phone' => ['required_with:emergency_contact', 'string', 'regex:/^0\d{1,2}-?\d{3,4}-?\d{4}$/'],
+            'work_preferences' => ['nullable', 'array'],
+            'work_preferences.days' => ['nullable', 'array'],
+            'work_preferences.days.*' => ['integer', 'between:1,7'],
+            'work_preferences.times' => ['nullable', 'array'],
+            'work_preferences.times.*' => ['string', 'in:day,evening,night,live_in'],
+            'work_preferences.regions' => ['nullable', 'string', 'max:200'],
+            'work_preferences.note' => ['nullable', 'string', 'max:1000'],
         ];
     }
 

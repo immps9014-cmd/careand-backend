@@ -69,6 +69,12 @@ class CaregiverController extends Controller
 
         $data = $request->validated();
         $data['user_id'] = $user->id;
+        $extras = array_filter([
+            'emergency_contact' => !empty($data['emergency_contact']) ? \App\Support\CaregiverProfileExtras::encryptEmergency($data['emergency_contact']) : null,
+            'work_preferences' => !empty($data['work_preferences'])
+                ? json_encode(\App\Support\CaregiverProfileExtras::normalizePreferences($data['work_preferences']), JSON_UNESCAPED_UNICODE) : null,
+        ]);
+        unset($data['emergency_contact'], $data['work_preferences']);
 
         // 활동 도메인 (SET 컬럼은 콤마 문자열)
         $data['service_domains'] = implode(',', $data['service_domains'] ?? ['senior']);
@@ -81,7 +87,7 @@ class CaregiverController extends Controller
             }
         }
 
-        $caregiver = DB::transaction(function () use ($data, $user) {
+        $caregiver = DB::transaction(function () use ($data, $user, $extras) {
             // 1단계: caregivers 테이블 INSERT (status=pending)
             $caregiver = Caregiver::create(array_merge($data, [
                 'rating_avg' => 0,
@@ -122,6 +128,10 @@ class CaregiverController extends Controller
                     ]);
                     // 자격 확인 실패해도 등록은 유지 (관리자가 수동 검수)
                 }
+            }
+
+            if ($extras) {
+                DB::table('caregivers')->where('id', $caregiver->id)->update($extras);
             }
 
             // 3단계: 기관 초대로 가입한 경우 — 전화번호 매칭 pending 초대 → 소속 자동 연결
