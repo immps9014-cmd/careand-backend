@@ -35,7 +35,7 @@ class VoucherRevenue
             ->addSelect(DB::raw("'prepaid' as kind"), 'c.prepaid_amount as amount', 'c.prepaid_at as at')->get();
         $refund = $base()->whereNotNull('c.refunded_at')->where('c.refund_amount', '>', 0)
             ->where('c.refunded_at', '>=', $from)->where('c.refunded_at', '<', $to)
-            ->addSelect(DB::raw("'refund' as kind"), DB::raw('-1 * c.refund_amount as amount'), 'c.refunded_at as at')->get();
+            ->addSelect(DB::raw("'refund' as kind"), DB::raw('-CAST(c.refund_amount AS SIGNED) as amount'), 'c.refunded_at as at')->get();
 
         return $paid->concat($refund)->map(function ($r) {
             $r->amount = (int) $r->amount;
