@@ -50,7 +50,8 @@ class NotificationService
     public const TYPE_REVIEW_LOW = 'REVIEW_LOW';
     public const TYPE_MNH_CONTRACT = 'MNH_CONTRACT';         // 바우처 계약 배정·교체 → 이용자·돌봄전문가(2026-10-05)
     public const TYPE_MNH_CHECKIN = 'MNH_CHECKIN';
-    public const TYPE_MNH_DOC_SIGN = 'MNH_DOC_SIGN';         // 바우처 서류 서명 요청 → 이용자·돌봄전문가(3단계)           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
+    public const TYPE_MNH_DOC_SIGN = 'MNH_DOC_SIGN';
+    public const TYPE_MNH_EVAL_REQUEST = 'MNH_EVAL_REQUEST'; // 바우처 종료 → 관리사(이용자 평가)·관리자(기관 평가), 4단계         // 바우처 서류 서명 요청 → 이용자·돌봄전문가(3단계)           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
@@ -475,6 +476,13 @@ class NotificationService
                     'body' => sprintf('%s 관리사가 %s부터 방문해요(종료 예정 %s). 마이페이지 바우처 계약에서 확인하세요.', $payload['caregiver_name'] ?? '담당', $payload['start_date'] ?? '', $payload['end_date'] ?? ''),
                 ],
             },
+            self::TYPE_MNH_EVAL_REQUEST => ($payload['for'] ?? '') === 'org' ? [
+                'title' => '기관 평가를 남겨 주세요',
+                'body' => sprintf('바우처 %s 서비스가 끝났어요. 담당 관리사의 근태·숙련도·서비스 마인드를 평가해 주세요.', $payload['contract_no'] ?? ''),
+            ] : [
+                'title' => '이용자 평가를 남겨 주세요',
+                'body' => sprintf('바우처 %s 서비스가 끝났어요. 기본 예절·업무범위·휴게시간·협조를 평가해 주세요(이용자에게는 보이지 않아요).', $payload['contract_no'] ?? ''),
+            ],
             self::TYPE_MNH_DOC_SIGN => [
                 'title' => '전자서명이 필요한 서류가 있어요',
                 'body' => sprintf('「%s」를 확인하고 서명해 주세요. %s', $payload['label'] ?? '서류',

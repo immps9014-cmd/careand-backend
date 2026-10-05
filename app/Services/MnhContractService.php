@@ -443,6 +443,7 @@ class MnhContractService
             $c->update(['status' => 'completed']);
             $svc->log($c, 'completed', self::todayKst());
             app(MnhDocumentService::class)->autoIssue($c, 'completed');   // 만족도 모니터링
+            app(MnhEvaluationService::class)->requestFinal($c);           // 4단계: 관리사·기관 종료 평가 요청
         }
     }
 

@@ -143,6 +143,11 @@ Route::prefix('v1')->group(function () {
             Route::get('documents/{id}', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'show'])->whereNumber('id');
             Route::post('documents/{id}/sign', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'sign'])->whereNumber('id');
             Route::get('documents/{id}/pdf', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdf'])->whereNumber('id');
+            // 양방향 평가(4단계) — 관리사 → 이용자, 내 종합평가
+            Route::get('client-evaluations', [\App\Http\Controllers\Api\V1\MnhEvaluationController::class, 'index']);
+            Route::get('contracts/{id}/client-evaluation', [\App\Http\Controllers\Api\V1\MnhEvaluationController::class, 'form'])->whereNumber('id');
+            Route::post('contracts/{id}/client-evaluations', [\App\Http\Controllers\Api\V1\MnhEvaluationController::class, 'store'])->whereNumber('id');
+            Route::get('my-hexagon', [\App\Http\Controllers\Api\V1\MnhEvaluationController::class, 'myHexagon']);
             Route::get('sessions/{sessionId}/provision-record', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'provisionRecord'])->whereNumber('sessionId');
         });
 
@@ -361,6 +366,11 @@ Route::prefix('v1')->group(function () {
                 Route::get('templates', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'templates']);
                 Route::put('templates/{type}', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'saveTemplate'])->where('type', '[a-z_]+');
                 Route::post('templates/{type}/preview', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'preview'])->where('type', '[a-z_]+');
+                // 양방향 평가·종합평가(4단계)
+                Route::get('hexagons', [\App\Http\Controllers\Api\V1\Admin\MnhEvalAdminController::class, 'hexagons']);
+                Route::get('caregivers/{id}/evaluation', [\App\Http\Controllers\Api\V1\Admin\MnhEvalAdminController::class, 'caregiver'])->whereNumber('id');
+                Route::post('evaluations', [\App\Http\Controllers\Api\V1\Admin\MnhEvalAdminController::class, 'store']);
+                Route::get('contracts/{id}/evaluations', [\App\Http\Controllers\Api\V1\Admin\MnhEvalAdminController::class, 'forContract'])->whereNumber('id');
                 Route::get('employment', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'employment']);
                 Route::post('employment', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'issueEmployment']);
             });
