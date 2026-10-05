@@ -174,6 +174,11 @@ Route::prefix('v1')->group(function () {
             Route::post('postpartum-clients', [MatchRequestController::class, 'storePostpartumClient']);
             Route::post('postpartum-clients/{id}/newborns', [MatchRequestController::class, 'storePostpartumNewborn'])->whereNumber('id');
             Route::put('postpartum-clients/{id}/care-profile', [MatchRequestController::class, 'updatePostpartumCareProfile'])->whereNumber('id');
+            Route::put('postpartum-clients/{id}/emergency-contact', [MatchRequestController::class, 'updatePostpartumEmergencyContact'])->whereNumber('id');
+            // 이용일지(2026-10-05) — 산모 수시 작성, 기관 알림
+            Route::get('postpartum-clients/{id}/journal', [\App\Http\Controllers\Api\V1\MnhClientJournalController::class, 'index'])->whereNumber('id');
+            Route::post('postpartum-clients/{id}/journal', [\App\Http\Controllers\Api\V1\MnhClientJournalController::class, 'store'])->whereNumber('id');
+            Route::delete('postpartum-clients/{id}/journal/{entryId}', [\App\Http\Controllers\Api\V1\MnhClientJournalController::class, 'destroy'])->whereNumber(['id', 'entryId']);
             Route::get('postpartum-clients/{id}/epds', [MatchRequestController::class, 'postpartumEpds'])->whereNumber('id');
             Route::post('postpartum-clients/{id}/epds', [MatchRequestController::class, 'submitPostpartumEpds'])->whereNumber('id');
             // 아동 선택기(통합 요청 폼) — 본인 소유 아동 목록/등록
@@ -354,6 +359,12 @@ Route::prefix('v1')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Api\V1\Admin\EpdsAdminController::class, 'index']);
                 Route::get('clients/{clientId}', [\App\Http\Controllers\Api\V1\Admin\EpdsAdminController::class, 'client'])->whereNumber('clientId');
                 Route::post('{id}/followup', [\App\Http\Controllers\Api\V1\Admin\EpdsAdminController::class, 'followup'])->whereNumber('id');
+            });
+
+            // 산모 이용일지 기관 확인(2026-10-05) — RBAC 영역 mnh-journals(알림을 CS도 받으니 확인도 운영 3등급)
+            Route::prefix('mnh-journals')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\V1\Admin\MnhJournalAdminController::class, 'index']);
+                Route::post('check', [\App\Http\Controllers\Api\V1\Admin\MnhJournalAdminController::class, 'check']);
             });
 
             // 산모신생아 바우처(CAREN-MNH-01 2단계) — 제공기관 = 케어앤

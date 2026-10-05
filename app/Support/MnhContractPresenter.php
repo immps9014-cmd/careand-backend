@@ -72,7 +72,7 @@ final class MnhContractPresenter
     public static function detail(MnhContract $c, MnhContractService $svc, bool $admin): array
     {
         $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)
-            ->first(['id', 'name', 'delivery_date', 'delivery_type', 'address', 'address_detail']);
+            ->first(['id', 'name', 'delivery_date', 'delivery_type', 'address', 'address_detail', 'emergency_contact']);
         $cgName = $c->caregiver_id ? DB::table('caregivers as cg')->join('users as u', 'u.id', '=', 'cg.user_id')
             ->where('cg.id', $c->caregiver_id)->value('u.name') : null;
         $out = self::summary($c, $svc, $client, $cgName);
@@ -114,6 +114,7 @@ final class MnhContractPresenter
             $out['address'] = trim(($client->address ?? '') . ' ' . ($client->address_detail ?? ''));
             $out['match_request_id'] = $c->match_request_id;
             $out['user'] = DB::table('users')->where('id', $c->user_id)->first(['id', 'name']);
+            $out['client_emergency_contact'] = CaregiverProfileExtras::emergency($client->emergency_contact ?? null);   // 산모 비상연락처(2026-10-05)
             $out['care_profile_summary'] = PostpartumCareProfile::summaries(collect([$c->postpartum_client_id]))[$c->postpartum_client_id] ?? null;
             $out['cancelled_sessions'] = $sessions->where('status', 'cancelled')->map(fn ($s) => [
                 'date' => $s->date, 'reason' => $s->cancel_reason, 'caregiver_name' => $s->caregiver_name,

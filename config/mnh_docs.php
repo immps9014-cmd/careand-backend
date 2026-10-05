@@ -33,7 +33,8 @@ return [
             'body' => <<<'TXT'
 ## 계약 당사자
 - 제공기관: {{provider_name}} (사업자등록번호 {{provider_biz_no}}, 대표 {{provider_ceo}})
-- 이용자(산모): {{client_name}} (생년월일 {{client_birth}})
+- 이용자(산모): {{client_name}} (생년월일 {{client_birth}}, 성별 {{client_gender}})
+- 이용자 비상연락처: {{client_emergency}}
 - 서비스 장소: {{client_address}}
 
 ## 서비스 내용

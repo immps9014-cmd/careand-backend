@@ -108,6 +108,19 @@ class MnhDocumentService
         return implode("\n", $html);
     }
 
+    /** 산모 비상연락처 한 줄 — 「김가족(배우자) 010-1234-5678」, 없으면 null(서식에 「(미등록)」) */
+    private static function emergencyLine(?string $stored): ?string
+    {
+        $e = \App\Support\CaregiverProfileExtras::emergency($stored);
+        if (!$e) {
+            return null;
+        }
+        $p = (string) ($e['phone'] ?? '');
+        $p = strlen($p) === 11 ? substr($p, 0, 3) . '-' . substr($p, 3, 4) . '-' . substr($p, 7) : $p;
+
+        return trim(($e['name'] ?? '') . (!empty($e['relation']) ? '(' . $e['relation'] . ')' : '') . ' ' . $p);
+    }
+
     /** 서식 변수 */
     public function vars(?MnhContract $c, ?int $caregiverId = null, ?object $session = null): array
     {
@@ -120,13 +133,15 @@ class MnhDocumentService
             'today' => Carbon::now(self::TZ)->format('Y년 n월 j일'),
         ];
         if ($c) {
-            $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->first(['name', 'birth_date', 'address', 'address_detail']);
+            $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->first(['name', 'birth_date', 'address', 'address_detail', 'emergency_contact']);
             $dow = ['', '월', '화', '수', '목', '금', '토', '일'];
             $v += [
                 'contract_no' => $c->contract_no,
                 'client_name' => $client->name ?? null,
                 'client_birth' => $kdate($client->birth_date ?? null),
                 'client_address' => trim(($client->address ?? '') . ' ' . ($client->address_detail ?? '')),
+                'client_gender' => '여',   // 산모 — 성별 칸 없이 고정(2026-10-05)
+                'client_emergency' => self::emergencyLine($client->emergency_contact ?? null),
                 'support_label' => MnhContractPresenter::supportLabel($c),
                 'start_date' => $kdate($c->start_date),
                 'end_date' => $kdate($this->contracts->endDate($c)),

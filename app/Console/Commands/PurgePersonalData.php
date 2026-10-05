@@ -80,6 +80,10 @@ class PurgePersonalData extends Command
                         app(\App\Services\CaregiverDocumentService::class)->purge((int) $cgId);
                         \App\Support\CaregiverProfileExtras::purge((int) $cgId);   // 비상연락처·사진·희망사항
                     }
+                    // 산모 비상연락처(제3자 개인정보)·이용일지 메모(건강정보) — 2026-10-05
+                    $pcIds = DB::table('postpartum_clients')->where('user_id', $u->id)->pluck('id');
+                    DB::table('postpartum_clients')->whereIn('id', $pcIds)->update(['emergency_contact' => null, 'updated_at' => now()]);
+                    DB::table('mnh_client_journals')->whereIn('postpartum_client_id', $pcIds)->update(['note' => null, 'updated_at' => now()]);
                     $gid = DB::table('guardians')->where('user_id', $u->id)->value('id');
                     if ($gid) {
                         DB::table('seniors')->where('guardian_id', $gid)->update([

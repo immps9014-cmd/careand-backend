@@ -130,7 +130,7 @@ class MnhDocAdminController extends Controller
 
         return response()->json(['success' => true, 'data' => [
             'templates' => $out,
-            'variables' => array_keys($this->docs->vars(null) + array_flip(['contract_no', 'client_name', 'client_birth', 'client_address',
+            'variables' => array_keys($this->docs->vars(null) + array_flip(['contract_no', 'client_name', 'client_birth', 'client_address', 'client_gender', 'client_emergency',
                 'support_label', 'start_date', 'end_date', 'days', 'weekdays', 'daily_time', 'total_price', 'gov_support', 'self_pay',
                 'payment_method', 'prepaid_amount', 'prepaid_date', 'receipt_no', 'caregiver_name', 'session_date', 'session_time', 'session_seq'])),
             'provider' => config('mnh_docs.provider'),
@@ -157,6 +157,7 @@ class MnhDocAdminController extends Controller
         abort_unless(array_key_exists($type, MnhDocumentService::types()), 404);
         $body = (string) $request->validate(['body' => ['required', 'string', 'max:20000']])['body'];
         $sample = ['contract_no' => 'MNH-2026-0001', 'client_name' => '홍○○', 'client_birth' => '1995년 1월 1일', 'client_address' => '(주소)',
+            'client_gender' => '여', 'client_emergency' => '김○○(배우자) 010-0000-0000',
             'support_label' => '단태아 · 첫째아 · (유형) · 표준', 'start_date' => '2026년 11월 2일', 'end_date' => '2026년 11월 13일', 'days' => 10,
             'weekdays' => '월화수목금', 'daily_time' => '09:00부터 8시간', 'total_price' => '(서비스 가격)', 'gov_support' => '(정부지원금)',
             'self_pay' => '(본인부담금)', 'payment_method' => '현금', 'prepaid_amount' => '(받은 금액)', 'prepaid_date' => '2026년 10월 30일',

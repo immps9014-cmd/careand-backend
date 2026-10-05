@@ -960,7 +960,7 @@ class MatchRequestController extends Controller
     {
         $user = $request->user();
         $rows = DB::table('postpartum_clients')
-            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted', 'care_profile')
+            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted', 'care_profile', 'emergency_contact')
             ->where('user_id', $user->id)
             ->whereNull('deleted_at')
             ->orderByDesc('created_at')
@@ -974,6 +974,8 @@ class MatchRequestController extends Controller
                     $phone = null;
                 }
                 unset($r->phone_encrypted);
+                // 비상연락처(2026-10-05) — 본인 소유 산모만 이 목록에 오므로 원문
+                $r->emergency_contact = \App\Support\CaregiverProfileExtras::emergency($r->emergency_contact);
                 $r->care_profile = \App\Support\PostpartumCareProfile::decode($r->care_profile);
                 $r->is_self = $phone !== null && $user->phone && $phone === $user->phone;
 
@@ -1132,6 +1134,43 @@ class MatchRequestController extends Controller
     }
 
     /**
+     * PUT /v1/matching/postpartum-clients/{id}/emergency-contact {name, relation, phone}
+     * 산모 비상연락처(요구사항분석 「이용자 회원가입」, 2026-10-05) — 인력과 같은 형식·암호화(CaregiverProfileExtras).
+     * 관리자 계약 상세·산후우울 상세에서 보인다(위기 때 연락).
+     */
+    public function updatePostpartumEmergencyContact(Request $request, int $id): JsonResponse
+    {
+        if (!$this->ownsPostpartumClient($request, $id)) {
+            return response()->json(['success' => false, 'message' => '산모 정보를 찾을 수 없어요.'], 404);
+        }
+        $v = $request->validate(self::emergencyRules(''), self::emergencyMessages(''));
+        DB::table('postpartum_clients')->where('id', $id)->update([
+            'emergency_contact' => \App\Support\CaregiverProfileExtras::encryptEmergency($v),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => '비상연락처를 저장했어요.',
+            'data' => ['emergency_contact' => \App\Support\CaregiverProfileExtras::emergency(
+                DB::table('postpartum_clients')->where('id', $id)->value('emergency_contact'))]]);
+    }
+
+    /** 비상연락처 규칙 — 등록 폼은 'emergency_contact.' 아래 선택 입력, 수정은 최상위 필수 */
+    private static function emergencyRules(string $prefix): array
+    {
+        $rules = [];
+        foreach (\App\Support\CaregiverProfileExtras::emergencyRules() as $k => $r) {
+            $rules[$prefix . $k] = $prefix === '' ? $r : array_map(fn ($x) => $x === 'required' ? 'required_with:emergency_contact' : $x, $r);
+        }
+
+        return $rules;
+    }
+
+    private static function emergencyMessages(string $prefix): array
+    {
+        return [$prefix . 'phone.regex' => '비상연락처 번호를 확인해 주세요(예: 010-1234-5678).'];
+    }
+
+    /**
      * POST /v1/matching/postpartum-clients
      * 산모 간이 등록 — 통합 요청 폼용. 매칭에 필요한 최소 필드만. user_id=본인.
      * (고급 필드/바우처는 산후 전용 서브시스템에서 관리)
@@ -1147,7 +1186,8 @@ class MatchRequestController extends Controller
             'delivery_date' => ['required', 'date'],
             'delivery_type' => ['required', 'in:natural,cesarean,vbac'],
             'is_first_baby' => ['nullable', 'boolean'],
-        ] + \App\Support\PostpartumCareProfile::rules());
+            'emergency_contact' => ['nullable', 'array'],
+        ] + \App\Support\PostpartumCareProfile::rules() + self::emergencyRules('emergency_contact.'));
         $profile = \App\Support\PostpartumCareProfile::normalize($data['care_profile'] ?? null);
 
         $id = DB::table('postpartum_clients')->insertGetId([
@@ -1162,6 +1202,7 @@ class MatchRequestController extends Controller
             'delivery_type'   => $data['delivery_type'],
             'is_first_baby'   => (int) ($data['is_first_baby'] ?? 1),
             'care_profile'    => $profile ? json_encode($profile, JSON_UNESCAPED_UNICODE) : null,
+            'emergency_contact' => !empty($data['emergency_contact']) ? \App\Support\CaregiverProfileExtras::encryptEmergency($data['emergency_contact']) : null,
             'status'          => 'active',
             'created_at'      => now(),
             'updated_at'      => now(),

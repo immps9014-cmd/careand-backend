@@ -95,7 +95,7 @@ class EpdsAdminController extends Controller
                 'message' => '문항별 응답은 민감정보라 열람 사유(5자 이상)가 필요해요.'], 422);
         }
         $c = DB::table('postpartum_clients')->where('id', $clientId)->whereNull('deleted_at')
-            ->first(['id', 'user_id', 'name', 'birth_date', 'delivery_date', 'delivery_type']);
+            ->first(['id', 'user_id', 'name', 'birth_date', 'delivery_date', 'delivery_type', 'emergency_contact']);
         abort_if(!$c, 404);
         $user = DB::table('users')->where('id', $c->user_id)->first(['id', 'name', 'phone']);
         $contract = DB::table('mnh_contracts as m')
@@ -128,6 +128,7 @@ class EpdsAdminController extends Controller
                 'id' => $c->id, 'name' => $c->name, 'birth_date' => $c->birth_date, 'delivery_date' => $c->delivery_date,
                 'delivery_type' => $c->delivery_type,
                 'guardian' => $user ? ['id' => $user->id, 'name' => $user->name, 'phone' => $user->phone] : null,
+                'emergency_contact' => \App\Support\CaregiverProfileExtras::emergency($c->emergency_contact),   // 위기 때 연락(2026-10-05)
             ],
             'contract' => $contract,
             'history' => $history,

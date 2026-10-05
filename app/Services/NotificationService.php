@@ -52,6 +52,7 @@ class NotificationService
     public const TYPE_MNH_CHECKIN = 'MNH_CHECKIN';
     public const TYPE_MNH_DOC_SIGN = 'MNH_DOC_SIGN';
     public const TYPE_MNH_EVAL_REQUEST = 'MNH_EVAL_REQUEST'; // 바우처 종료 → 관리사(이용자 평가)·관리자(기관 평가), 4단계         // 바우처 서류 서명 요청 → 이용자·돌봄전문가(3단계)           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
+    public const TYPE_MNH_CLIENT_JOURNAL = 'MNH_CLIENT_JOURNAL'; // 산모 이용일지 → 산모신생아 담당 관리자(주의 기록은 바로, 그 밖엔 산모별 하루 1번)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
@@ -492,6 +493,16 @@ class NotificationService
                 'title' => '바우처 출근',
                 'body' => sprintf('%s 관리사가 %s 산모 댁에 %s 출근했어요. (계약 %s)', $payload['caregiver_name'] ?? '담당',
                     $payload['client_name'] ?? '', $payload['at'] ?? '', $payload['contract_no'] ?? ''),
+            ],
+            self::TYPE_MNH_CLIENT_JOURNAL => !empty($payload['flag']) ? [
+                'title' => '⚠ 이용일지 — ' . ($payload['flag_label'] ?? '확인 필요'),
+                'body' => sprintf('%s 산모가 「%s」 기록을 남겼어요%s. 관리자 → 산모신생아 → 이용일지에서 확인해 주세요.',
+                    $payload['client_name'] ?? '산모', $payload['kind_label'] ?? '이용일지',
+                    !empty($payload['summary']) ? ' (' . $payload['summary'] . ')' : ''),
+            ] : [
+                'title' => '오늘 이용일지',
+                'body' => sprintf('%s 산모가 오늘 이용일지를 쓰기 시작했어요(첫 기록: %s). 관리자 → 산모신생아 → 이용일지에서 볼 수 있어요.',
+                    $payload['client_name'] ?? '산모', $payload['kind_label'] ?? '이용일지'),
             ],
             self::TYPE_EPDS_HIGH_RISK => [
                 'title' => !empty($payload['self_harm']) ? '⚠ 산후우울 검사 — 자해 생각 응답' : '⚠ 산후우울 검사 고위험',
