@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * 응답: 쿠키 모드 요청의 JSON 에 access_token / refresh_token 이 있으면 쿠키로 옮기고 본문에서 지운다
  *       (로그인·가입·소셜 로그인·갱신 어느 경로든 같은 처리). 로그아웃이면 쿠키를 지운다.
- * 요청: Authorization 헤더가 없고 쿠키가 있으면 헤더로 바꿔 넣는다(갱신 경로는 리프레시 쿠키).
+ * 요청: X-Auth-Mode: cookie 이고 Authorization 헤더가 없으면 쿠키를 헤더로 바꿔 넣는다(갱신 경로는 리프레시 쿠키).
  *       쿠키로 인증하는 쓰기 요청은 X-Requested-With: XMLHttpRequest 가 있어야 한다 — 다른 사이트의 폼 전송(CSRF) 차단.
  *       (CORS 는 * + credentials 불가라 다른 출처 JS 는 쿠키를 실어 보낼 수 없다)
  */
@@ -32,7 +32,11 @@ class AuthCookieBridge
         // 예전 회원 웹(localStorage 토큰)에서 옮겨 오는 첫 갱신 — 헤더로 온 리프레시 토큰을 쿠키로 심어 준다
         $headerRefresh = $isRefresh ? $request->bearerToken() : null;
 
-        if (!$request->headers->has('Authorization')) {
+        // 쿠키는 회원 웹 요청(X-Auth-Mode: cookie)에서만 쓴다 — 같은 브라우저의 앱 미리보기(/mapp)·공개 웹(/www) 요청에도
+        // 쿠키가 실려 가는데, 그쪽은 자기 Bearer 로 동작하므로 쿠키를 무시해야 한다(2026-10-05 로그인 419 사고).
+        // 다른 사이트는 이 맞춤 헤더를 붙일 수 없어(CORS 사전 요청) CSRF 방어도 겸한다.
+        $cookieMode = $request->header('X-Auth-Mode') === 'cookie';
+        if ($cookieMode && !$request->headers->has('Authorization')) {
             $token = $isRefresh ? $request->cookies->get(self::REFRESH) : $request->cookies->get(self::ACCESS);
             if (is_string($token) && $token !== '') {
                 if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true) && $request->header('X-Requested-With') !== 'XMLHttpRequest') {
@@ -44,7 +48,7 @@ class AuthCookieBridge
 
         $response = $next($request);
 
-        if ($request->header('X-Auth-Mode') !== 'cookie') {
+        if (!$cookieMode) {
             return $response;
         }
         if ($request->is('api/v1/auth/logout')) {
