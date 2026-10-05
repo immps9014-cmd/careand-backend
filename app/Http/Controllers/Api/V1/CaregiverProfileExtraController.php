@@ -104,9 +104,33 @@ class CaregiverProfileExtraController extends Controller
         return $cg;
     }
 
-    /** 아무 사진 → 방향 바로잡고 긴 변 600px 안 JPEG(메타데이터 제거). 실패하면 null */
+    /**
+     * 아무 사진 → 방향 바로잡고 긴 변 600px 안 JPEG(메타데이터 제거). 실패하면 null.
+     * 이 서버 ImageMagick 은 JPEG·TIFF 디코더가 없어(실측) GD 를 먼저 쓰고, GD 가 못 읽는 형식(HEIC 등)만 Imagick 에 맡긴다.
+     */
     private static function toJpeg(string $file): ?string
     {
+        $raw = (string) @file_get_contents($file);
+        $src = $raw !== '' ? @imagecreatefromstring($raw) : false;
+        if ($src) {
+            $orientation = 1;
+            if (function_exists('exif_read_data') && str_starts_with($raw, "\xFF\xD8")) {
+                $orientation = (int) (@exif_read_data($file)['Orientation'] ?? 1);
+            }
+            $src = match ($orientation) {
+                3 => imagerotate($src, 180, 0),
+                6 => imagerotate($src, -90, 0),
+                8 => imagerotate($src, 90, 0),
+                default => $src,
+            };
+            [$w, $h] = [imagesx($src), imagesy($src)];
+            $scale = min(1, self::PHOTO_MAX_PX / max($w, $h));
+            $dst = imagescale($src, max(1, (int) round($w * $scale)), max(1, (int) round($h * $scale)));
+            ob_start();
+            imagejpeg($dst ?: $src, null, 85);
+
+            return ob_get_clean() ?: null;
+        }
         try {
             if (class_exists(\Imagick::class)) {
                 $im = new \Imagick($file);
@@ -116,24 +140,12 @@ class CaregiverProfileExtraController extends Controller
                 $im->stripImage();
                 $im->setImageFormat('jpeg');
                 $im->setImageCompressionQuality(85);
-                $out = $im->getImageBlob();
-                $im->clear();
 
-                return $out ?: null;
+                return $im->getImageBlob() ?: null;
             }
-            $src = @imagecreatefromstring((string) file_get_contents($file));
-            if (!$src) {
-                return null;
-            }
-            [$w, $h] = [imagesx($src), imagesy($src)];
-            $scale = min(1, self::PHOTO_MAX_PX / max($w, $h));
-            $dst = imagescale($src, max(1, (int) round($w * $scale)), max(1, (int) round($h * $scale)));
-            ob_start();
-            imagejpeg($dst, null, 85);
-
-            return ob_get_clean() ?: null;
         } catch (\Throwable) {
-            return null;
         }
+
+        return null;
     }
 }
