@@ -103,7 +103,7 @@ final class MnhContractPresenter
             ->filter(fn ($e) => $admin || in_array($e->type, ['created', 'assigned', 'swapped', 'postponed', 'restored', 'start_changed', 'prepaid', 'cancelled', 'completed', 'holiday_work', 'holiday_off', 'holiday_changed'], true))
             ->map(fn ($e) => [
                 'id' => $e->id, 'type' => $e->type, 'date' => $e->event_date?->format('Y-m-d'),
-                'payload' => $admin ? $e->payload : array_intersect_key($e->payload ?? [], array_flip(['reason', 'new_end'])),
+                'payload' => $admin ? $e->payload : array_intersect_key($e->payload ?? [], array_flip(['reason', 'new_end', 'name'])),
                 'created_at' => Kst::iso($e->created_at),
             ])->values();
 
