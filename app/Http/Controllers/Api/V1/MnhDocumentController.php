@@ -96,6 +96,33 @@ class MnhDocumentController extends Controller
         ]);
     }
 
+    /** GET /v1/mnh/documents/{id}/pdf-link — 5분 동안 열리는 서명 링크(모바일 앱은 인증 헤더 없이 브라우저로 연다) */
+    public function pdfLink(Request $request, int $id): JsonResponse
+    {
+        $doc = $this->authorized($request, $id);
+        if (!$doc->pdf_path) {
+            return $this->fail('PDF_NOT_READY', $doc->status === 'signed' ? 'PDF를 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.' : '서명한 뒤에 받을 수 있어요.', 409);
+        }
+        $path = \Illuminate\Support\Facades\URL::temporarySignedRoute('mnh.doc.pdf.signed', now()->addMinutes(5), ['id' => $doc->id], false);
+
+        return response()->json(['success' => true, 'data' => ['path' => $path, 'expires_in' => 300]]);
+    }
+
+    /** GET /v1/mnh/documents/{id}/pdf-signed?expires=&signature= — 서명 링크로만(라우트 signed:relative) */
+    public function pdfSigned(int $id): Response
+    {
+        $doc = MnhDocument::where('id', $id)->where('status', 'signed')->firstOrFail();
+        $pdf = MnhDocumentService::readFile($doc->pdf_path);
+        abort_if($pdf === null, 404);
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "inline; filename=\"MNHD-{$doc->id}.pdf\"",
+            'Cache-Control' => 'private, no-store',
+            'X-Robots-Tag' => 'noindex',
+        ]);
+    }
+
     /**
      * GET /v1/mnh/sessions/{sessionId}/provision-record — 담당 관리사가 그날 제공기록지를 연다(없으면 발행).
      * 바우처 계약 방문이 아니면 {voucher:false}.

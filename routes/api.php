@@ -63,6 +63,10 @@ Route::prefix('v1')->group(function () {
     });
 
     // ========== Phase 1+2: 인증 필요 ==========
+    // 바우처 서류 PDF — 5분짜리 서명 링크(앱이 외부 브라우저로 연다, 인증 헤더 불필요). 링크 발급은 아래 인증 구간의 pdf-link
+    Route::get('mnh/documents/{id}/pdf-signed', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdfSigned'])->whereNumber('id')
+        ->middleware(['signed:relative', 'throttle:30,1'])->name('mnh.doc.pdf.signed');
+
     Route::middleware('auth:api')->group(function () {
 
         Route::prefix('auth')->group(function () {
@@ -143,6 +147,7 @@ Route::prefix('v1')->group(function () {
             Route::get('documents/{id}', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'show'])->whereNumber('id');
             Route::post('documents/{id}/sign', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'sign'])->whereNumber('id');
             Route::get('documents/{id}/pdf', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdf'])->whereNumber('id');
+            Route::get('documents/{id}/pdf-link', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdfLink'])->whereNumber('id');
             // 양방향 평가(4단계) — 관리사 → 이용자, 내 종합평가
             Route::get('client-evaluations', [\App\Http\Controllers\Api\V1\MnhEvaluationController::class, 'index']);
             Route::get('contracts/{id}/client-evaluation', [\App\Http\Controllers\Api\V1\MnhEvaluationController::class, 'form'])->whereNumber('id');
