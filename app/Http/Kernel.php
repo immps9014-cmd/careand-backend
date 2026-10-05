@@ -9,6 +9,8 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \App\Http\Middleware\TrustProxies::class,
         \Illuminate\Http\Middleware\HandleCors::class,
+        // 회원 웹 httpOnly 토큰 쿠키 ↔ Authorization 헤더(2026-10-05) — auth:api 보다 먼저
+        \App\Http\Middleware\AuthCookieBridge::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
