@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\GenerateCareLogJob;
 use App\Models\CareSession;
 use App\Support\MedicalCrypto;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -22,8 +23,12 @@ class CareJournalController extends Controller
     public function catalog(): JsonResponse
     {
         $data = Cache::remember('care-journal:catalog', 600, function () {
-            $res = Http::timeout(5)->withToken(config('services.ai.token') ?? '')
-                ->get(rtrim(config('services.ai.base_url'), '/') . '/care-log/chips/catalog');
+            try {
+                $res = Http::timeout(5)->withToken(config('services.ai.token') ?? '')
+                    ->get(rtrim(config('services.ai.base_url'), '/') . '/care-log/chips/catalog');
+            } catch (ConnectionException) {
+                return null; // AI 지연·중단은 503 으로 안내(500 아님)
+            }
             return $res->successful() ? $res->json() : null;
         });
         if (!$data) {
