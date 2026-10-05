@@ -59,6 +59,12 @@ hydration 완료 대기는 `__reactFiber`/`__reactProps` DOM 속성 폴링으로
    - 데모 계정: `guardian0@demo.careand.kr` / `Demo1234!` (보호자). **기관 `test@gmail.com`은 test1234가 더 이상 아니다**(2026-09-25 확인 401)
      — 기관 세션이 필요하면 비번 변경 없이 `php artisan tinker --execute='echo Tymon\JWTAuth\Facades\JWTAuth::fromUser(App\Models\User::find(57));'`
      로 JWT를 받아 아래 2번(localStorage 주입) 방식을 쓸 것(실측 성공).
+**2026-10-05부터 회원 웹 토큰은 httpOnly 쿠키**(caren_at path=/api, caren_rt path=/api/v1/auth — 백엔드 `AuthCookieBridge`,
+회원 웹은 `X-Auth-Mode: cookie`·`X-Requested-With` 헤더를 보냄). localStorage 에는 user·isAuthenticated 만(persist version 1).
+아래 2번처럼 **version 0 + 토큰**을 주입해도 여전히 동작한다 — 앱이 첫 요청 때 리프레시 토큰을 쿠키로 바꾸고 저장소에서 지운다
+(예전 사용자 이행 경로). 직접 fetch 로 쓰기 요청을 시험하면 `X-Requested-With: XMLHttpRequest` 가 없을 때 419.
+관리자 웹·모바일 앱·공개 웹 자체 호출은 여전히 Bearer 방식.
+
 2. **localStorage/쿠키 직접 주입**: `page.addInitScript`로 localStorage 키 `careand-member-auth` =
    `{"state":{user,accessToken,refreshToken,isAuthenticated:true},"version":0}` + 쿠키
    `careand_auth=1`(domain=`careand.aiclaude.kr`, path=`/app`, 미들웨어 게이트용) 주입.
