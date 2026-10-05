@@ -176,7 +176,7 @@ class NotificationService
             $type === self::TYPE_REVIEW_REQUEST => '/satisfaction',
             $type === self::TYPE_CAREGIVER_DOC_REJECTED => '/documents',
             $type === self::TYPE_CARE_REMINDER => '/schedule',
-            $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/visit/{$sid}" : '/schedule',
+            $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/session/{$sid}" : '/schedule',
             in_array($type, [self::TYPE_CARE_LATE, self::TYPE_CARE_NOSHOW, self::TYPE_CARE_ISSUE_UPDATED], true) && $guardian => $rid ? "/request/{$rid}" : '/home',
             in_array($type, [self::TYPE_MATCH_REQUEST_ASSIGNED, self::TYPE_MATCH_REQUEST_CANCELLED, self::TYPE_MATCH_CONFIRMED,
                 self::TYPE_CAREGIVER_APPROVED, self::TYPE_CAREGIVER_REJECTED, self::TYPE_ANOMALY_HIGH, self::TYPE_ANOMALY_CRITICAL], true) => '/home',
