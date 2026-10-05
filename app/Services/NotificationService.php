@@ -59,6 +59,10 @@ class NotificationService
     public const TYPE_MATCH_OFFER_TIMEOUT = 'MATCH_OFFER_TIMEOUT';         // 지정 후보 무응답 자동 거절 → 보호자(기능 10)
     public const TYPE_MATCH_UNMATCHED_ALERT = 'MATCH_UNMATCHED_ALERT';     // 장시간 미매칭 → 매칭 담당 관리자(기능 18)
     public const TYPE_CARE_REMINDER = 'CARE_REMINDER';
+    public const TYPE_CARE_LATE = 'CARE_LATE';                     // 시작 15분 뒤 출근 없음 → 돌봄전문가·보호자(2026-10-05)
+    public const TYPE_CARE_NOSHOW = 'CARE_NOSHOW';                 // 시작 60분 뒤 출근 없음 → 케어 진행 관리자·보호자
+    public const TYPE_CARE_ISSUE_REPORTED = 'CARE_ISSUE_REPORTED'; // 보호자 교체 요청·신고 → CS 담당자
+    public const TYPE_CARE_ISSUE_UPDATED = 'CARE_ISSUE_UPDATED';   // 교체 요청·신고 처리·답변 → 보호자
     public const TYPE_MONTHLY_REPORT_READY = 'MONTHLY_REPORT_READY';
     public const TYPE_SETTLEMENT_DISPUTED = 'SETTLEMENT_DISPUTED';           // 정산 이의제기 → 정산 담당 관리자(기능 15)
     public const TYPE_SETTLEMENT_DISPUTE_REPLY = 'SETTLEMENT_DISPUTE_REPLY'; // 이의제기 답변 → 돌봄전문가
@@ -172,6 +176,8 @@ class NotificationService
             $type === self::TYPE_REVIEW_REQUEST => '/satisfaction',
             $type === self::TYPE_CAREGIVER_DOC_REJECTED => '/documents',
             $type === self::TYPE_CARE_REMINDER => '/schedule',
+            $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/visit/{$sid}" : '/schedule',
+            in_array($type, [self::TYPE_CARE_LATE, self::TYPE_CARE_NOSHOW, self::TYPE_CARE_ISSUE_UPDATED], true) && $guardian => $rid ? "/request/{$rid}" : '/home',
             in_array($type, [self::TYPE_MATCH_REQUEST_ASSIGNED, self::TYPE_MATCH_REQUEST_CANCELLED, self::TYPE_MATCH_CONFIRMED,
                 self::TYPE_CAREGIVER_APPROVED, self::TYPE_CAREGIVER_REJECTED, self::TYPE_ANOMALY_HIGH, self::TYPE_ANOMALY_CRITICAL], true) => '/home',
             default => '/notifications',
@@ -493,6 +499,33 @@ class NotificationService
                 'title' => '바우처 출근',
                 'body' => sprintf('%s 관리사가 %s 산모 댁에 %s 출근했어요. (계약 %s)', $payload['caregiver_name'] ?? '담당',
                     $payload['client_name'] ?? '', $payload['at'] ?? '', $payload['contract_no'] ?? ''),
+            ],
+            self::TYPE_CARE_LATE => ($payload['for'] ?? '') === 'caregiver' ? [
+                'title' => '출근 기록이 아직 없어요',
+                'body' => sprintf('%s 방문 시작 시각이 %d분 지났어요. 도착했다면 출근을 눌러 주시고, 늦어지면 보호자에게 연락해 주세요.',
+                    $payload['scheduled_at'] ?? '', (int) ($payload['minutes'] ?? 15)),
+            ] : [
+                'title' => '돌봄전문가가 조금 늦어지고 있어요',
+                'body' => sprintf('%s 방문인데 %s 돌봄전문가의 출근 기록이 아직 없어요. 돌봄전문가에게도 알렸어요. 1시간이 지나도 오지 않으면 케어앤 운영팀이 연락드려요.',
+                    $payload['scheduled_at'] ?? '', $payload['caregiver_name'] ?? ''),
+            ],
+            self::TYPE_CARE_NOSHOW => ($payload['for'] ?? '') === 'admin' ? [
+                'title' => '⚠ 노쇼 의심',
+                'body' => sprintf('%s 돌봄전문가가 %s(%s) 방문에 %d분이 지나도록 출근하지 않았어요. 연락해 보고 대체 인력·취소를 처리해 주세요.',
+                    $payload['caregiver_name'] ?? '', $payload['recipient_name'] ?? '', $payload['scheduled_at'] ?? '', (int) ($payload['minutes'] ?? 60)),
+            ] : [
+                'title' => '돌봄전문가가 아직 오지 않았어요',
+                'body' => sprintf('%s 방문 시작 %d분이 지났는데 출근 기록이 없어요. 케어앤 운영팀이 확인하고 있어요. 다른 돌봄전문가가 필요하면 요청 화면에서 「교체 요청」을 남겨 주세요.',
+                    $payload['scheduled_at'] ?? '', (int) ($payload['minutes'] ?? 60)),
+            ],
+            self::TYPE_CARE_ISSUE_REPORTED => [
+                'title' => ($payload['kind'] ?? '') === 'replace' ? '돌봄전문가 교체 요청' : '⚠ 보호자 신고',
+                'body' => sprintf('%s 돌봄전문가에 대한 %s(%s)이 들어왔어요. 관리자 → CS / 분쟁 → 교체·신고에서 확인해 주세요.',
+                    $payload['caregiver_name'] ?? '', $payload['kind_label'] ?? '', $payload['category_label'] ?? ''),
+            ],
+            self::TYPE_CARE_ISSUE_UPDATED => [
+                'title' => ($payload['kind_label'] ?? '접수 건') . ' — ' . ($payload['status_label'] ?? ''),
+                'body' => '남겨 주신 내용을 운영팀이 처리했어요. 요청 화면에서 답변을 확인해 주세요.',
             ],
             self::TYPE_MNH_CLIENT_JOURNAL => !empty($payload['flag']) ? [
                 'title' => '⚠ 이용일지 — ' . ($payload['flag_label'] ?? '확인 필요'),

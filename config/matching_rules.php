@@ -20,4 +20,7 @@ return [
     'attendance_hard_limit_m' => (int) env('ATTENDANCE_HARD_LIMIT_M', 3000),
     // 보호자 결제 완료 전엔 출근 불가 — 결제 없이 케어가 시작·완료되던 문제(2026-10-04 사용자 결정 「출근 차단」)
     'checkin_requires_payment' => (bool) env('CHECKIN_REQUIRES_PAYMENT', true),
+    // 지각·노쇼 감지(2026-10-05) — 시작 시각 뒤 이 시간(분)이 지나도 출근 기록이 없으면 알림. 상태는 자동으로 바꾸지 않는다
+    'late_alert_minutes' => (int) env('CARE_LATE_ALERT_MINUTES', 15),       // 지각: 돌봄전문가·보호자
+    'noshow_alert_minutes' => (int) env('CARE_NOSHOW_ALERT_MINUTES', 60),   // 노쇼 의심: 케어 진행 담당 관리자·보호자
 ];

@@ -122,6 +122,7 @@ Route::prefix('v1')->group(function () {
             Route::post('me/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'uploadPhoto'])->middleware('throttle:20,1');
             Route::delete('me/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'deletePhoto']);
             Route::get('{id}', [CaregiverController::class, 'show'])->whereNumber('id');
+            Route::get('{id}/reviews', [CaregiverController::class, 'reviews'])->whereNumber('id');
         });
 
         // 보호자
@@ -197,6 +198,9 @@ Route::prefix('v1')->group(function () {
             Route::delete('blocks/{blockId}', [MatchRequestController::class, 'unblock'])->whereNumber('blockId');
             Route::get('requests', [MatchRequestController::class, 'index']);
             Route::post('requests', [MatchRequestController::class, 'store']);
+            // 교체 요청·신고(2026-10-05)
+            Route::get('requests/{id}/issues', [\App\Http\Controllers\Api\V1\CareIssueController::class, 'index'])->whereNumber('id');
+            Route::post('requests/{id}/issues', [\App\Http\Controllers\Api\V1\CareIssueController::class, 'store'])->whereNumber('id')->middleware('throttle:10,1');
             Route::get('requests/{id}/candidates', [MatchRequestController::class, 'candidates'])
                 ->whereNumber('id')->name('api.v1.matching.candidates');
             Route::post('requests/{id}/select', [MatchRequestController::class, 'selectCandidate'])->whereNumber('id');
@@ -336,6 +340,8 @@ Route::prefix('v1')->group(function () {
                 Route::get('reviews', [CsController::class, 'reviews']);
                 Route::post('reviews/{id}/reply', [CsController::class, 'replyReview'])->whereNumber('id');
                 Route::get('chatbot-sessions', [CsController::class, 'chatbotSessions']);
+                Route::get('issues', [CsController::class, 'issues']);
+                Route::post('issues/{id}', [CsController::class, 'handleIssue'])->whereNumber('id');
             });
 
             // 인력 자격검증 (#20)

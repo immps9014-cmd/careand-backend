@@ -229,6 +229,42 @@ class CaregiverController extends Controller
     }
 
     /**
+     * GET /v1/caregivers/{id}/reviews?page= — 보호자 후기(회원 전용, 2026-10-05).
+     * 작성자 이름은 첫 글자만(김○○), 운영팀 답변 포함. 낮은 점수도 그대로 보인다(신뢰).
+     */
+    public function reviews(Request $request, int $id): JsonResponse
+    {
+        abort_unless(Caregiver::where('id', $id)->where('status', 'active')->exists(), 404);
+        $base = fn () => DB::table('reviews as rv')->join('matches as m', 'm.id', '=', 'rv.match_id')
+            ->where('m.caregiver_id', $id)->where('rv.reviewer_role', 'guardian');
+        $page = $base()->join('users as u', 'u.id', '=', 'rv.reviewer_id')
+            ->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->orderByDesc('rv.created_at')->orderByDesc('rv.id')
+            ->paginate(min(max((int) $request->integer('per_page', 10), 1), 30),
+                ['rv.id', 'rv.rating', 'rv.comment', 'rv.tags', 'rv.admin_reply', 'rv.created_at', 'u.name as reviewer_name', 'r.service_domain']);
+        $dist = $base()->selectRaw('rv.rating, COUNT(*) n')->groupBy('rv.rating')->pluck('n', 'rating');
+
+        return response()->json(['success' => true, 'data' => [
+            'summary' => [
+                'count' => (int) $dist->sum(),
+                'avg' => $dist->sum() ? round($dist->map(fn ($n, $r) => $n * $r)->sum() / $dist->sum(), 1) : null,
+                'distribution' => collect([5, 4, 3, 2, 1])->mapWithKeys(fn ($r) => [$r => (int) ($dist[$r] ?? 0)]),
+            ],
+            'reviews' => collect($page->items())->map(fn ($r) => [
+                'id' => (int) $r->id,
+                'rating' => (int) $r->rating,
+                'comment' => $r->comment,
+                'tags' => json_decode((string) $r->tags, true) ?: [],
+                'admin_reply' => $r->admin_reply,
+                'reviewer' => \App\Services\AlimtalkTemplates::maskName((string) $r->reviewer_name),
+                'service_label' => \App\Support\ServiceDomains::label((string) $r->service_domain),
+                'created_at' => \App\Support\Kst::iso($r->created_at),
+            ])->values(),
+            'meta' => ['page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
+        ]]);
+    }
+
+    /**
      * GET /v1/caregivers?domain=senior|nursing|living_support
      * 검증·활동중 돌봄전문가 목록(회원 전용). recommended 와 동일 카드 형태로 반환한다.
      * domain 미지정 시 전체. 보호자면 최근 요청 위치 기준 거리(distance_km) 포함·정렬.

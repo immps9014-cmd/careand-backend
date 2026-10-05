@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\V1\CareIssueController;
 use App\Http\Controllers\Api\V1\GuardianController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -227,5 +228,73 @@ class CsController extends Controller
                 'per_page' => $paginated->perPage(),
             ],
         ]);
+    }
+
+    /* ───── 교체 요청·신고(2026-10-05) ───── */
+
+    /** GET /v1/admin/cs/issues?status=open|in_progress|resolved|rejected|active|all&kind=&q= */
+    public function issues(Request $request): JsonResponse
+    {
+        $v = $request->validate([
+            'status' => ['nullable', 'in:open,in_progress,resolved,rejected,active,all'],
+            'kind' => ['nullable', 'in:replace,report'],
+            'q' => ['nullable', 'string', 'max:50'],
+        ]);
+        $status = $v['status'] ?? 'active';
+        $base = fn () => DB::table('care_issue_reports as i')
+            ->join('caregivers as c', 'c.id', '=', 'i.caregiver_id')->join('users as cu', 'cu.id', '=', 'c.user_id')
+            ->join('users as gu', 'gu.id', '=', 'i.reporter_user_id')
+            ->join('match_requests as r', 'r.id', '=', 'i.request_id');
+        $rows = $base()
+            ->when($status === 'active', fn ($q) => $q->whereIn('i.status', ['open', 'in_progress']))
+            ->when(!in_array($status, ['active', 'all'], true), fn ($q) => $q->where('i.status', $status))
+            ->when(!empty($v['kind']), fn ($q) => $q->where('i.kind', $v['kind']))
+            ->when(!empty($v['q']), fn ($q) => $q->where(fn ($w) => $w->where('cu.name', 'like', '%' . $v['q'] . '%')->orWhere('gu.name', 'like', '%' . $v['q'] . '%')))
+            ->orderByRaw("i.status = 'open' DESC")->orderByDesc('i.id')->limit(200)
+            ->get(['i.*', 'cu.name as caregiver_name', 'gu.name as reporter_name', 'gu.phone as reporter_phone', 'r.service_domain']);
+        $staff = DB::table('users')->whereIn('id', $rows->pluck('handled_by')->filter()->unique())->pluck('name', 'id');
+        // 돌봄전문가별 누적 건수 — 같은 사람에게 반복되는지
+        $per = DB::table('care_issue_reports')->whereIn('caregiver_id', $rows->pluck('caregiver_id')->unique())
+            ->selectRaw('caregiver_id, COUNT(*) n')->groupBy('caregiver_id')->pluck('n', 'caregiver_id');
+        $sum = DB::table('care_issue_reports')->selectRaw("SUM(status='open') o, SUM(status='in_progress') p, COUNT(*) t")->first();
+
+        return response()->json(['success' => true, 'data' => [
+            'summary' => ['open' => (int) $sum->o, 'in_progress' => (int) $sum->p, 'total' => (int) $sum->t],
+            'issues' => $rows->map(fn ($r) => CareIssueController::present($r, true) + [
+                'caregiver_name' => $r->caregiver_name, 'reporter_name' => $r->reporter_name, 'reporter_phone' => $r->reporter_phone,
+                'service_label' => \App\Support\ServiceDomains::label((string) $r->service_domain),
+                'handled_by_name' => $r->handled_by ? ($staff[$r->handled_by] ?? null) : null,
+                'caregiver_issue_count' => (int) ($per[$r->caregiver_id] ?? 0),
+            ])->values(),
+            'statuses' => CareIssueController::STATUSES,
+        ]]);
+    }
+
+    /** POST /v1/admin/cs/issues/{id} {status, reply?} — 처리 상태·답변(답변이 있으면 보호자에게 알림) */
+    public function handleIssue(Request $request, int $id): JsonResponse
+    {
+        $v = $request->validate([
+            'status' => ['required', 'in:open,in_progress,resolved,rejected'],
+            'reply' => ['nullable', 'string', 'max:2000', 'required_if:status,resolved,rejected'],
+        ], ['reply.required_if' => '처리 완료·반려는 보호자에게 보낼 답변이 필요해요.']);
+        $row = DB::table('care_issue_reports')->where('id', $id)->first();
+        abort_if(!$row, 404);
+        $reply = trim((string) ($v['reply'] ?? '')) ?: null;
+        DB::table('care_issue_reports')->where('id', $id)->update([
+            'status' => $v['status'],
+            'admin_reply' => $reply ?? $row->admin_reply,
+            'handled_by' => $request->user()->id, 'handled_at' => now(), 'updated_at' => now(),
+        ]);
+        if ($reply || $v['status'] !== $row->status) {
+            app(\App\Services\NotificationService::class)->notifySafely((int) $row->reporter_user_id,
+                \App\Services\NotificationService::TYPE_CARE_ISSUE_UPDATED, [
+                    'issue_id' => $id, 'request_id' => (int) $row->request_id,
+                    'kind_label' => CareIssueController::KINDS[$row->kind] ?? $row->kind,
+                    'status_label' => CareIssueController::STATUSES[$v['status']],
+                ]);
+        }
+
+        return response()->json(['success' => true, 'message' => '저장했어요.',
+            'data' => CareIssueController::present(DB::table('care_issue_reports')->where('id', $id)->first(), true)]);
     }
 }
