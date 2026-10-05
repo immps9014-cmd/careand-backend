@@ -28,6 +28,7 @@ return [
         'matching'      => ['label' => '매칭 관리',            'read' => $ops,                                   'write' => ['super', 'branch']],
         'contracts'     => ['label' => '계약·일정',            'read' => $ops,                                   'write' => ['super', 'branch']],
         'mnh'           => ['label' => '산모신생아 바우처',     'read' => $ops,                                   'write' => ['super', 'branch']],
+        'epds'          => ['label' => '산후우울 검사',         'read' => $ops,                                   'write' => $ops],   // 고위험 알림을 CS가 받으므로 조치 기록도 CS 가능
         'care-sessions' => ['label' => '케어 진행 현황',        'read' => $ops,                                   'write' => ['super', 'branch']],
         'care-logs'     => ['label' => 'AI 일지 검수',          'read' => $ops,                                   'write' => $ops],
         'monitoring'    => ['label' => '케어 모니터링',         'read' => $ops,                                   'write' => $ops],

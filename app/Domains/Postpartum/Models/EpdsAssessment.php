@@ -29,11 +29,13 @@ class EpdsAssessment extends Model
         'total_score', 'risk_level',
         'llm_sentiment_score', 'combined_risk_score',
         'action_taken', 'action_taken_at', 'action_taken_by',
+        'followup_status', 'followup_note', 'followed_up_at', 'followed_up_by',
     ];
 
     protected $casts = [
         'assessment_date'      => 'date',
         'action_taken_at'      => 'datetime',
+        'followed_up_at'       => 'datetime',
         'created_at'           => 'datetime',
         'llm_sentiment_score'  => 'decimal:4',
         'combined_risk_score'  => 'decimal:4',

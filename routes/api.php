@@ -341,6 +341,13 @@ Route::prefix('v1')->group(function () {
             // 계약·일정 관리 (#21)
             Route::get('contracts', [OperationsController::class, 'contracts']);
 
+            // 산후우울(에딘버러) 검사 결과·후속 조치(2026-10-05) — RBAC 영역 epds
+            Route::prefix('epds')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\V1\Admin\EpdsAdminController::class, 'index']);
+                Route::get('clients/{clientId}', [\App\Http\Controllers\Api\V1\Admin\EpdsAdminController::class, 'client'])->whereNumber('clientId');
+                Route::post('{id}/followup', [\App\Http\Controllers\Api\V1\Admin\EpdsAdminController::class, 'followup'])->whereNumber('id');
+            });
+
             // 산모신생아 바우처(CAREN-MNH-01 2단계) — 제공기관 = 케어앤
             Route::prefix('mnh')->group(function () {
                 Route::get('support-types', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'supportTypes']);
