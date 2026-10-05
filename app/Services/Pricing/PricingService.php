@@ -158,6 +158,10 @@ class PricingService
         if ($start->isSunday()) {
             return true;
         }
+        // 관공서 공휴일 표(holidays, 관리자 「공휴일」 탭에서 관리) + 예전 env 목록(PRICING_HOLIDAYS) — 2026-10-05
+        if (\App\Support\Holidays::name($start->format('Y-m-d')) !== null) {
+            return true;
+        }
         $holidays = (array) config('services.pricing.holidays', []);
         return in_array($start->format('Y-m-d'), $holidays, true);
     }
