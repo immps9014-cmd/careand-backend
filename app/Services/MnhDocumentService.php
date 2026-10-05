@@ -375,6 +375,9 @@ class MnhDocumentService
             'signed_at' => Kst::iso($doc->signed_at),
             'pdf_ready' => (bool) $doc->pdf_path,
             'issued_at' => Kst::iso($doc->created_at),
+            // 제공기록지는 방문일(한국 날짜)로 보여 준다 — 발행일과 다를 수 있다
+            'session_date' => $doc->care_session_id ? Carbon::parse(DB::table('care_sessions')->where('id', $doc->care_session_id)->value('scheduled_start'), 'UTC')
+                ->setTimezone(self::TZ)->toDateString() : null,
             'void_reason' => $doc->void_reason,
         ] + ($admin ? ['signed_ip' => $doc->signed_ip, 'content_hash' => $doc->content_hash, 'captured_by' => $doc->captured_by] : []);
     }
