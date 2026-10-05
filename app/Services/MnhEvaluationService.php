@@ -42,7 +42,7 @@ class MnhEvaluationService
      * 평가 저장. kind=caregiver_to_client 는 그 계약 담당(이었던) 관리사만, org_to_caregiver 는 관리자.
      * final 은 계약(또는 그 관리사 몫)이 끝났을 때 한 번만 — 다시 내면 덮어쓴다.
      */
-    public function submit(string $kind, ?MnhContract $c, int $caregiverId, int $evaluatorUserId, array $scores, ?string $comment, string $timing): object
+    public function submit(string $kind, ?MnhContract $c, int $caregiverId, int $evaluatorUserId, array $scores, ?string $comment, string $timing): array
     {
         $items = config("mnh_eval.$kind");
         if (!$items) {
