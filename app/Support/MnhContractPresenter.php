@@ -88,16 +88,19 @@ final class MnhContractPresenter
                 'actual_start' => Kst::iso($s->actual_start ?? null),
                 'actual_end' => Kst::iso($s->actual_end ?? null),
                 'journal' => $admin && $s ? ($s->journal_note ?: null) : null,
+                'holiday' => Holidays::name($d),   // 공휴일 근무로 지정한 날이면 이름
             ];
         }
         $out['schedule'] = $days;
         $out['postponed'] = array_values($c->skip_dates ?: []);
+        $out['holidays'] = $svc->skippedHolidays($c);   // 공휴일이라 빠진 날 [{date, name}]
+        $out['holiday_work_dates'] = array_values($c->holiday_work_dates ?: []);
         $out['completed_days'] = collect($days)->where('status', 'completed')->count();
         $out['delivery_date'] = $client->delivery_date ?? null;
 
         $events = $c->events()->orderBy('id')->get();
         $out['events'] = $events
-            ->filter(fn ($e) => $admin || in_array($e->type, ['created', 'assigned', 'swapped', 'postponed', 'restored', 'start_changed', 'prepaid', 'cancelled', 'completed'], true))
+            ->filter(fn ($e) => $admin || in_array($e->type, ['created', 'assigned', 'swapped', 'postponed', 'restored', 'start_changed', 'prepaid', 'cancelled', 'completed', 'holiday_work', 'holiday_off', 'holiday_changed'], true))
             ->map(fn ($e) => [
                 'id' => $e->id, 'type' => $e->type, 'date' => $e->event_date?->format('Y-m-d'),
                 'payload' => $admin ? $e->payload : array_intersect_key($e->payload ?? [], array_flip(['reason', 'new_end'])),

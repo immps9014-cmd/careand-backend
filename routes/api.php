@@ -360,6 +360,10 @@ Route::prefix('v1')->group(function () {
                 Route::post('contracts/{id}/postpone', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'postpone'])->whereNumber('id');
                 Route::post('contracts/{id}/restore', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'restore'])->whereNumber('id');
                 Route::post('contracts/{id}/notes', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'note'])->whereNumber('id');
+                Route::post('contracts/{id}/holiday-work', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'holidayWork'])->whereNumber('id');
+                Route::get('holidays', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'holidays']);
+                Route::post('holidays', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'storeHoliday']);
+                Route::delete('holidays/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deleteHoliday'])->whereNumber('id');
                 Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancel'])->whereNumber('id');
                 // 전자서명 서류(3단계)
                 Route::get('contracts/{id}/documents', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'forContract'])->whereNumber('id');

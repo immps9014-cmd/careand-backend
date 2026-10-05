@@ -7,6 +7,7 @@ use App\Models\MnhContract;
 use App\Models\MnhContractEvent;
 use App\Models\MnhSupportType;
 use App\Support\ScheduleConflict;
+use App\Support\Holidays;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -43,21 +44,40 @@ class MnhContractService
 
     /* ───────────── 제공일 계산 ───────────── */
 
-    /** 계약의 제공일 목록(KST Y-m-d, 오름차순, days 개) */
+    /** 계약의 제공일 목록(KST Y-m-d, 오름차순, days 개). 공휴일은 「공휴일 근무」로 지정한 날만 넣는다. */
     public function serviceDates(MnhContract $c): array
+    {
+        return $this->walk($c)['dates'];
+    }
+
+    /** 제공 요일인데 공휴일이라 빠진 날 [{date, name}] — 개시일~종료일 사이 */
+    public function skippedHolidays(MnhContract $c): array
+    {
+        return $this->walk($c)['holidays'];
+    }
+
+    private function walk(MnhContract $c): array
     {
         $weekdays = array_map('intval', $c->weekdays ?: config('mnh.weekdays'));
         $skip = array_flip($c->skip_dates ?: []);
+        $work = array_flip($c->holiday_work_dates ?: []);
+        $holidays = Holidays::map();
         $cursor = Carbon::parse($c->start_date->format('Y-m-d'), self::TZ);
         $dates = [];
+        $off = [];
         for ($guard = 0; count($dates) < $c->days && $guard < 400; $guard++, $cursor->addDay()) {
             $d = $cursor->toDateString();
-            if (in_array($cursor->isoWeekday(), $weekdays, true) && !isset($skip[$d])) {
-                $dates[] = $d;
+            if (!in_array($cursor->isoWeekday(), $weekdays, true) || isset($skip[$d])) {
+                continue;
             }
+            if (isset($holidays[$d]) && !isset($work[$d])) {
+                $off[] = ['date' => $d, 'name' => $holidays[$d]];
+                continue;
+            }
+            $dates[] = $d;
         }
 
-        return $dates;
+        return ['dates' => $dates, 'holidays' => $off];
     }
 
     public function endDate(MnhContract $c): ?string
@@ -373,6 +393,64 @@ class MnhContractService
 
             return $r + ['end_date' => $this->endDate($c)];
         });
+    }
+
+    /** 공휴일 근무 지정·해제 — 지정하면 그날 제공하고 끝에서 하루가 줄어든다 */
+    public function setHolidayWork(MnhContract $c, string $date, bool $work, bool $force, ?int $actor): array
+    {
+        $this->requireOpen($c);
+        $name = Holidays::name($date);
+        if (!$name) {
+            throw new MnhContractException('NOT_HOLIDAY', '공휴일이 아니에요.');
+        }
+        if ($date < self::todayKst()) {
+            throw new MnhContractException('PAST_DATE', '지난 날짜는 바꿀 수 없어요.');
+        }
+        $list = $c->holiday_work_dates ?: [];
+        if ($work === in_array($date, $list, true)) {
+            throw new MnhContractException('NO_CHANGE', $work ? '이미 근무일로 지정돼 있어요.' : '근무일로 지정된 날이 아니에요.');
+        }
+        if (!$work && $this->sessions($c)->contains(fn ($s) => $s->date === $date && in_array($s->status, ['in_progress', 'completed'], true))) {
+            throw new MnhContractException('ALREADY_STARTED', '이미 출근한 날은 되돌릴 수 없어요.');
+        }
+
+        return DB::transaction(function () use ($c, $date, $work, $list, $name, $force, $actor) {
+            $c->update(['holiday_work_dates' => $work ? array_values(array_unique(array_merge($list, [$date])))
+                : array_values(array_diff($list, [$date]))]);
+            $r = $this->syncSessions($c, $force, $work ? '공휴일 근무 지정' : '공휴일 휴무');
+            $this->log($c, $work ? 'holiday_work' : 'holiday_off', $date, ['name' => $name, 'new_end' => $this->endDate($c)], $actor);
+
+            return $r + ['end_date' => $this->endDate($c)];
+        });
+    }
+
+    /**
+     * 공휴일 표가 바뀐 뒤 그날에 걸친 열린 계약의 일정을 다시 맞춘다. 담당 일정이 겹치는 계약은 건너뛰고 알려 준다.
+     * @return array{synced:array, conflicts:array}
+     */
+    public function resyncForHoliday(string $date, ?int $actor): array
+    {
+        $out = ['synced' => [], 'conflicts' => []];
+        $rows = MnhContract::whereIn('status', ['applied', 'confirmed', 'active'])
+            ->where('start_date', '<=', $date)->get();
+        foreach ($rows as $c) {
+            // 표는 이미 바뀌었다 — 추가면 종료일이 늘고 삭제면 그날이 제공일이 되므로, 종료일이 그날 전이면 무관한 계약
+            $end = $this->endDate($c);
+            if (!$end || $end < $date) {
+                continue;
+            }
+            try {
+                DB::transaction(function () use ($c, $date, $end, $actor, &$out) {
+                    $this->syncSessions($c, false, '공휴일 변경');
+                    $this->log($c, 'holiday_changed', $date, ['name' => Holidays::name($date), 'new_end' => $end], $actor);
+                    $out['synced'][] = ['id' => $c->id, 'contract_no' => $c->contract_no, 'end_date' => $end];
+                });
+            } catch (MnhContractException $e) {
+                $out['conflicts'][] = ['id' => $c->id, 'contract_no' => $c->contract_no, 'message' => $e->getMessage()];
+            }
+        }
+
+        return $out;
     }
 
     /** 개시일·일수·제공 요일·시간 변경(시작 전에만) */

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Exceptions\MnhContractException;
 use App\Http\Controllers\Controller;
+use App\Models\Holiday;
 use App\Models\MnhContract;
 use App\Models\MnhSupportType;
 use App\Services\MnhContractService;
+use App\Support\Holidays;
 use App\Support\MnhContractPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -176,7 +178,10 @@ class MnhAdminController extends Controller
             ];
         }
 
-        return response()->json(['success' => true, 'data' => ['month' => $month, 'contracts' => $out]]);
+        $holidays = Holiday::whereBetween('date', [$first->toDateString(), $last->toDateString()])->orderBy('date')
+            ->get(['date', 'name'])->map(fn ($h) => ['date' => $h->date->format('Y-m-d'), 'name' => $h->name])->values();
+
+        return response()->json(['success' => true, 'data' => ['month' => $month, 'holidays' => $holidays, 'contracts' => $out]]);
     }
 
     /** GET /v1/admin/mnh/contracts/{id} */
@@ -323,6 +328,73 @@ class MnhAdminController extends Controller
         $data = $request->validate(['date' => ['required', 'date_format:Y-m-d'], 'force' => ['nullable', 'boolean']]);
 
         return $this->run($id, fn ($c) => $this->svc->restore($c, $data['date'], (bool) ($data['force'] ?? false), $request->user()->id), '연기를 되돌렸어요.');
+    }
+
+    /** POST /v1/admin/mnh/contracts/{id}/holiday-work {date, work, force} — 공휴일 근무 지정(work=true)·해제 */
+    public function holidayWork(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d'], 'work' => ['required', 'boolean'], 'force' => ['nullable', 'boolean']]);
+
+        return $this->run($id, fn ($c) => $this->svc->setHolidayWork($c, $data['date'], (bool) $data['work'], (bool) ($data['force'] ?? false), $request->user()->id),
+            $data['work'] ? '공휴일 근무로 지정했어요. 끝에서 하루가 줄었어요.' : '공휴일 휴무로 되돌렸어요. 끝에 하루가 붙었어요.');
+    }
+
+    /* ───────────── 공휴일 표 ───────────── */
+
+    /** GET /v1/admin/mnh/holidays?year= */
+    public function holidays(Request $request): JsonResponse
+    {
+        $year = (int) ($request->query('year') ?: Carbon::now('Asia/Seoul')->year);
+        $rows = Holiday::whereYear('date', $year)->orderBy('date')->get()
+            ->map(fn ($h) => ['id' => $h->id, 'date' => $h->date->format('Y-m-d'), 'name' => $h->name, 'source' => $h->source]);
+        $years = Holiday::selectRaw('DISTINCT YEAR(date) y')->orderBy('y')->pluck('y');
+
+        return response()->json(['success' => true, 'data' => ['year' => $year, 'years' => $years, 'today' => Carbon::now('Asia/Seoul')->toDateString(), 'rows' => $rows]]);
+    }
+
+    /** POST /v1/admin/mnh/holidays {date, name} — 임시공휴일·다음 해 공휴일. 지난 날짜는 이미 제공한 기록과 어긋나므로 받지 않는다 */
+    public function storeHoliday(Request $request): JsonResponse
+    {
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d'], 'name' => ['required', 'string', 'max:50']]);
+        if ($data['date'] <= Carbon::now('Asia/Seoul')->toDateString()) {
+            return $this->fail('PAST_DATE', '내일 이후 날짜만 넣을 수 있어요.');
+        }
+        if (Holiday::where('date', $data['date'])->exists()) {
+            return $this->fail('DUPLICATE', '이미 공휴일로 등록된 날이에요.');
+        }
+        Holiday::create($data + ['source' => 'admin']);
+        Holidays::flush();
+        $r = $this->svc->resyncForHoliday($data['date'], $request->user()->id);
+
+        return response()->json(['success' => true, 'message' => self::holidayMessage('공휴일을 넣었어요.', $r), 'result' => $r]);
+    }
+
+    /** DELETE /v1/admin/mnh/holidays/{id} */
+    public function deleteHoliday(Request $request, int $id): JsonResponse
+    {
+        $h = Holiday::findOrFail($id);
+        $date = $h->date->format('Y-m-d');
+        if ($date <= Carbon::now('Asia/Seoul')->toDateString()) {
+            return $this->fail('PAST_DATE', '오늘이나 지난 공휴일은 지울 수 없어요.');
+        }
+        $h->delete();
+        Holidays::flush();
+        $r = $this->svc->resyncForHoliday($date, $request->user()->id);
+
+        return response()->json(['success' => true, 'message' => self::holidayMessage('공휴일을 지웠어요.', $r), 'result' => $r]);
+    }
+
+    private static function holidayMessage(string $head, array $r): string
+    {
+        $msg = $head;
+        if ($r['synced']) {
+            $msg .= ' 계약 ' . count($r['synced']) . '건의 일정을 다시 맞췄어요.';
+        }
+        if ($r['conflicts']) {
+            $msg .= ' 담당 일정이 겹쳐 ' . count($r['conflicts']) . '건은 그대로예요 — 계약 상세에서 확인하세요.';
+        }
+
+        return $msg;
     }
 
     /** POST /v1/admin/mnh/contracts/{id}/notes {date?, text} — 달력 특이사항(행사·연락 등) */

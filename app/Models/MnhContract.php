@@ -13,13 +13,14 @@ class MnhContract extends Model
         'total_price', 'gov_support', 'self_pay', 'start_date', 'weekdays', 'skip_dates',
         'daily_start', 'daily_minutes', 'payment_method', 'prepaid_amount', 'prepaid_at',
         'prepaid_receipt_no', 'prepaid_by', 'status', 'match_request_id', 'caregiver_id',
-        'member_note', 'admin_note', 'cancel_reason',
+        'member_note', 'admin_note', 'cancel_reason', 'holiday_work_dates',
     ];
 
     protected $casts = [
         'start_date' => 'date:Y-m-d',
         'weekdays' => 'array',
         'skip_dates' => 'array',
+        'holiday_work_dates' => 'array',
         'prepaid_at' => 'datetime',
         'days' => 'integer', 'daily_minutes' => 'integer',
         'total_price' => 'integer', 'gov_support' => 'integer', 'self_pay' => 'integer', 'prepaid_amount' => 'integer',
