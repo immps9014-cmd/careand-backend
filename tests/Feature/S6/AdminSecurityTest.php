@@ -25,6 +25,7 @@ class AdminSecurityTest extends TestCase
     /** UT-N07 2단계 인증 전 토큰은 관리자 API 401, 권한 5단계: 분석가는 대시보드만·블랙리스트 등록 불가 */
     public function test_admin_mfa_and_rbac(): void
     {
+        config(['auth.admin_2fa_required' => true]); // 운영 .env 가 시연용으로 꺼 둬도(09-29) 켜진 상태를 시험
         [$admin] = $this->createAdminUser();
         $noMfa = $this->issueToken($admin);   // mfa 없이
         $this->getJson('/api/v1/admin/dashboard/kpi', $this->h($noMfa))->assertStatus(401)->assertJson(['error_code' => 'MFA_REQUIRED']);
@@ -34,6 +35,34 @@ class AdminSecurityTest extends TestCase
         $this->getJson('/api/v1/admin/dashboard/breakdown?period=month', $this->h($anTok))->assertOk();
         $this->postJson('/api/v1/admin/blacklist', ['user_id' => $u->id, 'reason' => '분석가 시도입니다'], $this->h($anTok))->assertStatus(403);
         $this->getJson('/api/v1/admin/members', $this->h($anTok))->assertStatus(403);
+    }
+
+    /** 개시 전 전환 점검(10-07): 2단계 인증을 켜면 관리자 로그인은 QR 등록 → 6자리 코드 → 토큰, 그 토큰으로 관리자 API 접속 */
+    public function test_admin_login_2fa_enrollment_flow(): void
+    {
+        config(['auth.admin_2fa_required' => true]);
+        [$admin] = $this->createAdminUser();
+
+        $r = $this->postJson('/api/v1/auth/login', ['email' => $admin->email, 'password' => 'password'])
+            ->assertOk()->assertJson(['requires_2fa' => true, 'setup_required' => true])
+            ->assertJsonMissingPath('data.access_token');
+        $secret = $r->json('secret');
+        $this->assertNotEmpty($r->json('qr_svg'));
+
+        $this->postJson('/api/v1/auth/2fa/verify', ['challenge_token' => $r->json('challenge_token'), 'code' => '000000'])
+            ->assertStatus(422);
+
+        $code = app(\App\Services\TotpService::class)->codeAt($secret, intdiv(time(), 30));
+        $v = $this->postJson('/api/v1/auth/2fa/verify', ['challenge_token' => $r->json('challenge_token'), 'code' => $code])->assertOk();
+        $token = $v->json('data.access_token') ?? $v->json('access_token');
+        $this->assertNotEmpty($token);
+        $this->assertNotNull($admin->fresh()->totp_enabled_at);
+        $this->getJson('/api/v1/admin/dashboard/kpi', $this->h($token))->assertOk();
+
+        // 꺼 두면(지금 운영값) 비밀번호만으로 토큰
+        config(['auth.admin_2fa_required' => false]);
+        $this->postJson('/api/v1/auth/login', ['email' => $admin->email, 'password' => 'password'])
+            ->assertOk()->assertJsonMissing(['requires_2fa' => true]);
     }
 
     /** UT-N08 관리자 개인정보 조회는 사유와 함께 감사로그, 해시 체인 검증 통과 */
