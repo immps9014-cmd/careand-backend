@@ -142,4 +142,26 @@ class AuthTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('user.id', $user->id);
     }
+    /** 정지된 계정은 이미 받은 토큰·갱신으로도 못 쓴다(2026-10-07) */
+    public function test_suspended_user_token_and_refresh_are_rejected(): void
+    {
+        $user = User::factory()->create();
+        $token = auth('api')->login($user);
+        $this->withHeader('Authorization', "Bearer {$token}")->getJson('/api/v1/auth/me')->assertOk();
+
+        $user->update(['status' => 'suspended']);
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', "Bearer {$token}")->getJson('/api/v1/auth/me')
+            ->assertStatus(403)->assertJsonPath('error_code', 'USER_SUSPENDED');
+
+        $this->app['auth']->forgetGuards();
+        $this->withHeader('Authorization', "Bearer {$token}")->postJson('/api/v1/auth/refresh')
+            ->assertStatus(403)->assertJsonPath('error_code', 'USER_SUSPENDED');
+
+        // 다시 활성화하면 새 로그인 토큰으로 정상
+        $user->update(['status' => 'active']);
+        $this->app['auth']->forgetGuards();
+        $fresh = auth('api')->login($user->fresh());
+        $this->withHeader('Authorization', "Bearer {$fresh}")->getJson('/api/v1/auth/me')->assertOk();
+    }
 }

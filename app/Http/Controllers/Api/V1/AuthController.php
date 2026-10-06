@@ -312,6 +312,16 @@ class AuthController extends Controller
     {
         try {
             $newToken = auth('api')->refresh();
+            // 정지·탈퇴 계정은 갱신해 주지 않는다(2026-10-07, Authenticate 미들웨어와 같은 기준)
+            $user = JWTAuth::setToken($newToken)->toUser();
+            if (!$user || $user->status !== 'active') {
+                try { JWTAuth::setToken($newToken)->invalidate(); } catch (\Throwable) {}
+                return response()->json([
+                    'success' => false,
+                    'error_code' => 'USER_SUSPENDED',
+                    'message' => '이용이 정지된 계정입니다.',
+                ], 403);
+            }
             return response()->json([
                 'success' => true,
                 'access_token' => $newToken,
