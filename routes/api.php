@@ -110,7 +110,8 @@ Route::prefix('v1')->group(function () {
             Route::patch('me/profile', [CaregiverController::class, 'updateProfile']);
             Route::post('me/leave', [CaregiverController::class, 'requestLeave']);
             Route::post('me/return', [CaregiverController::class, 'requestReturn']);
-            Route::get('me/performance', [CaregiverController::class, 'performance']);   // 받은 후기·월별 활동(기능 16)
+            Route::get('me/performance', [CaregiverController::class, 'performance']);
+            Route::get('me/certificate', [\App\Http\Controllers\Api\V1\CaregiverCertController::class, 'show']);   // 케어앤에듀 인증 자격(2026-10-07)   // 받은 후기·월별 활동(기능 16)
             // 서류·정산 계좌 (기능 9·20, S5)
             Route::get('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'index']);
             Route::post('me/documents', [\App\Http\Controllers\Api\V1\CaregiverDocumentController::class, 'store']);
@@ -347,6 +348,10 @@ Route::prefix('v1')->group(function () {
             // 인력 자격검증 (#20)
             Route::prefix('caregivers')->group(function () {
                 Route::get('/', [OperationsController::class, 'caregivers']);
+                // 케어앤에듀 인증 돌봄전문가(2026-10-07)
+                Route::get('certifications', [\App\Http\Controllers\Api\V1\Admin\CaregiverCertAdminController::class, 'index']);
+                Route::post('{id}/certification', [\App\Http\Controllers\Api\V1\Admin\CaregiverCertAdminController::class, 'grant'])->whereNumber('id');
+                Route::delete('{id}/certification', [\App\Http\Controllers\Api\V1\Admin\CaregiverCertAdminController::class, 'revoke'])->whereNumber('id');
                 Route::post('{id}/approve', [OperationsController::class, 'approveCaregiver'])->whereNumber('id');
                 Route::post('{id}/reject', [OperationsController::class, 'rejectCaregiver'])->whereNumber('id');
                 Route::patch('{id}', [OperationsController::class, 'updateCaregiver'])->whereNumber('id');

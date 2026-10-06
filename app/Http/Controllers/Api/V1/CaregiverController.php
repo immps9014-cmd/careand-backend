@@ -404,6 +404,7 @@ class CaregiverController extends Controller
             'base_rate' => $rate,
             'distance_km' => $dist,
             'tag' => $tag,
+            'careand_certified' => app(\App\Services\CareandCertService::class)->isCertifiedCaregiver((int) $c->id),   // 케어앤에듀 인증 마크(2026-10-07)
             'is_favorited' => $favorited,
         ];
     }
@@ -844,6 +845,7 @@ class CaregiverController extends Controller
                 'base_rate' => $rate,
                 'distance_km' => $dist,
                 'tag' => $tag,
+                'careand_certified' => app(\App\Services\CareandCertService::class)->isCertifiedCaregiver((int) $c->id),
             ];
         })->values();
 

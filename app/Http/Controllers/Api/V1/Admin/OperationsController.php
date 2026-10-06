@@ -67,6 +67,7 @@ class OperationsController extends Controller
                 'license_no' => $r->license_no,
                 'license_type' => $r->license_type,
                 'license_verified' => $r->license_verified_at !== null,
+                'careand_certified' => app(\App\Services\CareandCertService::class)->isCertifiedCaregiver((int) $r->id),
                 'career_track' => $r->career_track,
                 'rating_avg' => (float) $r->rating_avg,
                 'completed_sessions' => (int) $r->completed_sessions,
@@ -1480,6 +1481,7 @@ class OperationsController extends Controller
                     'license_image_url' => $c->license_image_url,
                     'license_verified' => $c->license_verified_at !== null,
                     'license_issued_at' => $c->license_issued_at,
+                    'careand_cert' => app(\App\Services\CareandCertService::class)->summary((int) $c->user_id),   // 케어앤에듀 인증(2026-10-07)
                     'specialties' => is_array($spec) ? $spec : [],
                     'service_domains' => $c->service_domains,
                     'career_track' => $c->career_track,

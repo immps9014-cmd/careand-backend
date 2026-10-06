@@ -63,6 +63,7 @@ class NotificationService
     public const TYPE_CARE_NOSHOW = 'CARE_NOSHOW';                 // 시작 60분 뒤 출근 없음 → 케어 진행 관리자·보호자
     public const TYPE_CARE_ISSUE_REPORTED = 'CARE_ISSUE_REPORTED'; // 보호자 교체 요청·신고 → CS 담당자
     public const TYPE_CARE_ISSUE_UPDATED = 'CARE_ISSUE_UPDATED';   // 교체 요청·신고 처리·답변 → 보호자
+    public const TYPE_CERT_GRANTED = 'CERT_GRANTED';               // 케어앤에듀 인증 돌봄전문가 자격 부여 → 돌봄전문가(2026-10-07)
     public const TYPE_MONTHLY_REPORT_READY = 'MONTHLY_REPORT_READY';
     public const TYPE_SETTLEMENT_DISPUTED = 'SETTLEMENT_DISPUTED';           // 정산 이의제기 → 정산 담당 관리자(기능 15)
     public const TYPE_SETTLEMENT_DISPUTE_REPLY = 'SETTLEMENT_DISPUTE_REPLY'; // 이의제기 답변 → 돌봄전문가
@@ -175,6 +176,7 @@ class NotificationService
             str_starts_with($type, 'SETTLEMENT_') => '/settlements',
             $type === self::TYPE_REVIEW_REQUEST => '/satisfaction',
             $type === self::TYPE_CAREGIVER_DOC_REJECTED => '/documents',
+            $type === self::TYPE_CERT_GRANTED => '/certificate',
             $type === self::TYPE_CARE_REMINDER => '/schedule',
             $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/session/{$sid}" : '/schedule',
             in_array($type, [self::TYPE_CARE_LATE, self::TYPE_CARE_NOSHOW, self::TYPE_CARE_ISSUE_UPDATED], true) && $guardian => $rid ? "/request/{$rid}" : '/home',
@@ -435,6 +437,10 @@ class NotificationService
                 'title' => '⚠ 정산 이의제기',
                 'body' => sprintf('%s 돌봄전문가가 정산서(%s원)에 이의를 제기했어요. 24시간 안에 답변해 주세요.',
                     $payload['caregiver_name'] ?? '', number_format((int) ($payload['net_amount'] ?? 0))),
+            ],
+            self::TYPE_CERT_GRANTED => [
+                'title' => '케어앤에듀 인증 돌봄전문가가 되셨어요',
+                'body' => sprintf('활동 기록과 보호자 평점을 인정받아 자격(%s)을 드려요. 이제 프로필에 인증 마크가 보여요.', $payload['cert_number'] ?? ''),
             ],
             self::TYPE_SETTLEMENT_DISPUTE_REPLY => [
                 'title' => ($payload['resolved'] ?? true) ? '정산 이의제기 답변' : '정산 이의제기 검토 중',

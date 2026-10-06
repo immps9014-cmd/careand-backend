@@ -40,6 +40,7 @@ class MatchCandidateResource extends JsonResource
                 'organization' => $this->caregiver->organization?->only(['id', 'name']),
                 // 후보 카드에서 바로 — 자격 확인·활동 지역(시·군·구까지)·사진(2026-10-05)
                 'license_verified' => $this->caregiver->license_verified_at !== null,
+                'careand_certified' => app(\App\Services\CareandCertService::class)->isCertifiedCaregiver((int) $this->caregiver->id),
                 'region' => self::region($this->caregiver->base_address),
                 'photo_url' => \App\Support\CaregiverProfileExtras::photoUrl((int) $this->caregiver->id, $this->caregiver->photo_path, $this->caregiver->photo_updated_at),
                 'verified_doc_count' => count(app(\App\Services\CaregiverDocumentService::class)->publicSummary((int) $this->caregiver->id)),

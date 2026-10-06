@@ -171,6 +171,12 @@ class GuardianController extends Controller
         );
 
         $this->recomputeCaregiverRating((int) $match->caregiver_id);
+        // 이 후기로 케어앤에듀 인증 기준을 넘으면 바로 자격 부여(매일 자동 점검과 같은 기준, 2026-10-07)
+        try {
+            app(\App\Services\CareandCertService::class)->autoGrantIfEligible((int) $match->caregiver_id);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         // 2점 이하 → CS 담당 관리자에게 즉시 알림(기능 24). 같은 후기로 두 번 보내지 않음 — 3점 이상으로 고치면 다시 대상
         if ($review->rating <= 2 && !$review->flagged_at) {

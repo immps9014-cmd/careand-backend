@@ -16,6 +16,9 @@ class CaregiverResource extends JsonResource
             'age' => $this->birth_date ? $this->birth_date->age : null,
             'license_no' => $this->maskLicenseNo($this->license_no),
             'license_verified' => $this->license_verified_at !== null,
+            // 케어앤에듀 인증 돌봄전문가 마크·자격 정보(2026-10-07)
+            'careand_certified' => ($cert = app(\App\Services\CareandCertService::class)->summary((int) $this->user_id)) !== null,
+            'careand_cert' => $cert,
             'specialties' => $this->specialties,
             'service_domains' => $this->service_domains,
             'rating_avg' => (float) $this->rating_avg,
