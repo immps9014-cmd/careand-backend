@@ -17,7 +17,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 /**
  * 카카오·구글 로그인 — 기능 1·33 (2026-09-28, 구현계획 S4).
  *   GET  /v1/auth/oauth/providers            쓸 수 있는 제공자(앱 키가 있는 것만) — 화면이 버튼 표시 여부로 씀
- *   GET  /v1/auth/oauth/{provider}/url       동의 화면 주소 + 일회용 state(10분)
+ *   GET  /v1/auth/oauth/{provider}/url       동의 화면 주소 + 일회용 state(10분). ?app=guardian|caregiver 면 앱 링크 복귀 주소(10-07)
  *   POST /v1/auth/oauth/{provider}/callback  {code, state} → 로그인 토큰 / 첫 가입이면 signup_required + social_token
  * 계정 연결 원칙: 연결된 소셜 계정이면 로그인. 아니면 제공자가 **인증한** 이메일이 기존 회원 아이디와 같을 때만 연결
  * (확인 안 된 이메일로 남의 계정을 가로채는 것 방지). 관리자 계정은 소셜 로그인 불가(2단계 인증 우회 방지).
@@ -34,14 +34,19 @@ class SocialAuthController extends Controller
             ->mapWithKeys(fn ($p) => [$p => $this->oauth->enabled($p)])]);
     }
 
-    public function url(string $provider): JsonResponse
+    public function url(Request $request, string $provider): JsonResponse
     {
         if (!$this->oauth->enabled($provider)) {
             return response()->json(['success' => false, 'error_code' => 'PROVIDER_DISABLED', 'message' => '지금은 이 방법으로 로그인할 수 없습니다.'], 404);
         }
+        $app = $request->query('app');
+        $app = in_array($app, SocialAuthService::APPS, true) ? $app : null;
         $state = Str::random(40);
         Cache::put("oauth:state:{$state}", $provider, 600);
-        return response()->json(['success' => true, 'data' => ['url' => $this->oauth->authorizeUrl($provider, $state)]]);
+        if ($app) {
+            Cache::put("oauth:app:{$state}", $app, 600);   // 코드 교환 때 같은 복귀 주소를 써야 해서
+        }
+        return response()->json(['success' => true, 'data' => ['url' => $this->oauth->authorizeUrl($provider, $state, $app)]]);
     }
 
     public function callback(Request $request, string $provider): JsonResponse
@@ -50,8 +55,9 @@ class SocialAuthController extends Controller
         if (!$this->oauth->enabled($provider) || Cache::pull("oauth:state:{$data['state']}") !== $provider) {
             return response()->json(['success' => false, 'error_code' => 'INVALID_STATE', 'message' => '로그인 요청이 만료되었거나 올바르지 않습니다. 다시 시도해 주세요.'], 422);
         }
+        $app = Cache::pull("oauth:app:{$data['state']}");
         try {
-            $p = $this->oauth->exchange($provider, $data['code']);
+            $p = $this->oauth->exchange($provider, $data['code'], $app);
         } catch (\RuntimeException $e) {
             return response()->json(['success' => false, 'error_code' => 'OAUTH_FAILED', 'message' => $e->getMessage()], 422);
         }

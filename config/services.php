@@ -17,9 +17,17 @@ return [
     // 카카오·구글 로그인(S4) — client_id 가 비어 있으면 해당 버튼·API 비활성
     'oauth' => [
         'redirect_base' => env('OAUTH_REDIRECT_BASE', 'https://caren.aiclaude.kr/app/auth/callback'),
+        // 모바일 앱 복귀(앱 링크) — {base}/{guardian|caregiver}/{provider}. 회원웹에 같은 경로의 대체 화면이 있다(10-07)
+        'app_redirect_base' => env('OAUTH_APP_REDIRECT_BASE', 'https://caren.aiclaude.kr/app/auth/app'),
         // 로그인 전용 키 — 지오코딩용 KAKAO_REST_API_KEY 와 분리(그 앱에 카카오 로그인이 켜져 있다는 보장이 없음)
         'kakao' => ['client_id' => env('KAKAO_LOGIN_CLIENT_ID', ''), 'client_secret' => env('KAKAO_LOGIN_CLIENT_SECRET', '')],
         'google' => ['client_id' => env('GOOGLE_CLIENT_ID', ''), 'client_secret' => env('GOOGLE_CLIENT_SECRET', '')],
+    ],
+
+    // Android 앱 링크(/.well-known/assetlinks.json) — 패키지 => 서명 SHA-256 지문(쉼표로 여러 개, AA:BB:.. 형식)
+    'android_app_links' => [
+        'kr.co.careand.app' => env('ANDROID_GUARDIAN_SHA256', ''),
+        'kr.co.careand.partner' => env('ANDROID_CAREGIVER_SHA256', ''),
     ],
 
     'otp' => [
