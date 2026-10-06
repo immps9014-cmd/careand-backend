@@ -45,7 +45,7 @@ class LaunchCheck extends Command
             ->selectRaw('role, count(*) n')->groupBy('role')->pluck('n', 'role');
         $this->item(3, '데모 공용 비밀번호 계정', $demo->sum() === 0,
             $demo->sum() ? '활성 ' . $demo->sum() . '개(' . $demo->map(fn ($n, $r) => "{$r} {$n}")->implode(', ') . ')' : '없음',
-            '정리 여부 결정 후 정지·삭제(@demo.careand.kr)');
+            '개시 때 정지(10-07 결정): php artisan launch:suspend-demo (먼저 --dry-run)');
 
         // 4. 시험 인증번호 123456 — 스텁 모드 + 테스트 번호(010-0000-)에서만 통과, 스텁을 끄면 같이 꺼진다
         $hints = $this->signupHints();
