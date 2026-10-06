@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Services\External\AiService;
 use App\Services\External\CredentialVerifier;
 use App\Services\External\FcmService;
+use App\Services\External\FcmV1Service;
 use App\Services\External\HometaxService;
 use App\Services\External\KuksiwonService;
 use App\Services\External\MohwService;
@@ -86,8 +87,17 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        // FCM (Legacy HTTP API)
+        // FCM — 기본은 구형(Legacy HTTP API), FCM_V1_ENABLED=true 면 HTTP v1 발송기로 교체(호출부 무수정)
         $this->app->singleton(FcmService::class, function ($app) {
+            if (config('services.fcm.v1.enabled')) {
+                return new FcmV1Service(
+                    credentialsPath: (string) config('services.fcm.v1.credentials', ''),
+                    projectId: config('services.fcm.v1.project_id') ?: null,
+                    tokenUrl: (string) config('services.fcm.v1.token_url'),
+                    dryRun: (bool) config('services.fcm.v1.dry_run'),
+                    androidChannel: (string) config('services.fcm.v1.android_channel'),
+                );
+            }
             return new FcmService(
                 serverKey: config('services.fcm.server_key', ''),
             );

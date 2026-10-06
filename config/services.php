@@ -121,6 +121,15 @@ return [
     'fcm' => [
         'server_key' => env('FCM_SERVER_KEY'),
         'sender_id' => env('FCM_SENDER_ID'),
+        // HTTP v1 발송기(FcmV1Service) — 켜면 위 구형 키 대신 이걸로 보낸다. 실기기 확인 뒤 켤 것(CAREN-APP-01 D4)
+        'v1' => [
+            'enabled' => env('FCM_V1_ENABLED', false),
+            'credentials' => env('FCM_V1_CREDENTIALS', ''),       // 서비스 계정 JSON 파일 경로(웹 루트 밖)
+            'project_id' => env('FCM_V1_PROJECT_ID'),             // 비우면 JSON 의 project_id
+            'token_url' => env('FCM_V1_TOKEN_URL', 'https://www.googleapis.com/oauth2/v4/token'), // oauth2.googleapis.com 차단 우회
+            'dry_run' => env('FCM_V1_DRY_RUN', false),            // validate_only — 기기에 안 뜸
+            'android_channel' => env('FCM_V1_ANDROID_CHANNEL', 'caren_default'),
+        ],
     ],
 
     // AI 마이크로서비스 (Python FastAPI)
