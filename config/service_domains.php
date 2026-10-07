@@ -54,11 +54,11 @@ return [
         'desc'             => '입원 환자',
         'icon'             => 'stethoscope',
         'is_active'        => true,
-        'hidden_for_roles' => ['guardian'], // 기관 발주 전용 — 보호자에게 도메인 숨김
+        'hidden_for_roles' => [], // 보호자에게도 노출(2026-10-07) — 간병환자 등록 후 보호자 직접 신청
         'picker'           => ['type' => 'patient', 'fk' => 'nursing_patient_id'],
         'relations'        => [
             'hasSubject'  => ['table' => 'nursing_patients', 'fk' => 'nursing_patient_id'],
-            'requestedBy' => ['organization'],
+            'requestedBy' => ['organization', 'guardian'],
         ],
         'domain_label'     => '간병',
         'qualification'    => [
