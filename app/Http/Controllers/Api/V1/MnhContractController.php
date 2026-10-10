@@ -28,7 +28,7 @@ class MnhContractController extends Controller
     {
         $year = (int) ($request->query('year') ?: Carbon::now('Asia/Seoul')->year);
         $rows = MnhSupportType::where('year', $year)->where('is_active', true)
-            ->orderByRaw("FIELD(fetus_type,'single','twins','triplets_plus','quadruplets_plus')")->orderByRaw("FIELD(birth_order,'first','second','third_plus','any')")->orderBy('income_tier')->orderByRaw("FIELD(period,'short','standard','extended')")
+            ->orderByRaw("FIELD(fetus_type,'single','twins','triplets_plus','quadruplets_plus')")->orderByRaw("FIELD(birth_order,'first','second','third_plus','any')")->orderByRaw("RIGHT(income_tier, 2)")->orderByRaw("FIELD(SUBSTRING_INDEX(SUBSTRING_INDEX(income_tier,'-',2),'-',-1),'가','통합','라')")->orderBy('income_tier')->orderByRaw("FIELD(period,'short','standard','extended')")
             ->get(['id', 'fetus_type', 'birth_order', 'income_tier', 'period', 'days', 'total_price', 'gov_support', 'self_pay', 'note']);
         $cfg = config('mnh');
 
