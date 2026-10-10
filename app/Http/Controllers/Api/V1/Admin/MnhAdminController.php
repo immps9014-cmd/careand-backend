@@ -276,6 +276,7 @@ class MnhAdminController extends Controller
                 'client_name' => $detail['client_name'], 'caregiver_name' => $detail['caregiver_name'],
                 'start_date' => $detail['start_date'], 'end_date' => $detail['end_date'], 'days' => $c->days,
                 'prepaid' => $detail['prepaid'],
+                'provisional' => $detail['provisional'], 'start_change_request' => $detail['start_change_request'],
                 'cells' => collect($detail['schedule'])->filter(fn ($d) => $d['date'] >= $first->toDateString() && $d['date'] <= $last->toDateString())
                     ->map(fn ($d) => ['date' => $d['date'], 'seq' => $d['seq'], 'status' => $d['status'], 'caregiver_name' => $d['caregiver_name']])->values(),
                 'postponed' => array_values(array_filter($detail['postponed'], fn ($d) => $d >= $first->toDateString() && $d <= $last->toDateString())),
