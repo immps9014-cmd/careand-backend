@@ -6,6 +6,8 @@ use App\Exceptions\MnhContractException;
 use App\Http\Controllers\Controller;
 use App\Models\Holiday;
 use App\Models\MnhContract;
+use App\Models\MnhAddonItem;
+use App\Models\MnhIncomeCriterion;
 use App\Models\MnhSupportType;
 use App\Services\MnhContractService;
 use App\Support\Holidays;
@@ -24,6 +26,109 @@ class MnhAdminController extends Controller
 {
     public function __construct(private MnhContractService $svc)
     {
+    }
+
+    /* ───────────── 소득 150% 판정 기준표(건보료) ───────────── */
+
+    /** GET /v1/admin/mnh/income-criteria?year= */
+    public function incomeCriteria(Request $request): JsonResponse
+    {
+        $year = (int) ($request->query('year') ?: Carbon::now('Asia/Seoul')->year);
+
+        return response()->json(['success' => true, 'data' => [
+            'year' => $year,
+            'years' => MnhIncomeCriterion::distinct()->orderByDesc('year')->pluck('year'),
+            'rows' => MnhIncomeCriterion::where('year', $year)->orderBy('household_size')->get(),
+        ]]);
+    }
+
+    /** PUT /v1/admin/mnh/income-criteria — 연도·가구원수 기준 저장(있으면 고침) */
+    public function saveIncomeCriterion(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'year' => ['required', 'integer', 'between:2020,2100'],
+            'household_size' => ['required', 'integer', 'between:1,20'],
+            'income_limit' => ['required', 'integer', 'min:0'],
+            'premium_employee' => ['required', 'integer', 'min:0'],
+            'premium_regional' => ['required', 'integer', 'min:0'],
+            'premium_mixed' => ['required', 'integer', 'min:0'],
+        ]);
+        $row = MnhIncomeCriterion::updateOrCreate(
+            ['year' => $data['year'], 'household_size' => $data['household_size']], $data);
+
+        return response()->json(['success' => true, 'data' => $row]);
+    }
+
+    /** DELETE /v1/admin/mnh/income-criteria/{id} */
+    public function deleteIncomeCriterion(int $id): JsonResponse
+    {
+        MnhIncomeCriterion::whereKey($id)->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    /* ───────────── 추가요금·대여용품(케어앤 자체 가격) ───────────── */
+
+    /** GET /v1/admin/mnh/addons */
+    public function addons(): JsonResponse
+    {
+        $used = [];
+        foreach (MnhContract::whereNotNull('addons')->pluck('addons') as $list) {
+            foreach ($list ?: [] as $a) {
+                $used[$a['id']] = ($used[$a['id']] ?? 0) + 1;
+            }
+        }
+
+        return response()->json(['success' => true, 'data' => [
+            'rows' => MnhAddonItem::orderBy('sort')->orderBy('id')->get()
+                ->map(fn ($r) => $r->toArray() + ['contracts' => $used[$r->id] ?? 0])->values(),
+            'kinds' => config('mnh.addon_kinds'),
+        ]]);
+    }
+
+    /** POST /v1/admin/mnh/addons */
+    public function storeAddon(Request $request): JsonResponse
+    {
+        return response()->json(['success' => true, 'data' => MnhAddonItem::create($this->validateAddon($request, true))], 201);
+    }
+
+    /** PATCH /v1/admin/mnh/addons/{id} — 가격을 바꿔도 이미 신청한 계약은 신청 때 금액 그대로 */
+    public function updateAddon(Request $request, int $id): JsonResponse
+    {
+        $row = MnhAddonItem::findOrFail($id);
+        $row->update($this->validateAddon($request, false));
+
+        return response()->json(['success' => true, 'data' => $row]);
+    }
+
+    /** DELETE /v1/admin/mnh/addons/{id} — 계약에 쓰인 항목은 지우지 말고 판매 중지 */
+    public function deleteAddon(int $id): JsonResponse
+    {
+        $row = MnhAddonItem::findOrFail($id);
+        $usedBy = MnhContract::whereNotNull('addons')->pluck('addons')
+            ->contains(fn ($list) => collect($list ?: [])->contains('id', $row->id));
+        if ($usedBy) {
+            return $this->fail('IN_USE', '계약에 쓰인 항목이라 지울 수 없어요. 판매 중지로 바꿔 주세요.');
+        }
+        $row->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function validateAddon(Request $request, bool $create): array
+    {
+        $req = $create ? 'required' : 'sometimes';
+
+        return $request->validate([
+            'kind' => [$req, Rule::in(array_keys(config('mnh.addon_kinds')))],
+            'name' => [$req, 'string', 'max:60'],
+            'unit_label' => [$req, 'string', 'max:10'],
+            'price' => [$req, 'integer', 'min:0', 'max:100000000'],
+            'max_qty' => [$req, 'integer', 'between:1,99'],
+            'note' => ['nullable', 'string', 'max:200'],
+            'sort' => ['sometimes', 'integer', 'between:0,9999'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
     }
 
     /* ───────────── 지원유형 기준표 ───────────── */

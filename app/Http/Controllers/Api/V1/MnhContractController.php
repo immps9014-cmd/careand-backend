@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\MnhContractException;
 use App\Http\Controllers\Controller;
 use App\Models\MnhContract;
+use App\Models\MnhAddonItem;
+use App\Models\MnhIncomeCriterion;
 use App\Models\MnhSupportType;
 use App\Services\MnhContractService;
 use App\Support\MnhContractPresenter;
@@ -26,20 +28,9 @@ class MnhContractController extends Controller
     /** GET /v1/mnh/options?year= — 선택지 + 그 해 기준표(고시값, 공개 정보) */
     public function options(Request $request): JsonResponse
     {
-        $year = (int) ($request->query('year') ?: Carbon::now('Asia/Seoul')->year);
-        $rows = MnhSupportType::where('year', $year)->where('is_active', true)
-            ->orderByRaw("FIELD(fetus_type,'single','twins','triplets_plus','quadruplets_plus')")->orderByRaw("FIELD(birth_order,'first','second','third_plus','any')")->orderByRaw("RIGHT(income_tier, 2)")->orderByRaw("FIELD(SUBSTRING_INDEX(SUBSTRING_INDEX(income_tier,'-',2),'-',-1),'가','통합','라')")->orderBy('income_tier')->orderByRaw("FIELD(period,'short','standard','extended')")
-            ->get(['id', 'fetus_type', 'birth_order', 'income_tier', 'period', 'days', 'total_price', 'gov_support', 'self_pay', 'note']);
         $cfg = config('mnh');
 
-        return response()->json(['success' => true, 'data' => [
-            'year' => $year,
-            'rates_ready' => $rows->isNotEmpty(),
-            'support_types' => $rows,
-            'income_tiers' => $rows->pluck('income_tier')->unique()->values(),
-            'fetus_types' => $cfg['fetus_types'],
-            'birth_orders' => $cfg['birth_orders'],
-            'periods' => $cfg['periods'],
+        return response()->json(['success' => true, 'data' => self::guidePayload($this->year($request)) + [
             'payment_methods' => $cfg['payment_methods'],
             'min_days' => $cfg['min_days'],
             'max_days' => $cfg['max_days'],
@@ -47,6 +38,43 @@ class MnhContractController extends Controller
             'daily_start' => $cfg['daily_start'],
             'daily_minutes' => $cfg['daily_minutes'],
         ]]);
+    }
+
+    /** GET /v1/public/mnh/guide?year= — 로그인 없이 보는 바우처 안내·본인부담 계산기용(고시값 + 케어앤 추가요금, 개인정보 없음) */
+    public function guide(Request $request): JsonResponse
+    {
+        return response()->json(['success' => true, 'data' => self::guidePayload($this->year($request))]);
+    }
+
+    private function year(Request $request): int
+    {
+        $y = (int) $request->query('year');
+
+        return $y >= 2020 && $y <= 2100 ? $y : Carbon::now('Asia/Seoul')->year;
+    }
+
+    /** 안내·계산·신청이 모두 같은 기준표를 읽는다(CAREN-REF-01 원칙 1). */
+    public static function guidePayload(int $year): array
+    {
+        $rows = MnhSupportType::where('year', $year)->where('is_active', true)
+            ->orderByRaw("FIELD(fetus_type,'single','twins','triplets_plus','quadruplets_plus')")->orderByRaw("FIELD(birth_order,'first','second','third_plus','any')")->orderByRaw("RIGHT(income_tier, 2)")->orderByRaw("FIELD(SUBSTRING_INDEX(SUBSTRING_INDEX(income_tier,'-',2),'-',-1),'가','통합','라')")->orderBy('income_tier')->orderByRaw("FIELD(period,'short','standard','extended')")
+            ->get(['id', 'fetus_type', 'birth_order', 'income_tier', 'period', 'days', 'total_price', 'gov_support', 'self_pay', 'note']);
+        $cfg = config('mnh');
+
+        return [
+            'year' => $year,
+            'rates_ready' => $rows->isNotEmpty(),
+            'support_types' => $rows,
+            'income_tiers' => $rows->pluck('income_tier')->unique()->values(),
+            'income_criteria' => MnhIncomeCriterion::where('year', $year)->orderBy('household_size')
+                ->get(['household_size', 'income_limit', 'premium_employee', 'premium_regional', 'premium_mixed']),
+            'addons' => MnhAddonItem::where('is_active', true)->orderBy('sort')->orderBy('id')
+                ->get(['id', 'kind', 'name', 'unit_label', 'price', 'max_qty', 'note']),
+            'fetus_types' => $cfg['fetus_types'],
+            'birth_orders' => $cfg['birth_orders'],
+            'periods' => $cfg['periods'],
+            'addon_kinds' => $cfg['addon_kinds'],
+        ];
     }
 
     /** GET /v1/mnh/contracts */
@@ -83,6 +111,9 @@ class MnhContractController extends Controller
             'days' => ['nullable', 'integer', 'between:' . $cfg['min_days'] . ',' . $cfg['max_days']],
             'payment_method' => ['required', 'in:' . implode(',', array_keys($cfg['payment_methods']))],
             'member_note' => ['nullable', 'string', 'max:1000'],
+            'addons' => ['nullable', 'array', 'max:20'],
+            'addons.*.id' => ['required', 'integer'],
+            'addons.*.qty' => ['required', 'integer', 'min:1', 'max:99'],
         ]);
         $user = $request->user();
         $client = DB::table('postpartum_clients')->where('id', $data['postpartum_client_id'])->where('user_id', $user->id)
@@ -112,7 +143,25 @@ class MnhContractController extends Controller
             return $this->fail('DAYS_REQUIRED', '이용 일수를 골라 주세요.');
         }
 
-        $c = DB::transaction(function () use ($data, $user, $client, $type, $days, $year, $cfg) {
+        // 추가요금·대여 — 지금 판매 중인 항목만, 가격은 서버 값으로 스냅샷
+        $addons = [];
+        $picked = collect($data['addons'] ?? [])->groupBy('id')->map(fn ($g) => (int) $g->sum('qty'));
+        if ($picked->isNotEmpty()) {
+            $items = MnhAddonItem::where('is_active', true)->whereIn('id', $picked->keys())->get()->keyBy('id');
+            foreach ($picked as $id => $qty) {
+                $it = $items[$id] ?? null;
+                if (!$it) {
+                    return $this->fail('ADDON_UNAVAILABLE', '고른 추가 항목 중 지금 신청할 수 없는 것이 있어요. 다시 골라 주세요.');
+                }
+                if ($qty > $it->max_qty) {
+                    return $this->fail('ADDON_QTY', sprintf('%s은(는) 최대 %d%s까지 고를 수 있어요.', $it->name, $it->max_qty, $it->unit_label));
+                }
+                $addons[] = ['id' => $it->id, 'kind' => $it->kind, 'name' => $it->name, 'unit_label' => $it->unit_label,
+                    'price' => $it->price, 'qty' => $qty, 'amount' => $it->price * $qty];
+            }
+        }
+
+        $c = DB::transaction(function () use ($data, $user, $client, $type, $days, $year, $cfg, $addons) {
             $c = MnhContract::create([
                 'contract_no' => 'tmp-' . uniqid(),
                 'postpartum_client_id' => $client->id,
@@ -133,10 +182,12 @@ class MnhContractController extends Controller
                 'daily_minutes' => $cfg['daily_minutes'],
                 'payment_method' => $data['payment_method'],
                 'member_note' => $data['member_note'] ?? null,
+                'addons' => $addons ?: null,
+                'addon_total' => $addons ? array_sum(array_column($addons, 'amount')) : null,
                 'status' => 'applied',
             ]);
             $c->update(['contract_no' => sprintf('MNH-%d-%04d', $year, $c->id)]);
-            $this->svc->log($c, 'created', $data['start_date'], ['self_pay' => $c->self_pay], $user->id);
+            $this->svc->log($c, 'created', $data['start_date'], ['self_pay' => $c->self_pay, 'addon_total' => $c->addon_total], $user->id);
 
             return $c;
         });

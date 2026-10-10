@@ -34,6 +34,10 @@ return [
         'standard' => '표준',
         'extended' => '연장',
     ],
+    'addon_kinds' => [
+        'extra' => '추가 서비스',
+        'rental' => '대여용품',
+    ],
     'payment_methods' => [
         'cash' => '현금',
         'card' => '카드',

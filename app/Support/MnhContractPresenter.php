@@ -31,6 +31,8 @@ final class MnhContractPresenter
             'gov_support' => $c->gov_support,
             'self_pay' => $c->self_pay,
             'rates_set' => $c->self_pay !== null,
+            'addons' => $c->addons ?: [],
+            'addon_total' => $c->addon_total,
             'start_date' => $c->start_date?->format('Y-m-d'),
             'end_date' => $svc->endDate($c),
             'weekdays' => $c->weekdays ?: config('mnh.weekdays'),

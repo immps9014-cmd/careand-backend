@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public')->middleware('throttle:60,1')->group(function () {
         Route::get('care-logs/{token}', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'show'])->where('token', '[A-Za-z0-9]{40}');   // 가족 공유(기능 5)
         Route::get('stats', [PublicController::class, 'stats']);
+        Route::get('mnh/guide', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'guide']);   // 바우처 안내·본인부담 계산기(CAREN-REF-01)
     });
 
     // ========== Phase 1+2: 인증 필요 ==========
@@ -380,6 +381,13 @@ Route::prefix('v1')->group(function () {
 
             // 산모신생아 바우처(CAREN-MNH-01 2단계) — 제공기관 = 케어앤
             Route::prefix('mnh')->group(function () {
+                Route::get('income-criteria', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'incomeCriteria']);
+                Route::put('income-criteria', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'saveIncomeCriterion']);
+                Route::delete('income-criteria/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deleteIncomeCriterion'])->whereNumber('id');
+                Route::get('addons', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'addons']);
+                Route::post('addons', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'storeAddon']);
+                Route::patch('addons/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'updateAddon'])->whereNumber('id');
+                Route::delete('addons/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deleteAddon'])->whereNumber('id');
                 Route::get('support-types', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'supportTypes']);
                 Route::post('support-types', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'storeSupportType']);
                 Route::post('support-types/copy', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'copySupportTypes']);
