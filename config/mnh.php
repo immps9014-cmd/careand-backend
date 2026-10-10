@@ -20,7 +20,8 @@ return [
     'fetus_types' => [
         'single' => '단태아',
         'twins' => '쌍태아',
-        'triplets_plus' => '삼태아 이상',
+        'triplets_plus' => '삼태아',
+        'quadruplets_plus' => '사태아 이상',
     ],
     'birth_orders' => [
         'first' => '첫째아',
