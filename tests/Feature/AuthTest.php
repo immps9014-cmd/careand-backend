@@ -164,4 +164,34 @@ class AuthTest extends TestCase
         $fresh = auth('api')->login($user->fresh());
         $this->withHeader('Authorization', "Bearer {$fresh}")->getJson('/api/v1/auth/me')->assertOk();
     }
+
+    /** 갱신마다 새 리프레시 토큰(회전) — 연달아 갱신해도 로그인 유지, 쓴 토큰은 재사용 불가(2026-10-10) */
+    public function test_refresh_rotates_refresh_token(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+        $rt = $this->postJson('/api/v1/auth/login', ['email' => $user->email, 'password' => 'password123'])
+            ->assertOk()->json('refresh_token');
+
+        $this->fresh();
+        $rt2 = $this->withHeader('Authorization', "Bearer {$rt}")->postJson('/api/v1/auth/refresh')
+            ->assertOk()->assertJsonStructure(['access_token', 'refresh_token'])->json('refresh_token');
+        $this->assertNotSame($rt, $rt2);
+
+        $this->fresh();
+        $this->withHeader('Authorization', "Bearer {$rt2}")->postJson('/api/v1/auth/refresh')->assertOk();
+
+        $this->fresh();
+        $this->withHeader('Authorization', "Bearer {$rt}")->postJson('/api/v1/auth/refresh')->assertStatus(401);
+    }
+
+    /** 실제 HTTP 처럼 요청마다 새 상태 — JWT 싱글턴이 앞 요청 토큰을 들고 있지 않게 */
+    private function fresh(): void
+    {
+        $this->app['auth']->forgetGuards();
+        foreach (['tymon.jwt', 'tymon.jwt.auth', 'tymon.jwt.parser'] as $k) {
+            $this->app->forgetInstance($k);
+        }
+        \Illuminate\Support\Facades\Facade::clearResolvedInstances();
+        $this->flushHeaders();
+    }
 }

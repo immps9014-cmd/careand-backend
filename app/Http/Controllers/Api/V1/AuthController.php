@@ -311,6 +311,13 @@ class AuthController extends Controller
     public function refresh(): JsonResponse
     {
         try {
+            // 리프레시 토큰은 갱신에 한 번 쓰면 블랙리스트로 무효가 된다 → 새 리프레시 토큰을 함께 내준다(2026-10-10 회전).
+            // 예전엔 같은 토큰을 다시 써서 두 번째 갱신(로그인 약 2시간 뒤)부터 401 → 강제 로그아웃이었다.
+            $mfa = false;
+            try {
+                $mfa = (bool) JWTAuth::parseToken()->getPayload()->get('mfa');
+            } catch (\Throwable) {
+            }
             $newToken = auth('api')->refresh();
             // 정지·탈퇴 계정은 갱신해 주지 않는다(2026-10-07, Authenticate 미들웨어와 같은 기준)
             $user = JWTAuth::setToken($newToken)->toUser();
@@ -325,6 +332,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'access_token' => $newToken,
+                'refresh_token' => $this->generateRefreshToken($user, $mfa),
                 'token_type' => 'Bearer',
                 'expires_in' => config('jwt.ttl') * 60,
             ]);
