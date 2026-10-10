@@ -60,7 +60,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public')->middleware('throttle:60,1')->group(function () {
         Route::get('care-logs/{token}', [\App\Http\Controllers\Api\V1\CareLogShareController::class, 'show'])->where('token', '[A-Za-z0-9]{40}');   // 가족 공유(기능 5)
         Route::get('stats', [PublicController::class, 'stats']);
-        Route::get('mnh/guide', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'guide']);   // 바우처 안내·본인부담 계산기(CAREN-REF-01)
+        Route::get('mnh/guide', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'guide']);
+        Route::get('contents', [\App\Http\Controllers\Api\V1\ContentController::class, 'index']);   // 안내·FAQ·공지(CAREN-REF-01 3단계)   // 바우처 안내·본인부담 계산기(CAREN-REF-01)
     });
 
     // ========== Phase 1+2: 인증 필요 ==========
@@ -144,6 +145,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('me/caregivers/{caregiverId}', [OrganizationController::class, 'removeCaregiver'])->whereNumber('caregiverId');
             Route::delete('me/invites/{inviteId}', [OrganizationController::class, 'cancelInvite'])->whereNumber('inviteId');
         });
+
+        Route::get('contents/my-notices', [\App\Http\Controllers\Api\V1\ContentController::class, 'myNotices']);   // 내 지역 공지(3단계)
 
         // 산모신생아 바우처 기간형 계약(CAREN-MNH-01 2단계, 2026-10-05)
         Route::prefix('mnh')->group(function () {
@@ -379,6 +382,15 @@ Route::prefix('v1')->group(function () {
             Route::prefix('mnh-journals')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Api\V1\Admin\MnhJournalAdminController::class, 'index']);
                 Route::post('check', [\App\Http\Controllers\Api\V1\Admin\MnhJournalAdminController::class, 'check']);
+            });
+
+            // 영역별 안내 콘텐츠·FAQ·지역 공지(CAREN-REF-01 3단계)
+            Route::prefix('contents')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Api\V1\Admin\ContentAdminController::class, 'index']);
+                Route::post('/', [\App\Http\Controllers\Api\V1\Admin\ContentAdminController::class, 'store']);
+                Route::patch('{id}', [\App\Http\Controllers\Api\V1\Admin\ContentAdminController::class, 'update'])->whereNumber('id');
+                Route::post('{id}/review', [\App\Http\Controllers\Api\V1\Admin\ContentAdminController::class, 'review'])->whereNumber('id');
+                Route::delete('{id}', [\App\Http\Controllers\Api\V1\Admin\ContentAdminController::class, 'destroy'])->whereNumber('id');
             });
 
             // 산모신생아 바우처(CAREN-MNH-01 2단계) — 제공기관 = 케어앤

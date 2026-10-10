@@ -35,6 +35,7 @@ return [
         'monitoring'    => ['label' => '케어 모니터링',         'read' => $ops,                                   'write' => $ops],
         'cs'            => ['label' => 'CS / 분쟁',            'read' => $ops,                                   'write' => $ops],
         'announcements' => ['label' => '공지·푸시',            'read' => $ops,                                   'write' => ['super', 'branch']],
+        'contents'      => ['label' => '안내 콘텐츠·지역 공지',  'read' => $ops,                                   'write' => ['super', 'branch']],   // CAREN-REF-01 3단계
         'settlements'   => ['label' => '정산',                 'read' => ['super', 'branch'],                    'write' => ['super', 'branch']],
         'ai-models'     => ['label' => 'AI 모델',              'read' => ['super', 'analyst', 'developer'],      'write' => ['super', 'developer']],
         'ontology'      => ['label' => '온톨로지 분석',         'read' => ['super', 'analyst', 'developer'],      'write' => ['super', 'developer']],

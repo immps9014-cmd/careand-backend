@@ -1,0 +1,632 @@
+[
+ {
+  "kind": "guide",
+  "placement": "service_scope",
+  "domain": "senior",
+  "audience": "guardian",
+  "platform": "all",
+  "title": "시니어돌봄 서비스 범위",
+  "blocks": [
+   {
+    "type": "list",
+    "role": "provided",
+    "items": [
+     "신체활동 지원(식사·이동·세면·배변 보조)",
+     "인지·정서 지원(말벗, 산책 동행)",
+     "일상생활 지원(투약 확인, 자택 내 안전 관리)",
+     "돌봄대상 관련 가사(식사 준비·정리)"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "not_provided",
+    "items": [
+     "주사·처치 등 전문 의료행위",
+     "돌봄대상 외 가족 가사·대청소·이사",
+     "장보기 대행 등 외부 심부름"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "ineligible",
+    "items": [
+     "격리가 필요한 감염성 질환이 있는 경우",
+     "응급·중증 상태로 상시 의료 처치가 필요한 경우",
+     "폭력성을 동반한 중증 정신질환이 있는 경우"
+    ]
+   }
+  ],
+  "sort": 0,
+  "source_note": "이관: member-web lib/serviceGuides.ts(2026-10-10). 원본 주석: 카피는 실서비스 운영·법무 검수를 거쳐 확정해야 함(현재는 기준안)"
+ },
+ {
+  "kind": "guide",
+  "placement": "service_scope",
+  "domain": "nursing",
+  "audience": "guardian",
+  "platform": "all",
+  "title": "병원간병 서비스 범위",
+  "blocks": [
+   {
+    "type": "list",
+    "role": "provided",
+    "items": [
+     "병원 내 신체 수발(식사·대소변·체위변경 보조)",
+     "이동·검사 동행 보조",
+     "환자 상태 관찰 및 말벗"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "not_provided",
+    "items": [
+     "투약 결정·주사 등 의료행위",
+     "병원비 외 금전 관리·대행",
+     "병원 밖 개인 심부름"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "ineligible",
+    "items": [
+     "만 19세 미만(별도 상담이 필요합니다)",
+     "격리가 필요한 감염병이 있는 경우",
+     "폭력성을 동반한 중증 정신질환이 있는 경우"
+    ]
+   }
+  ],
+  "sort": 0,
+  "source_note": "이관: member-web lib/serviceGuides.ts(2026-10-10). 원본 주석: 카피는 실서비스 운영·법무 검수를 거쳐 확정해야 함(현재는 기준안)"
+ },
+ {
+  "kind": "guide",
+  "placement": "service_scope",
+  "domain": "living_support",
+  "audience": "guardian",
+  "platform": "all",
+  "title": "생활지원 서비스 범위",
+  "blocks": [
+   {
+    "type": "list",
+    "role": "provided",
+    "items": [
+     "바닥청소·설거지·빨래 및 건조",
+     "쓰레기 배출·정리정돈",
+     "식사 준비 및 뒷정리"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "not_provided",
+    "items": [
+     "전문청소(입주청소·유리·외벽·베란다)",
+     "냉장고 내부 정리·손빨래·장보기 대행",
+     "반려동물 목욕·아이돌봄"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "ineligible",
+    "items": [
+     "고소 작업·중량물 이동 등 위험 작업이 포함된 경우",
+     "요청 공간이 돌봄대상 이용 공간을 벗어나는 경우"
+    ]
+   }
+  ],
+  "sort": 0,
+  "source_note": "이관: member-web lib/serviceGuides.ts(2026-10-10). 원본 주석: 카피는 실서비스 운영·법무 검수를 거쳐 확정해야 함(현재는 기준안)"
+ },
+ {
+  "kind": "guide",
+  "placement": "service_scope",
+  "domain": "postpartum",
+  "audience": "guardian",
+  "platform": "all",
+  "title": "산모신생아 건강관리 서비스 범위",
+  "blocks": [
+   {
+    "type": "list",
+    "role": "provided",
+    "items": [
+     "산모 회복 지원(수유 보조·좌욕 준비)",
+     "신생아 돌봄(목욕·수유·트림·기저귀)",
+     "산모·아기 관련 가사(이유식·유축기 관리·산모 식사)"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "not_provided",
+    "items": [
+     "의료·처치 행위",
+     "산모·아기와 무관한 가족 가사·대청소"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "ineligible",
+    "items": [
+     "산모가 의사소통이 전혀 불가한 경우",
+     "정신질환 치료 중으로 전문 케어가 필요한 경우",
+     "감염성 질환이 있는 경우"
+    ]
+   }
+  ],
+  "sort": 0,
+  "source_note": "이관: member-web lib/serviceGuides.ts(2026-10-10). 원본 주석: 카피는 실서비스 운영·법무 검수를 거쳐 확정해야 함(현재는 기준안)"
+ },
+ {
+  "kind": "guide",
+  "placement": "service_scope",
+  "domain": "childcare",
+  "audience": "guardian",
+  "platform": "all",
+  "title": "아이돌봄 서비스 범위",
+  "blocks": [
+   {
+    "type": "list",
+    "role": "provided",
+    "items": [
+     "등·하원 동행",
+     "놀이·학습 보조 및 식사·간식 챙김",
+     "아이 관련 가사(정리·세탁)"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "not_provided",
+    "items": [
+     "전문 교육(과외·교습)",
+     "의료행위",
+     "가족 전체 가사"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "ineligible",
+    "items": [
+     "중증 질환·전문 간호가 필요한 아동(별도 상담이 필요합니다)",
+     "격리가 필요한 감염병이 있는 경우"
+    ]
+   }
+  ],
+  "sort": 0,
+  "source_note": "이관: member-web lib/serviceGuides.ts(2026-10-10). 원본 주석: 카피는 실서비스 운영·법무 검수를 거쳐 확정해야 함(현재는 기준안)"
+ },
+ {
+  "kind": "guide",
+  "placement": "service_scope",
+  "domain": "mental_care",
+  "audience": "guardian",
+  "platform": "all",
+  "title": "마음돌봄 서비스 범위",
+  "blocks": [
+   {
+    "type": "list",
+    "role": "provided",
+    "items": [
+     "정서적 지지·말벗",
+     "일상 동행·산책",
+     "심리적 안정 지원"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "not_provided",
+    "items": [
+     "전문 심리치료·상담(자격이 필요한 임상 행위)",
+     "의료행위·약물 관리"
+    ]
+   },
+   {
+    "type": "list",
+    "role": "ineligible",
+    "items": [
+     "자·타해 위험 등 응급 상태(전문기관 연계가 필요합니다)",
+     "중증 정신질환 급성기 상태인 경우"
+    ]
+   }
+  ],
+  "sort": 0,
+  "source_note": "이관: member-web lib/serviceGuides.ts(2026-10-10). 원본 주석: 카피는 실서비스 운영·법무 검수를 거쳐 확정해야 함(현재는 기준안)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "신청한 돌봄을 취소하고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "홈 「내 매칭 요청」에서 요청을 누르고 「요청 취소」를 누르세요. 돌봄전문가가 확정된 뒤에는 고객센터로 전화 주세요."
+   }
+  ],
+  "sort": 10,
+  "source_note": "이관: member-web support/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "돌봄전문가를 바꾸고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "고객센터로 전화 주시면 사정을 듣고 다른 분으로 연결해 드려요."
+   }
+  ],
+  "sort": 20,
+  "source_note": "이관: member-web support/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "결제는 언제 하나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "돌봄전문가가 확정되면 홈 요청 카드에 「결제하기」 버튼이 생겨요. 결제를 마치면 일정이 시작돼요."
+   }
+  ],
+  "sort": 30,
+  "source_note": "이관: member-web support/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "아이디나 비밀번호를 잊었어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "로그인 화면의 「아이디 찾기」「비밀번호 재설정」에서 가입한 휴대폰으로 확인할 수 있어요."
+   }
+  ],
+  "sort": 40,
+  "source_note": "이관: member-web support/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "적정 돌봄비는 어떻게 정해지나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "돌봄 대상의 상태·지역·시간대·서비스 종류를 반영해 AI가 권장 시급과 범위를 산출해요. 희망 상한 금액을 정하면 돌봄전문가가 이를 참고해 입찰합니다."
+   }
+  ],
+  "sort": 10,
+  "source_note": "이관: member-web guide/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "돌봄전문가와 직접 거래해도 되나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "안전을 위해 돌봄전문가와의 직접(개인) 거래·외부 연락처 교환은 금지돼요. 결제·정산은 반드시 케어앤드 플랫폼을 통해 진행해야 보호받을 수 있어요."
+   }
+  ],
+  "sort": 20,
+  "source_note": "이관: member-web guide/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "돌봄전문가 자격은 검증되나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "모든 돌봄전문가는 자격증 진위확인·신원 검수를 거쳐 등록돼요. 프로필에서 전문분야·완료 실적·평점을 확인할 수 있어요."
+   }
+  ],
+  "sort": 30,
+  "source_note": "이관: member-web guide/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "web",
+  "title": "결제 후 취소하면 어떻게 되나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "매칭 확정 후 무단 취소·노쇼 시 위약금이 발생할 수 있어요. 일정 변경이 필요하면 고객센터로 먼저 문의해 주세요."
+   }
+  ],
+  "sort": 40,
+  "source_note": "이관: member-web guide/page.tsx(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "신청한 돌봄을 취소하고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "내 정보 → 「내 요청」에서 요청을 누르고 「요청 취소」를 누르세요. 돌봄전문가가 확정된 뒤에는 고객센터로 전화 주세요."
+   }
+  ],
+  "sort": 10,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "돌봄전문가를 바꾸고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "내 요청에서 확정된 요청을 열고 「돌봄전문가 교체·신고」로 사정을 남겨 주세요. 운영팀이 확인해 다른 분으로 연결해 드려요. 급하면 전화 주세요."
+   }
+  ],
+  "sort": 20,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "결제는 언제 하나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "돌봄전문가가 확정되면 알림과 요청 화면에 「결제하기」가 생겨요. 결제를 마쳐야 돌봄이 시작돼요. 지난 결제와 영수증은 내 정보 → 「결제 내역·영수증」에 있어요."
+   }
+  ],
+  "sort": 30,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "아이디나 비밀번호를 잊었어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "로그인 화면의 「아이디·비밀번호 찾기」에서 가입한 휴대폰으로 확인할 수 있어요."
+   }
+  ],
+  "sort": 40,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "출근 버튼이 눌리지 않아요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "보호자 결제가 끝나기 전에는 출근할 수 없어요. 「결제 대기 중」 안내가 보이면 결제가 끝날 때까지 기다려 주세요. 돌봄 장소 반경 밖이어도 기록이 남으니 꼭 현장에서 눌러 주세요."
+   }
+  ],
+  "sort": 10,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "매칭 제안을 받지 못해요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "자격 서류·정산 계좌 검수가 끝나야 제안을 받을 수 있어요. 홈이나 내 정보 → 「서류·정산 계좌」에서 상태를 확인해 주세요. 휴직 중이면 제안이 오지 않아요."
+   }
+  ],
+  "sort": 20,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "잠시 쉬고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "내 정보에서 「휴직 신청」을 누르면 그동안 새 제안이 오지 않아요. 다시 일할 때 「복귀」를 누르세요."
+   }
+  ],
+  "sort": 30,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "정산 금액이 이상해요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "정산 탭에서 명세서를 열고 「이의제기」로 사유를 남겨 주세요. 운영팀이 확인해 답변드려요."
+   }
+  ],
+  "sort": 40,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "support",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "아이디나 비밀번호를 잊었어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "로그인 화면의 「아이디·비밀번호 찾기」에서 가입한 휴대폰으로 확인할 수 있어요."
+   }
+  ],
+  "sort": 50,
+  "source_note": "이관: mobile support_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "적정 돌봄비는 어떻게 정해지나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "돌봄 종류·지역·시간대(야간·공휴일)와 돌봄 받는 분의 상태를 반영해 권장 시급을 계산해요. 전문가는 이를 참고해 제안 시급을 내요."
+   }
+  ],
+  "sort": 10,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "돌봄전문가와 직접 거래해도 되나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "안전을 위해 직접(개인) 거래와 외부 연락처 교환은 금지돼요. 결제·정산은 반드시 케어앤을 통해야 보호받을 수 있어요."
+   }
+  ],
+  "sort": 20,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "돌봄전문가 자격은 검증되나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "모든 돌봄전문가는 자격증 진위 확인과 신원 검수를 거쳐 등록돼요. 전문가 상세에서 확인된 서류·경력·후기를 볼 수 있어요."
+   }
+  ],
+  "sort": 30,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "guardian",
+  "platform": "app",
+  "title": "결제 후 일정을 바꾸고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "확정된 뒤 무단 취소나 노쇼는 위약금이 생길 수 있어요. 일정을 바꿔야 하면 고객센터에 먼저 연락해 주세요."
+   }
+  ],
+  "sort": 40,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "출근 버튼이 눌리지 않아요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "보호자 결제가 끝나기 전에는 출근할 수 없어요. 결제가 끝나면 알림이 오고 버튼이 열려요."
+   }
+  ],
+  "sort": 10,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "위치가 반경 밖이라고 나와요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "출근·퇴근 위치는 기록으로 남아요. 반드시 돌봄 장소에서 눌러 주시고, 주소가 틀렸다면 고객센터로 알려 주세요."
+   }
+  ],
+  "sort": 20,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "보호자와 직접 거래해도 되나요?",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "직접(개인) 거래와 외부 연락처 교환은 금지돼요. 케어앤을 통해야 정산과 사고 대응에서 보호받을 수 있어요."
+   }
+  ],
+  "sort": 30,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ },
+ {
+  "kind": "faq",
+  "placement": "guide",
+  "domain": null,
+  "audience": "caregiver",
+  "platform": "app",
+  "title": "잠시 쉬고 싶어요",
+  "blocks": [
+   {
+    "type": "p",
+    "text": "내 정보에서 「휴직 신청」을 누르면 새 제안이 오지 않아요. 다시 일할 때 「복귀」를 누르세요."
+   }
+  ],
+  "sort": 40,
+  "source_note": "이관: mobile guide_screen.dart(2026-10-10)"
+ }
+]
