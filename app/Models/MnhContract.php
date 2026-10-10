@@ -14,7 +14,7 @@ class MnhContract extends Model
         'daily_start', 'daily_minutes', 'payment_method', 'prepaid_amount', 'prepaid_at',
         'prepaid_receipt_no', 'prepaid_by', 'status', 'match_request_id', 'caregiver_id',
         'member_note', 'admin_note', 'cancel_reason', 'holiday_work_dates', 'refund_amount', 'refunded_at',
-        'addons', 'addon_total',
+        'addons', 'addon_total', 'provisional', 'start_change_request',
     ];
 
     protected $casts = [
@@ -24,6 +24,8 @@ class MnhContract extends Model
         'holiday_work_dates' => 'array',
         'addons' => 'array',
         'addon_total' => 'integer',
+        'provisional' => 'boolean',
+        'start_change_request' => 'array',
         'prepaid_at' => 'datetime',
         'refunded_at' => 'datetime',
         'refund_amount' => 'integer',

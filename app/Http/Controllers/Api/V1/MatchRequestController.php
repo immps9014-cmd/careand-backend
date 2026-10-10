@@ -960,7 +960,7 @@ class MatchRequestController extends Controller
     {
         $user = $request->user();
         $rows = DB::table('postpartum_clients')
-            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted', 'care_profile', 'emergency_contact')
+            ->select('id', 'name', 'delivery_date', 'delivery_type', 'status', 'phone_encrypted', 'care_profile', 'emergency_contact', 'birth_confirmed', 'expected_delivery_date')
             ->where('user_id', $user->id)
             ->whereNull('deleted_at')
             ->orderByDesc('created_at')
@@ -978,6 +978,7 @@ class MatchRequestController extends Controller
                 $r->emergency_contact = \App\Support\CaregiverProfileExtras::emergency($r->emergency_contact);
                 $r->care_profile = \App\Support\PostpartumCareProfile::decode($r->care_profile);
                 $r->is_self = $phone !== null && $user->phone && $phone === $user->phone;
+                $r->birth_confirmed = (bool) $r->birth_confirmed;
 
                 return $r;
             });
@@ -1186,8 +1187,12 @@ class MatchRequestController extends Controller
             'delivery_date' => ['required', 'date'],
             'delivery_type' => ['required', 'in:natural,cesarean,vbac'],
             'is_first_baby' => ['nullable', 'boolean'],
+            // 출산 전(expected)이면 delivery_date 는 예정일 — 안 보내면 날짜로 판단(오늘 이후 = 예정)
+            'birth_status'  => ['nullable', 'in:expected,delivered'],
             'emergency_contact' => ['nullable', 'array'],
         ] + \App\Support\PostpartumCareProfile::rules() + self::emergencyRules('emergency_contact.'));
+        $expected = ($data['birth_status'] ?? null) === 'expected'
+            || (($data['birth_status'] ?? null) === null && \Illuminate\Support\Carbon::parse($data['delivery_date'])->toDateString() > now('Asia/Seoul')->toDateString());
         $profile = \App\Support\PostpartumCareProfile::normalize($data['care_profile'] ?? null);
 
         $id = DB::table('postpartum_clients')->insertGetId([
@@ -1201,6 +1206,9 @@ class MatchRequestController extends Controller
             'delivery_date'   => $data['delivery_date'],
             'delivery_type'   => $data['delivery_type'],
             'is_first_baby'   => (int) ($data['is_first_baby'] ?? 1),
+            'birth_confirmed' => !$expected,
+            'expected_delivery_date' => $expected ? $data['delivery_date'] : null,
+            'birth_confirmed_at' => $expected ? null : now(),
             'care_profile'    => $profile ? json_encode($profile, JSON_UNESCAPED_UNICODE) : null,
             'emergency_contact' => !empty($data['emergency_contact']) ? \App\Support\CaregiverProfileExtras::encryptEmergency($data['emergency_contact']) : null,
             'status'          => 'active',

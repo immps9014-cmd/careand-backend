@@ -359,6 +359,35 @@ class MnhAdminController extends Controller
         return response()->json(['success' => true, 'message' => '저장했어요.', 'data' => MnhContractPresenter::detail($c->fresh(), $this->svc, true)]);
     }
 
+    /**
+     * POST /v1/admin/mnh/contracts/{id}/confirm-start — 예비 계약 확정(2단계). start_date 를 안 주면 이용자 요청값 → 현재 개시일 순.
+     * 담당 일정이 겹치면 409 SCHEDULE_CONFLICT(force 로 강제).
+     */
+    public function confirmStart(Request $request, int $id): JsonResponse
+    {
+        $c = MnhContract::findOrFail($id);
+        $data = $request->validate(['start_date' => ['nullable', 'date_format:Y-m-d'], 'force' => ['nullable', 'boolean']]);
+        $start = $data['start_date'] ?? ($c->start_change_request['start_date'] ?? $c->start_date->format('Y-m-d'));
+        try {
+            $this->svc->confirmStart($c, $start, true, (bool) ($data['force'] ?? false), $request->user()->id);
+        } catch (MnhContractException $e) {
+            return $this->fail($e->errorCode, $e->getMessage(), $e->status, $e->extra);
+        }
+
+        return response()->json(['success' => true, 'message' => '일정을 확정하고 이용자에게 알렸어요.', 'data' => MnhContractPresenter::detail($c->fresh(), $this->svc, true)]);
+    }
+
+    /** DELETE /v1/admin/mnh/contracts/{id}/start-request — 개시일 변경 요청을 받지 않음(예비 표시는 유지, 사유는 특이사항으로) */
+    public function rejectStartRequest(Request $request, int $id): JsonResponse
+    {
+        $c = MnhContract::findOrFail($id);
+        $reason = (string) $request->validate(['reason' => ['required', 'string', 'max:300']])['reason'];
+        $c->update(['start_change_request' => null]);
+        $this->svc->log($c, 'note', null, ['text' => '개시일 변경 요청 반려: ' . $reason], $request->user()->id);
+
+        return response()->json(['success' => true, 'message' => '요청을 반려했어요. 이용자에게 직접 안내해 주세요.', 'data' => MnhContractPresenter::detail($c->fresh(), $this->svc, true)]);
+    }
+
     /** POST /v1/admin/mnh/contracts/{id}/prepaid — 본인부담금 선납 기록 */
     public function prepaid(Request $request, int $id): JsonResponse
     {

@@ -152,6 +152,7 @@ Route::prefix('v1')->group(function () {
             Route::post('contracts', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'store']);
             Route::get('contracts/{id}', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'show'])->whereNumber('id');
             Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\MnhContractController::class, 'cancel'])->whereNumber('id');
+            Route::post('contracts/{id}/confirm-start', [\App\Http\Controllers\Api\V1\MnhBirthController::class, 'confirmStart'])->whereNumber('id');   // 예비 계약 확정(2단계)
             // 전자서명 서류(3단계)
             Route::get('contracts/{id}/documents', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'forContract'])->whereNumber('id');
             Route::get('my-documents', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'mine']);
@@ -178,6 +179,7 @@ Route::prefix('v1')->group(function () {
             Route::post('postpartum-clients/{id}/newborns', [MatchRequestController::class, 'storePostpartumNewborn'])->whereNumber('id');
             Route::put('postpartum-clients/{id}/care-profile', [MatchRequestController::class, 'updatePostpartumCareProfile'])->whereNumber('id');
             Route::put('postpartum-clients/{id}/emergency-contact', [MatchRequestController::class, 'updatePostpartumEmergencyContact'])->whereNumber('id');
+            Route::post('postpartum-clients/{id}/confirm-birth', [\App\Http\Controllers\Api\V1\MnhBirthController::class, 'confirmBirth'])->whereNumber('id');   // 출산일 등록(2단계)
             // 이용일지(2026-10-05) — 산모 수시 작성, 기관 알림
             Route::get('postpartum-clients/{id}/journal', [\App\Http\Controllers\Api\V1\MnhClientJournalController::class, 'index'])->whereNumber('id');
             Route::post('postpartum-clients/{id}/journal', [\App\Http\Controllers\Api\V1\MnhClientJournalController::class, 'store'])->whereNumber('id');
@@ -403,6 +405,8 @@ Route::prefix('v1')->group(function () {
                 Route::post('contracts/{id}/assign', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'assign'])->whereNumber('id');
                 Route::post('contracts/{id}/swap', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'swap'])->whereNumber('id');
                 Route::post('contracts/{id}/postpone', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'postpone'])->whereNumber('id');
+                Route::post('contracts/{id}/confirm-start', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'confirmStart'])->whereNumber('id');
+                Route::delete('contracts/{id}/start-request', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'rejectStartRequest'])->whereNumber('id');
                 Route::post('contracts/{id}/restore', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'restore'])->whereNumber('id');
                 Route::post('contracts/{id}/notes', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'note'])->whereNumber('id');
                 Route::post('contracts/{id}/holiday-work', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'holidayWork'])->whereNumber('id');

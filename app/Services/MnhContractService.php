@@ -484,6 +484,40 @@ class MnhContractService
         });
     }
 
+    /**
+     * 예비 계약 확정(CAREN-REF-01 2단계) — 개시일을 옮기고 예비 표시·확인 요청을 지운다.
+     * 기관이 확정하면($byAgency) 이용자에게 알린다. 담당 일정이 겹치면 reschedule 이 CONFLICT 를 던진다($force 로 무시).
+     */
+    public function confirmStart(MnhContract $c, string $start, bool $byAgency, bool $force, ?int $actor): array
+    {
+        $this->requireOpen($c);
+        $r = [];
+        if ($start !== $c->start_date?->format('Y-m-d')) {
+            $r = $this->reschedule($c, ['start_date' => $start], $force, $actor);
+        }
+        $c->update(['provisional' => false, 'start_change_request' => null]);
+        $this->log($c, 'birth_confirmed', $start, ['by' => $byAgency ? 'agency' : 'member'], $actor);
+        $end = $this->endDate($c);
+        if ($byAgency) {
+            $this->notifier->notifySafely($c->user_id, NotificationService::TYPE_MNH_CONTRACT,
+                ['contract_id' => $c->id, 'event' => 'start_confirmed', 'start_date' => $start, 'end_date' => $end]);
+        }
+
+        return $r + ['end_date' => $end];
+    }
+
+    /** 바우처 유효기간(출산일 + 90일)을 넘기는지 — 넘으면 안내 문구, 아니면 null */
+    public function voucherExpiryWarning(MnhContract $c, ?string $deliveryDate): ?string
+    {
+        $end = $this->endDate($c);
+        if (!$deliveryDate || !$end) {
+            return null;
+        }
+        $limit = \Illuminate\Support\Carbon::parse($deliveryDate, 'Asia/Seoul')->addDays(90)->toDateString();
+
+        return $end > $limit ? sprintf('종료 예정일(%s)이 바우처 유효기간(출산 후 90일, %s)을 넘어요. 운영팀과 일정을 조정해 주세요.', $end, $limit) : null;
+    }
+
     /** 계약 취소. 선납이 있으면 돌려준 금액($refund, 0~선납액)을 받아 매출에서 뺀다(VoucherRevenue). */
     public function cancel(MnhContract $c, string $reason, ?int $actor, ?int $refund = null): void
     {

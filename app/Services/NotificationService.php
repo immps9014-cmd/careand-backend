@@ -473,6 +473,14 @@ class NotificationService
                     'title' => '바우처 계약 신청',
                     'body' => sprintf('%s 신청이 들어왔어요(개시 희망 %s). 본인부담금 선납 확인과 담당 배정을 진행해 주세요.', $payload['contract_no'] ?? '', $payload['start_date'] ?? ''),
                 ],
+                'start_review' => [
+                    'title' => '바우처 개시일 확인 요청',
+                    'body' => sprintf('%s 출산일이 등록됐어요. 개시일을 %s로 바꿔 달라는 요청을 확인해 주세요(%s).', $payload['contract_no'] ?? '', $payload['start_date'] ?? '', $payload['reason'] ?? ''),
+                ],
+                'start_confirmed' => [
+                    'title' => '바우처 일정이 확정됐어요',
+                    'body' => sprintf('출산일을 반영해 %s부터 방문하는 일정으로 확정했어요(종료 예정 %s).', $payload['start_date'] ?? '', $payload['end_date'] ?? ''),
+                ],
                 'released' => [
                     'title' => '바우처 일정 담당 변경',
                     'body' => sprintf('%s부터 다른 돌봄전문가가 맡게 됐어요. 그 전 일정은 그대로예요.', $payload['start_date'] ?? ''),

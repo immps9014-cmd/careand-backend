@@ -32,6 +32,8 @@ final class MnhContractPresenter
             'self_pay' => $c->self_pay,
             'rates_set' => $c->self_pay !== null,
             'addons' => $c->addons ?: [],
+            'provisional' => (bool) $c->provisional,
+            'start_change_request' => $c->start_change_request,
             'addon_total' => $c->addon_total,
             'start_date' => $c->start_date?->format('Y-m-d'),
             'end_date' => $svc->endDate($c),
@@ -74,7 +76,7 @@ final class MnhContractPresenter
     public static function detail(MnhContract $c, MnhContractService $svc, bool $admin): array
     {
         $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)
-            ->first(['id', 'name', 'delivery_date', 'delivery_type', 'address', 'address_detail', 'emergency_contact']);
+            ->first(['id', 'name', 'delivery_date', 'delivery_type', 'address', 'address_detail', 'emergency_contact', 'birth_confirmed', 'expected_delivery_date']);
         $cgName = $c->caregiver_id ? DB::table('caregivers as cg')->join('users as u', 'u.id', '=', 'cg.user_id')
             ->where('cg.id', $c->caregiver_id)->value('u.name') : null;
         $out = self::summary($c, $svc, $client, $cgName);
@@ -101,13 +103,16 @@ final class MnhContractPresenter
         $out['holiday_work_dates'] = array_values($c->holiday_work_dates ?: []);
         $out['completed_days'] = collect($days)->where('status', 'completed')->count();
         $out['delivery_date'] = $client->delivery_date ?? null;
+        $out['birth_confirmed'] = (bool) ($client->birth_confirmed ?? true);
+        $out['expected_delivery_date'] = $client->expected_delivery_date ?? null;
+        $out['voucher_warning'] = ($client->birth_confirmed ?? true) ? $svc->voucherExpiryWarning($c, $client->delivery_date ?? null) : null;
 
         $events = $c->events()->orderBy('id')->get();
         $out['events'] = $events
-            ->filter(fn ($e) => $admin || in_array($e->type, ['created', 'assigned', 'swapped', 'postponed', 'restored', 'start_changed', 'prepaid', 'cancelled', 'completed', 'holiday_work', 'holiday_off', 'holiday_changed'], true))
+            ->filter(fn ($e) => $admin || in_array($e->type, ['created', 'assigned', 'swapped', 'postponed', 'restored', 'start_changed', 'prepaid', 'cancelled', 'completed', 'holiday_work', 'holiday_off', 'holiday_changed', 'birth_confirmed', 'start_review'], true))
             ->map(fn ($e) => [
                 'id' => $e->id, 'type' => $e->type, 'date' => $e->event_date?->format('Y-m-d'),
-                'payload' => $admin ? $e->payload : array_intersect_key($e->payload ?? [], array_flip(['reason', 'new_end', 'name'])),
+                'payload' => $admin ? $e->payload : array_intersect_key($e->payload ?? [], array_flip(['reason', 'new_end', 'name', 'start_date'])),
                 'created_at' => Kst::iso($e->created_at),
             ])->values();
 

@@ -184,6 +184,7 @@ class MnhContractController extends Controller
                 'member_note' => $data['member_note'] ?? null,
                 'addons' => $addons ?: null,
                 'addon_total' => $addons ? array_sum(array_column($addons, 'amount')) : null,
+                'provisional' => !$client->birth_confirmed,   // 출산 전 신청 = 예비 계약(출산일 등록 후 확정)
                 'status' => 'applied',
             ]);
             $c->update(['contract_no' => sprintf('MNH-%d-%04d', $year, $c->id)]);
