@@ -74,7 +74,36 @@ class MnhContractController extends Controller
             'birth_orders' => $cfg['birth_orders'],
             'periods' => $cfg['periods'],
             'addon_kinds' => $cfg['addon_kinds'],
+            'general' => self::generalRates(),
         ];
+    }
+
+    /**
+     * 바우처 없이 이용할 때의 하루 예상 금액(케어앤 일반 요금) — 적정 돌봄비와 같은 산출(PricingService)로
+     * 다음 평일 하루 8시간(야간 케어는 22시부터) 기준, 지역 가산 없이 전국 기준. 계산기 「안 써요」 탭용.
+     */
+    public static function generalRates(): array
+    {
+        $day = Carbon::now('Asia/Seoul')->addDay();
+        while ($day->isWeekend() || \App\Support\Holidays::name($day->toDateString())) {
+            $day->addDay();
+        }
+        $hours = (int) (config('mnh.daily_minutes') / 60);
+        $svc = app(\App\Services\Pricing\PricingService::class);
+
+        return \App\Models\ServiceCategory::where('domain', 'postpartum')->where('is_active', true)->orderBy('id')->get()
+            ->map(function ($c) use ($day, $hours, $svc) {
+                $night = $c->code === 'PP_NIGHT';
+                $start = $day->copy()->setTime($night ? 22 : 9, 0)->utc();
+                $e = $svc->estimate(new \App\Models\MatchRequest([
+                    'service_domain' => 'postpartum', 'category_id' => $c->id, 'mode' => 'normal',
+                    'scheduled_start' => $start, 'duration_min' => $hours * 60,
+                ]));
+
+                return ['category_id' => $c->id, 'code' => $c->code, 'name' => $c->name, 'night' => $night,
+                    'hourly' => (int) $e['suggested'], 'floor' => (int) $e['floor'], 'ceil' => (int) $e['ceil'],
+                    'day_hours' => $hours, 'day_price' => (int) $e['suggested'] * $hours];
+            })->values()->all();
     }
 
     /** GET /v1/mnh/contracts */
