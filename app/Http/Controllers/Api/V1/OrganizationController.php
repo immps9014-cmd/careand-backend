@@ -105,6 +105,8 @@ class OrganizationController extends Controller
             ->get()
             ->map(fn ($c) => [
                 'caregiver_id' => $c->id,
+                // 프로필 사진(캐릭터 포함, 2026-10-11) — 서명 링크 6시간
+                'photo_url' => \App\Support\CaregiverProfileExtras::photoUrl((int) $c->id, $c->photo_path, $c->photo_updated_at),
                 'name' => $c->user?->name,
                 'phone' => $c->user?->phone,
                 'service_domains' => $c->service_domains,
