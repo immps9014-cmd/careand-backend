@@ -157,6 +157,13 @@ class AdminMemberPostpartumModeTest extends TestCase
         \Illuminate\Support\Facades\Cache::forget('admin:kpi');
         $this->getJson('/api/v1/admin/dashboard/kpi', $this->h($tok))->assertOk()
             ->assertJsonPath('data.mnh_contracts', ['ongoing' => 3, 'applied' => 1, 'unpaid' => 2]);
+        // 카드를 누르면 가는 계약 목록 필터 — 같은 묶음·같은 숫자
+        $list = fn (string $st) => $this->getJson("/api/v1/admin/mnh/contracts?status={$st}", $this->h($tok))->assertOk();
+        $this->assertCount(3, $list('ongoing')->json('data'));
+        $this->assertCount(2, $list('unpaid')->json('data'));
+        $this->assertCount(1, $list('applied')->json('data'));
+        $this->assertSame(3, $list('')->json('counts.ongoing'));
+        $this->assertSame(2, $list('')->json('counts.unpaid'));
     }
 
     /** 관리자 회원 상세 — 생년월일 수정(돌봄전문가는 자격 정보도 맞춤, 지우기는 회원정보만), 분석가 차단 */

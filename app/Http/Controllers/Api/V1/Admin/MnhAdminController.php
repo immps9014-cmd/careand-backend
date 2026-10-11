@@ -238,7 +238,13 @@ class MnhAdminController extends Controller
     public function contracts(Request $request): JsonResponse
     {
         $q = MnhContract::query()->orderByRaw("FIELD(status,'applied','confirmed','active','completed','cancelled')")->orderBy('start_date');
-        if ($s = $request->query('status')) {
+        // 대시보드 「바우처 계약」 카드와 같은 묶음(2026-10-11): ongoing=확정+서비스 중, unpaid=신청·확정 중 본인부담금 선납 전
+        $s = $request->query('status');
+        if ($s === 'ongoing') {
+            $q->whereIn('status', ['confirmed', 'active']);
+        } elseif ($s === 'unpaid') {
+            $q->whereIn('status', ['applied', 'confirmed'])->whereNull('prepaid_at');
+        } elseif ($s) {
             $q->where('status', $s);
         }
         if ($kw = trim((string) $request->query('q'))) {
@@ -248,7 +254,9 @@ class MnhAdminController extends Controller
         $rows = $q->limit(300)->get();
 
         return response()->json(['success' => true, 'data' => $this->summaries($rows),
-            'counts' => MnhContract::groupBy('status')->selectRaw('status, count(*) n')->pluck('n', 'status')]);
+            'counts' => MnhContract::groupBy('status')->selectRaw('status, count(*) n')->pluck('n', 'status')
+                ->put('ongoing', MnhContract::whereIn('status', ['confirmed', 'active'])->count())
+                ->put('unpaid', MnhContract::whereIn('status', ['applied', 'confirmed'])->whereNull('prepaid_at')->count())]);
     }
 
     /** GET /v1/admin/mnh/calendar?month=YYYY-MM — 그 달에 걸친 계약별 날짜 칸 */
