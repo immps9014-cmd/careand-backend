@@ -183,4 +183,32 @@ class AdminMemberPostpartumModeTest extends TestCase
         [, $anTok] = $this->createAdminUser('analyst');
         $this->patchJson("/api/v1/admin/members/{$gu->id}/birth-date", ['birth_date' => '1990-01-01'], $this->h($anTok))->assertStatus(403);
     }
+
+    /** 관리자 회원 목록 — 나이대 필터(만 나이, 경계: 생일 당일에 나이가 오른다) */
+    public function test_member_list_age_band_filter(): void
+    {
+        [, $tok] = $this->createAdminUser();
+        $today = now('Asia/Seoul')->startOfDay();
+        $mk = function (?string $birth) {
+            [$u] = $this->createGuardianUser();
+            $u->update(['birth_date' => $birth]);
+            return $u->id;
+        };
+        $just30 = $mk($today->copy()->subYears(30)->toDateString());              // 오늘 30번째 생일 → 30대
+        $almost30 = $mk($today->copy()->subYears(30)->addDay()->toDateString());  // 내일 30 → 아직 20대
+        $age45 = $mk($today->copy()->subYears(45)->subMonths(3)->toDateString());
+        $age72 = $mk('1950-01-01');
+        $teen = $mk($today->copy()->subYears(17)->toDateString());
+        $none = $mk(null);
+
+        $ids = fn (string $b) => collect($this->getJson("/api/v1/admin/members?role=guardian&age_band={$b}&per_page=100", $this->h($tok))
+            ->assertOk()->json('data'))->pluck('id')->all();
+        $this->assertSame([$just30], $ids('30s'));
+        $this->assertSame([$almost30], $ids('20s'));
+        $this->assertSame([$age45], $ids('40s'));
+        $this->assertSame([$age72], $ids('70plus'));
+        $this->assertSame([$teen], $ids('under20'));
+        $this->assertContains($none, $ids('unknown'));
+        $this->assertNotContains($just30, $ids('unknown'));
+    }
 }

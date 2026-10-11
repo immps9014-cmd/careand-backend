@@ -1653,6 +1653,20 @@ class OperationsController extends Controller
             $query->where('users.status', $request->input('status'));
         }
 
+        // 나이대(회원 생년월일 users.birth_date, 만 나이·오늘 KST 기준 — 2026-10-11)
+        // under20 · 20s~60s · 70plus · unknown(미입력)
+        $band = $request->input('age_band');
+        $bands = ['under20' => [0, 19], '20s' => [20, 29], '30s' => [30, 39], '40s' => [40, 49], '50s' => [50, 59], '60s' => [60, 69], '70plus' => [70, 200]];
+        if ($band === 'unknown') {
+            $query->whereNull('users.birth_date');
+        } elseif (isset($bands[$band])) {
+            [$lo, $hi] = $bands[$band];
+            $today = now('Asia/Seoul')->startOfDay();
+            // 만 lo~hi 세 ⇔ 생년월일이 (오늘-(hi+1)년, 오늘-lo년] 안
+            $query->where('users.birth_date', '>', $today->copy()->subYears($hi + 1)->toDateString())
+                ->where('users.birth_date', '<=', $today->copy()->subYears($lo)->toDateString());
+        }
+
         // 산모신생아 이용 방식(가입 때 선택, guardians.preferences.postpartum_mode — 2026-10-11)
         // voucher|hourly = 그 값, unset = 산모신생아를 골랐지만 방식이 없는 회원(이전 가입자 등)
         $ppMode = $request->input('postpartum_mode');
