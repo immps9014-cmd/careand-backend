@@ -38,6 +38,8 @@ class SignupRequest extends FormRequest
             // 가입 때 고른 「주로 이용할 서비스」(복수, 요청자만). 첫 항목이 대표 서비스 = intent. guardians.preferences.services 에 보관.
             'services' => ['nullable', 'array', 'max:5'],
             'services.*' => ['string', 'distinct', 'in:senior,living_support,postpartum,childcare,mental_care'],
+            // 산모신생아 이용 방식(2026-10-11, 앱 가입 카드): voucher=정부 바우처 · hourly=시간 단위. services 에 postpartum 이 있을 때만 guardians.preferences.postpartum_mode 에 보관
+            'postpartum_mode' => ['nullable', 'in:voucher,hourly'],
             'agree_terms' => ['required', 'accepted'],
             'agree_privacy' => ['required', 'accepted'],
         ];

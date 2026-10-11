@@ -1508,6 +1508,7 @@ class OperationsController extends Controller
                     'id' => $g->id,
                     'relation' => $g->relation,
                     'services' => json_decode((string) $g->preferences, true)['services'] ?? [],
+                    'postpartum_mode' => json_decode((string) $g->preferences, true)['postpartum_mode'] ?? null,
                     'contact_address' => $g->contact_address,
                     'seniors' => $seniors->values(),
                     'patients' => $patients->values(),
@@ -1602,6 +1603,8 @@ class OperationsController extends Controller
             'intent' => $u->role === 'guardian' ? ($u->guardian_intent ?? 'care') : null,
             // 가입 때 고른 「주로 이용할 서비스」(선택 순서, 첫 항목=대표). 2026-09-29 이전 가입자는 빈 배열
             'services' => $u->role === 'guardian' ? (json_decode((string) $u->guardian_preferences, true)['services'] ?? []) : null,
+            // 산모신생아 이용 방식(voucher|hourly) — 2026-10-11 이전 가입자·앱 외 가입은 null
+            'postpartum_mode' => $u->role === 'guardian' ? (json_decode((string) $u->guardian_preferences, true)['postpartum_mode'] ?? null) : null,
             'status' => $u->status,
             'caregiver_status' => $u->role === 'caregiver' ? ($cgStatus[$u->id] ?? null) : null,
             'service_domains' => $u->role === 'caregiver' ? $u->service_domains : null,

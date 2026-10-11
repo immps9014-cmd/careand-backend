@@ -135,7 +135,11 @@ class AuthController extends Controller
                     // 가입 의도 보존: 가사·산모·아이돌봄·마음돌봄 요청자 구분. 그 외는 care.
                     'intent' => in_array($data['intent'] ?? null, ['housekeeping', 'postpartum', 'childcare', 'mental_care'], true) ? $data['intent'] : 'care',
                     // 주로 이용할 서비스(복수 선택, 선택 순서 유지) — 홈 서비스 타일 정렬에 쓴다
-                    'preferences' => ! empty($data['services']) ? ['services' => array_values($data['services'])] : null,
+                    // 산모신생아를 골랐으면 이용 방식(voucher|hourly)도 함께 — 운영팀이 바우처 대상자를 가입 때부터 알 수 있게
+                    'preferences' => ! empty($data['services']) ? array_filter([
+                        'services' => array_values($data['services']),
+                        'postpartum_mode' => in_array('postpartum', $data['services'], true) ? ($data['postpartum_mode'] ?? null) : null,
+                    ], fn ($v) => $v !== null) : null,
                 ]);
             }
             // caregiver/organization은 별도 register 단계에서 추가 정보 수집

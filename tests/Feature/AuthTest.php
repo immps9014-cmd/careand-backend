@@ -98,6 +98,31 @@ class AuthTest extends TestCase
         ]);
     }
 
+    public function test_signup_keeps_postpartum_mode_only_with_postpartum(): void
+    {
+        $otp = app(OtpService::class);
+        $base = ['password' => 'Test1234!', 'password_confirmation' => 'Test1234!', 'role' => 'guardian', 'agree_terms' => true, 'agree_privacy' => true];
+
+        $this->postJson('/api/v1/auth/signup', $base + [
+            'email' => 'pp_voucher', 'phone' => '01099997001', 'phone_verify_token' => $otp->issueVerifyToken('01099997001'), 'name' => '바우처 산모',
+            'services' => ['postpartum'], 'intent' => 'postpartum', 'postpartum_mode' => 'voucher',
+        ])->assertStatus(201);
+        $prefs = User::where('email', 'pp_voucher')->first()->guardian->preferences;
+        $this->assertSame(['services' => ['postpartum'], 'postpartum_mode' => 'voucher'], $prefs);
+
+        // 산모신생아를 안 골랐으면 방식은 버린다
+        $this->postJson('/api/v1/auth/signup', $base + [
+            'email' => 'pp_none', 'phone' => '01099997002', 'phone_verify_token' => $otp->issueVerifyToken('01099997002'), 'name' => '아이 보호자',
+            'services' => ['childcare'], 'intent' => 'childcare', 'postpartum_mode' => 'hourly',
+        ])->assertStatus(201);
+        $this->assertSame(['services' => ['childcare']], User::where('email', 'pp_none')->first()->guardian->preferences);
+
+        $this->postJson('/api/v1/auth/signup', $base + [
+            'email' => 'pp_bad', 'phone' => '01099997003', 'phone_verify_token' => $otp->issueVerifyToken('01099997003'), 'name' => '잘못된 값',
+            'services' => ['postpartum'], 'intent' => 'postpartum', 'postpartum_mode' => 'monthly',
+        ])->assertStatus(422);
+    }
+
     public function test_login_with_correct_credentials(): void
     {
         User::factory()->create([
