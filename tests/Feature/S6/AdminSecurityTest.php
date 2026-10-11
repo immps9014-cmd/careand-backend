@@ -77,7 +77,7 @@ class AdminSecurityTest extends TestCase
         $this->artisan('audit:verify')->assertSuccessful();
     }
 
-    /** UT-N09·F-19 회원 CSV — 슈퍼관리자·사유 필수·마스킹 */
+    /** UT-N09·F-19 회원 다운로드(엑셀) — 슈퍼관리자·사유 필수·마스킹 */
     public function test_member_export_requires_reason_and_masks(): void
     {
         [, $aTok] = $this->createAdminUser();
@@ -85,9 +85,20 @@ class AdminSecurityTest extends TestCase
         [$u] = $this->createGuardianUser();
         $this->get('/api/v1/admin/exports/members', $this->h($aTok, ['Accept' => 'application/json']))->assertStatus(422);
         $this->get('/api/v1/admin/exports/members', $this->h($brTok, ['Accept' => 'application/json', 'X-Access-Reason' => rawurlencode('월간 점검용')]))->assertStatus(403);
-        $csv = $this->get('/api/v1/admin/exports/members', $this->h($aTok, ['X-Access-Reason' => rawurlencode('월간 점검용')]))->assertOk()->streamedContent();
+        // 2026-10-11 부터 엑셀(.xlsx) — 시트 XML 을 꺼내 마스킹 확인
+        $res = $this->get('/api/v1/admin/exports/members', $this->h($aTok, ['X-Access-Reason' => rawurlencode('월간 점검용')]))->assertOk();
+        $this->assertStringContainsString('spreadsheetml', $res->headers->get('Content-Type'));
+        $tmp = tempnam(sys_get_temp_dir(), 'x');
+        file_put_contents($tmp, $res->getContent());
+        $zip = new \ZipArchive();
+        $zip->open($tmp);
+        $csv = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        @unlink($tmp);
+        $this->assertStringContainsString('보호자', $csv);
         $this->assertStringNotContainsString($u->phone, $csv);
         $this->assertStringNotContainsString($u->email, $csv);
+        $this->assertSame(1, DB::table('audit_logs')->where('action', 'export.members.xlsx')->count());
     }
 
     /** UT-19 블랙리스트 → 정지·인증번호 차단 → 해제 */
