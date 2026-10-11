@@ -795,7 +795,10 @@ class OperationsController extends Controller
                 DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 DB::raw('gu.name as guardian_name'),
                 's.gender as senior_gender', 's.care_grade', 's.special_notes', 's.home_address',
-                'sa.label as addr_label', 'sa.address as addr_full', 'sa.entry_note'
+                'sa.label as addr_label', 'sa.address as addr_full', 'sa.entry_note',
+                // 병원 간병: 환자 병원·병동·거동·질환(10-12 — 전엔 대상자 정보·주소가 「-」로 보였음)
+                'np.gender as np_gender', 'np.hospital_name', 'np.hospital_address', 'np.ward_room',
+                'np.mobility', 'np.diseases', 'np.special_notes as np_special_notes'
             )
             ->where('r.id', $id)->first();
 
@@ -857,15 +860,21 @@ class OperationsController extends Controller
             'created_at' => \App\Support\Kst::iso($r->created_at),
             'matched_at' => \App\Support\Kst::iso($r->matched_at),
             'senior' => [
-                'gender' => $r->senior_gender,
+                'gender' => $r->senior_gender ?? $r->np_gender,
                 'care_grade' => $r->care_grade,
-                'special_notes' => \App\Support\MedicalCrypto::decrypt($r->special_notes),   // 암호문 → 평문(S2-4)
+                'special_notes' => \App\Support\MedicalCrypto::decrypt($r->special_notes ?? $r->np_special_notes),   // 암호문 → 평문(S2-4)
             ],
             'address' => [
-                'label' => $r->addr_label,
-                'address' => $r->addr_full ?? $r->home_address,
+                'label' => $r->addr_label ?? $r->hospital_name,
+                'address' => $r->addr_full ?? $r->home_address ?? $r->hospital_address,
                 'entry_note' => $r->entry_note,
             ],
+            'patient' => $r->hospital_name !== null ? [
+                'hospital_name' => $r->hospital_name,
+                'ward_room' => $r->ward_room,
+                'mobility' => $r->mobility,
+                'diseases' => json_decode((string) $r->diseases, true) ?: [],
+            ] : null,
             'matched_caregiver' => $match ? [
                 'name' => $match->caregiver_name,
                 'id' => (int) $match->caregiver_id,
