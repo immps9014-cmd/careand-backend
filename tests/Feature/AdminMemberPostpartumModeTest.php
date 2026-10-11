@@ -99,4 +99,39 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->assertNull($rows[$rh->id]['voucher']);
         $this->assertSame([$rv->id => 'eligible'], \App\Support\GuardianPostpartumMode::voucherFlags([$rv->id, $rh->id]));
     }
+
+    /** 관리자 요청 목록·상세·계약 일정·방문 일정 — 바우처 계약 방문(contract)·바우처 대상(eligible) 표시 */
+    public function test_admin_lists_carry_voucher_flag(): void
+    {
+        [, $tok] = $this->createAdminUser();
+        [$cgUser, $cg] = $this->createCaregiverUser();
+        [$gUser, $g] = $this->createGuardianUser();
+        $g->update(['intent' => 'postpartum', 'preferences' => ['services' => ['postpartum'], 'postpartum_mode' => 'voucher']]);
+
+        $eligible = $this->makeRequest($g);
+        $this->makeMatch($eligible, $cg);
+        // 바우처 계약으로 생긴 방문 — 계약 1건을 최소 칸만 채워 붙인다
+        $clientId = \Illuminate\Support\Facades\DB::table('postpartum_clients')->insertGetId([
+            'user_id' => $gUser->id, 'name' => '산모', 'phone_encrypted' => 'x', 'birth_date' => '1995-01-01', 'address' => '서울',
+            'region_code' => '11', 'delivery_date' => now()->toDateString(), 'delivery_type' => 'natural', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $contractId = \Illuminate\Support\Facades\DB::table('mnh_contracts')->insertGetId([
+            'contract_no' => 'T-1', 'postpartum_client_id' => $clientId, 'user_id' => $gUser->id, 'year' => 2026, 'days' => 10,
+            'start_date' => now()->toDateString(), 'payment_method' => 'cash', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $contract = $this->makeRequest($g);
+        \Illuminate\Support\Facades\DB::table('match_requests')->where('id', $contract->id)->update(['mnh_contract_id' => $contractId]);   // fillable 아님(계약 생성 경로에서만 채움)
+        $this->makeMatch($contract, $cg);
+
+        $h = $this->h($tok);
+        $req = collect($this->getJson('/api/v1/admin/matching/requests?per_page=100', $h)->assertOk()->json('data'))->keyBy('id');
+        $this->assertSame('eligible', $req[$eligible->id]['voucher']);
+        $this->assertSame('contract', $req[$contract->id]['voucher']);
+        $this->getJson("/api/v1/admin/matching/requests/{$contract->id}", $h)->assertOk()
+            ->assertJsonPath('data.voucher', 'contract')->assertJsonPath('data.mnh_contract_id', $contractId);
+        $this->assertSame(['contract', 'eligible'], collect($this->getJson('/api/v1/admin/contracts?per_page=100', $h)->assertOk()->json('data'))
+            ->pluck('voucher')->sort()->values()->all());
+        $this->assertSame(['contract', 'eligible'], collect($this->getJson('/api/v1/admin/care-sessions?per_page=100', $h)->assertOk()->json('data'))
+            ->pluck('voucher')->sort()->values()->all());
+    }
 }

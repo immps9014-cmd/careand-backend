@@ -203,10 +203,12 @@ class OperationsController extends Controller
         }
 
         $paginated = $query->orderByDesc('m.scheduled_start')->paginate($perPage);
+        $vouchers = \App\Support\GuardianPostpartumMode::voucherFlags(collect($paginated->items())->pluck('request_id'));   // contract=바우처 계약 방문 · eligible=바우처 대상 가정
 
         $items = collect($paginated->items())->map(fn ($r) => [
             'id' => $r->id,
             'request_id' => $r->request_id,
+            'voucher' => $vouchers[$r->request_id] ?? null,
             'caregiver_name' => $r->caregiver_name ?? '(미배정)',
             'senior_name' => $r->senior_name ?? '(미상)',
             'service_domain' => $r->service_domain,
@@ -298,7 +300,7 @@ class OperationsController extends Controller
         $paginated = $query->select(
                 'cs.id', 'cs.status', 'cs.review_status', 'cs.duration_min',
                 'cs.scheduled_start', 'cs.scheduled_end', 'cs.actual_start', 'cs.actual_end',
-                'r.service_domain', 'm.is_manual',
+                'r.service_domain', 'm.is_manual', 'r.id as request_id',
                 DB::raw('cu.name as caregiver_name'),
                 DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 DB::raw('gu.name as guardian_name'),
@@ -308,11 +310,13 @@ class OperationsController extends Controller
             ->orderByRaw("FIELD(cs.status, 'in_progress', 'scheduled', 'completed')")
             ->orderBy('cs.scheduled_start')
             ->paginate($perPage);
+        $vouchers = \App\Support\GuardianPostpartumMode::voucherFlags(collect($paginated->items())->pluck('request_id'));
 
         $items = collect($paginated->items())->map(fn ($r) => [
             'id' => $r->id,
             'status' => $r->status,
             'review_status' => $r->review_status,
+            'voucher' => $vouchers[$r->request_id] ?? null,
             'caregiver_name' => $r->caregiver_name ?? '(미배정)',
             'recipient_name' => $r->recipient_name ?? '(미상)',
             'guardian_name' => $r->guardian_name,
@@ -812,8 +816,13 @@ class OperationsController extends Controller
             ->select('mc.id', 'cu.name as caregiver_name', 'mc.caregiver_id', 'mc.source', 'mc.ai_score', 'mc.rank', 'mc.response', 'mc.responded_at')
             ->get();
 
+        $voucher = \App\Support\GuardianPostpartumMode::voucherFlags([$r->id])[$r->id] ?? null;
+
         return response()->json(['success' => true, 'data' => [
             'id' => $r->id,
+            // contract=바우처 계약 방문(mnh_contract_id 로 계약 화면 연결) · eligible=바우처 대상 가정
+            'voucher' => $voucher,
+            'mnh_contract_id' => $voucher === 'contract' ? (int) DB::table('match_requests')->where('id', $r->id)->value('mnh_contract_id') : null,
             'recipient_name' => $r->recipient_name ?? '(미상)',
             'guardian_name' => $r->guardian_name,
             'service_domain' => $r->service_domain,
@@ -921,9 +930,11 @@ class OperationsController extends Controller
         }
 
         $paginated = $query->orderByDesc('r.created_at')->paginate($perPage);
+        $vouchers = \App\Support\GuardianPostpartumMode::voucherFlags(collect($paginated->items())->pluck('id'));
 
         $items = collect($paginated->items())->map(fn ($r) => [
             'id' => $r->id,
+            'voucher' => $vouchers[$r->id] ?? null,
             'senior_name' => $r->senior_name ?? '(미상)',
             'guardian_name' => $r->guardian_name,
             'mode' => $r->mode,
