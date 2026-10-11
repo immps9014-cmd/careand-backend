@@ -490,6 +490,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('organizations/{id}', [OperationsController::class, 'updateOrganization'])->whereNumber('id');
             Route::patch('members/{id}/credentials', [OperationsController::class, 'updateMemberCredentials'])->whereNumber('id');
             Route::patch('members/{id}/postpartum-mode', [OperationsController::class, 'updateMemberPostpartumMode'])->whereNumber('id');
+            Route::patch('members/{id}/birth-date', [OperationsController::class, 'updateMemberBirthDate'])->whereNumber('id');
             Route::get('monitoring/alerts', [OperationsController::class, 'monitoringAlerts']);
             Route::post('monitoring/alerts/{id}/acknowledge', [OperationsController::class, 'acknowledgeAlert'])->whereNumber('id');
             Route::post('monitoring/alerts/{id}/resolve', [OperationsController::class, 'resolveAlert'])->whereNumber('id');

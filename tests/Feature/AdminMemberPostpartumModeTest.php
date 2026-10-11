@@ -158,4 +158,29 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->getJson('/api/v1/admin/dashboard/kpi', $this->h($tok))->assertOk()
             ->assertJsonPath('data.mnh_contracts', ['ongoing' => 3, 'applied' => 1, 'unpaid' => 2]);
     }
+
+    /** 관리자 회원 상세 — 생년월일 수정(돌봄전문가는 자격 정보도 맞춤, 지우기는 회원정보만), 분석가 차단 */
+    public function test_admin_updates_member_birth_date(): void
+    {
+        [, $tok] = $this->createAdminUser();
+        [$gu] = $this->createGuardianUser();
+        [$cu, $cg] = $this->createCaregiverUser();
+        $h = $this->h($tok);
+
+        $this->patchJson("/api/v1/admin/members/{$gu->id}/birth-date", ['birth_date' => '1988-08-08'], $h)->assertOk();
+        $this->assertSame('1988-08-08', $gu->fresh()->birth_date->format('Y-m-d'));
+
+        $this->patchJson("/api/v1/admin/members/{$cu->id}/birth-date", ['birth_date' => '1970-01-02'], $h)->assertOk();
+        $this->assertSame('1970-01-02', $cu->fresh()->birth_date->format('Y-m-d'));
+        $this->assertSame('1970-01-02', (string) \Illuminate\Support\Facades\DB::table('caregivers')->where('id', $cg->id)->value('birth_date'));
+        $this->getJson("/api/v1/admin/members/{$cu->id}", $h)->assertJsonPath('data.birth_date', '1970-01-02');
+
+        $this->patchJson("/api/v1/admin/members/{$cu->id}/birth-date", ['birth_date' => null], $h)->assertOk();
+        $this->assertNull($cu->fresh()->birth_date);
+        $this->assertSame('1970-01-02', (string) \Illuminate\Support\Facades\DB::table('caregivers')->where('id', $cg->id)->value('birth_date'));
+
+        $this->patchJson("/api/v1/admin/members/{$gu->id}/birth-date", ['birth_date' => now()->format('Y-m-d')], $h)->assertStatus(422);
+        [, $anTok] = $this->createAdminUser('analyst');
+        $this->patchJson("/api/v1/admin/members/{$gu->id}/birth-date", ['birth_date' => '1990-01-01'], $this->h($anTok))->assertStatus(403);
+    }
 }

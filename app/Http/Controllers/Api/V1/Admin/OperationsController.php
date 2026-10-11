@@ -1176,6 +1176,39 @@ class OperationsController extends Controller
     }
 
     /**
+     * PATCH /v1/admin/members/{id}/birth-date {birth_date: YYYY-MM-DD|null}
+     * 회원 생년월일(users.birth_date) 수정(2026-10-11). 돌봄전문가면 자격 정보(caregivers.birth_date, 필수 칸)도 같은 값으로 맞춘다 —
+     * null(지우기)은 회원정보만 비우고 자격 정보는 그대로 둔다.
+     */
+    public function updateMemberBirthDate(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'birth_date' => ['present', 'nullable', 'date_format:Y-m-d', 'after:1900-01-01', 'before:today'],
+        ], [
+            'birth_date.before' => '생년월일은 오늘 이전 날짜여야 합니다.',
+            'birth_date.date_format' => '생년월일 형식이 올바르지 않습니다.',
+        ]);
+        $u = DB::table('users')->whereNull('deleted_at')->where('id', $id)->first(['id', 'role']);
+        if (!$u) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_FOUND', 'message' => '회원을 찾을 수 없습니다.'], 404);
+        }
+
+        DB::transaction(function () use ($id, $u, $data) {
+            DB::table('users')->where('id', $id)->update(['birth_date' => $data['birth_date'], 'updated_at' => now()]);
+            if ($u->role === 'caregiver' && $data['birth_date'] !== null) {
+                DB::table('caregivers')->where('user_id', $id)->whereNull('deleted_at')
+                    ->update(['birth_date' => $data['birth_date'], 'updated_at' => now()]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => '생년월일을 저장했습니다.',
+            'data' => ['id' => $id, 'birth_date' => $data['birth_date']],
+        ]);
+    }
+
+    /**
      * PATCH /v1/admin/members/{id}/postpartum-mode {mode: voucher|hourly|null}
      * 보호자의 산모신생아 이용 방식(guardians.preferences.postpartum_mode) 수정 — 가입 때 잘못 골랐거나 이전 가입자 상담 후 채울 때(2026-10-11).
      * null 이면 지운다(미선택). preferences 의 다른 값(services 등)은 그대로 둔다.
