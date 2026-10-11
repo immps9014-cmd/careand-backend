@@ -211,4 +211,31 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->assertContains($none, $ids('unknown'));
         $this->assertNotContains($just30, $ids('unknown'));
     }
+
+    /** 대시보드 나이대별 회원 분포 — 역할별, 미입력, 운영자 제외 */
+    public function test_dashboard_age_distribution(): void
+    {
+        [$admin, $tok] = $this->createAdminUser();
+        $admin->update(['birth_date' => '1980-01-01']);   // 운영자는 세지 않는다
+        $today = now('Asia/Seoul')->startOfDay();
+        [$g1] = $this->createGuardianUser();
+        $g1->update(['birth_date' => $today->copy()->subYears(33)->toDateString()]);
+        $this->createGuardianUser();   // 미입력
+        [$c1] = $this->createCaregiverUser();
+        $c1->update(['birth_date' => $today->copy()->subYears(55)->toDateString()]);
+
+        $get = fn (string $role) => $this->getJson("/api/v1/admin/dashboard/age-distribution?role={$role}", $this->h($tok))->assertOk()->json('data');
+        $all = $get('all');
+        $by = collect($all['bands'])->pluck('count', 'key');
+        $this->assertSame(1, $by['30s']);
+        $this->assertSame(1, $by['50s']);
+        $this->assertSame(0, $by['40s']);
+        $this->assertSame(1, $all['unknown']);
+        $this->assertSame(3, $all['total']);
+        $this->assertSame(['under20', '20s', '30s', '40s', '50s', '60s', '70plus'], collect($all['bands'])->pluck('key')->all());
+        $g = $get('guardian');
+        $this->assertSame(2, $g['total']);
+        $this->assertSame(0, collect($g['bands'])->pluck('count', 'key')['50s']);
+        $this->assertSame(1, collect($get('caregiver')['bands'])->pluck('count', 'key')['50s']);
+    }
 }

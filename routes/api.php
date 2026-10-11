@@ -319,6 +319,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('business-kpi', [DashboardController::class, 'businessKpi']);   // 사업계획서 KPI 3종
                 Route::get('breakdown', [DashboardController::class, 'breakdown']);   // 지점·도메인·기간 필터(기능 17, S5)
                 Route::get('hourly-requests', [DashboardController::class, 'hourlyRequests']);
+                Route::get('age-distribution', [DashboardController::class, 'ageDistribution']);   // 나이대별 회원 분포(10-11)
                 Route::get('regional-demand', [DashboardController::class, 'regionalDemand']);
                 Route::get('recent-alerts', [DashboardController::class, 'recentAlerts']);
             });

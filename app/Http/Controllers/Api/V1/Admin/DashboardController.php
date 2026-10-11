@@ -19,6 +19,33 @@ use Illuminate\Support\Facades\DB;
 class DashboardController extends Controller
 {
     /**
+     * GET /v1/admin/dashboard/age-distribution?role=all|guardian|caregiver
+     * 나이대별 회원 수(활동 회원, 탈퇴 제외) — users.birth_date 만 나이·오늘 KST, 구간은 AgeBands(회원 목록 필터와 같음).
+     * unknown = 생년월일 미입력. 운영자·기관은 role=all 에서도 뺀다(돌봄 서비스 이용자·제공자 분포라서).
+     */
+    public function ageDistribution(Request $request): JsonResponse
+    {
+        $role = in_array($request->input('role'), ['guardian', 'caregiver'], true) ? $request->input('role') : 'all';
+        $base = fn () => DB::table('users')->whereNull('deleted_at')
+            ->when($role === 'all', fn ($q) => $q->whereIn('role', ['guardian', 'caregiver']), fn ($q) => $q->where('role', $role));
+
+        $bands = [];
+        foreach (\App\Support\AgeBands::BANDS as $key => [$label]) {
+            $q = $base();
+            \App\Support\AgeBands::apply($q, $key);
+            $bands[] = ['key' => $key, 'label' => $label, 'count' => $q->count()];
+        }
+        $unknown = $base()->whereNull('birth_date')->count();
+
+        return response()->json(['success' => true, 'data' => [
+            'role' => $role,
+            'bands' => $bands,
+            'unknown' => $unknown,
+            'total' => array_sum(array_column($bands, 'count')) + $unknown,
+        ]]);
+    }
+
+    /**
      * GET /v1/admin/dashboard/kpi
      * 실시간 KPI (5분 캐시)
      */
