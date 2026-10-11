@@ -76,4 +76,20 @@ class CaregiverAvatarTest extends TestCase
         [, $an] = $this->createAdminUser('analyst');
         $this->postJson("/api/v1/admin/caregivers/{$cg->id}/avatar", ['key' => 'c2'], $this->h($an))->assertStatus(403);
     }
+
+    /** 보호자 추천·찜 카드에도 사진(캐릭터) 주소 */
+    public function test_recommended_and_favorites_carry_photo_url(): void
+    {
+        [, $cg] = $this->createCaregiverUser();
+        DB::table('caregivers')->where('id', $cg->id)->update(['service_domains' => 'senior']);
+        \App\Support\CaregiverProfileExtras::setAvatar((int) $cg->id, 'c2');
+        [$gu, , $gTok] = $this->createGuardianUser();
+        DB::table('caregiver_favorites')->insert(['user_id' => $gu->id, 'caregiver_id' => $cg->id, 'created_at' => now(), 'updated_at' => now()]);
+        $fav = collect($this->getJson('/api/v1/caregivers/favorites', $this->h($gTok))->assertOk()->json('data'))->firstWhere('id', $cg->id);
+        $this->assertNotEmpty($fav['photo_url']);
+        $rec = collect($this->getJson('/api/v1/caregivers/recommended', $this->h($gTok))->assertOk()->json('data'))->firstWhere('id', $cg->id);
+        if ($rec) {
+            $this->assertNotEmpty($rec['photo_url']);
+        }
+    }
 }

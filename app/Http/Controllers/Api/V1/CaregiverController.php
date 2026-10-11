@@ -311,7 +311,7 @@ class CaregiverController extends Controller
         $rows = $q->orderByDesc('c.rating_avg')
             ->orderByDesc('c.completed_sessions')
             ->limit(60)
-            ->get(['c.id', 'u.name', 'c.gender', 'c.birth_date', 'c.base_address', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+            ->get(['c.id', 'u.name', 'c.gender', 'c.birth_date', 'c.base_address', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at', 'c.photo_path', 'c.photo_updated_at']);
 
         // 찜한 돌봄전문가 id 집합 (현재 사용자)
         $favSet = array_flip(
@@ -392,6 +392,8 @@ class CaregiverController extends Controller
 
         return [
             'id' => (int) $c->id,
+            // 프로필 사진(캐릭터 포함, 2026-10-11) — 카드에 보인다. 서명 링크(6시간)
+            'photo_url' => \App\Support\CaregiverProfileExtras::photoUrl((int) $c->id, $c->photo_path ?? null, $c->photo_updated_at ?? null),
             'name' => $c->name,
             'domains' => $domains,
             'gender' => $c->gender,
@@ -452,7 +454,7 @@ class CaregiverController extends Controller
             ->where('f.user_id', $request->user()->id)
             ->whereNull('c.deleted_at')
             ->orderByDesc('f.created_at')
-            ->get(['c.id', 'u.name', 'c.gender', 'c.birth_date', 'c.base_address', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+            ->get(['c.id', 'u.name', 'c.gender', 'c.birth_date', 'c.base_address', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at', 'c.photo_path', 'c.photo_updated_at']);
 
         $data = $rows->map(fn ($c) => $this->browseRowToArray($c, $rates, null, null, true))->values();
 
@@ -816,7 +818,7 @@ class CaregiverController extends Controller
         $rows = $q->orderByDesc('c.rating_avg')
             ->orderByDesc('c.completed_sessions')
             ->limit(20)
-            ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at']);
+            ->get(['c.id', 'u.name', 'c.gender', 'c.specialties', 'c.service_domains', 'c.base_lat', 'c.base_lng', 'c.rating_avg', 'c.rating_count', 'c.completed_sessions', 'c.career_track', 'c.license_verified_at', 'c.photo_path', 'c.photo_updated_at']);
 
         $data = $rows->map(function ($c) use ($rates, $oLat, $oLng, $domain) {
             $domains = $c->service_domains ? explode(',', $c->service_domains) : [];
@@ -840,6 +842,7 @@ class CaregiverController extends Controller
 
             return [
                 'id' => (int) $c->id,
+                'photo_url' => \App\Support\CaregiverProfileExtras::photoUrl((int) $c->id, $c->photo_path ?? null, $c->photo_updated_at ?? null),
                 'name' => $c->name,
                 'domains' => $domains,
                 'rating' => (int) $c->rating_count > 0 ? number_format((float) $c->rating_avg, 1) : '신규',   // 후기 없으면 0.0 대신(09-29 평점 초기화)
