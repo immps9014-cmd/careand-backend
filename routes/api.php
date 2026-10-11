@@ -372,6 +372,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('{id}/documents', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'index'])->whereNumber('id');
                 Route::get('{id}/documents/{docId}/file', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'file'])->whereNumber(['id', 'docId']);
                 Route::post('{id}/documents/{docId}/verify', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'verify'])->whereNumber(['id', 'docId']);
+                Route::post('{id}/avatar', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'avatar'])->whereNumber('id');   // 사진 대신 캐릭터(관리자, 10-11)
                 Route::post('{id}/documents/{docId}/reject', [\App\Http\Controllers\Api\V1\Admin\CaregiverDocumentAdminController::class, 'reject'])->whereNumber(['id', 'docId']);
             });
 

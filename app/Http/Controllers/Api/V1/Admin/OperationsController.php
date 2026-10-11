@@ -1571,6 +1571,9 @@ class OperationsController extends Controller
                     'grade_level' => (int) $c->grade_level,
                     'rejection_reason' => $c->rejection_reason,
                     'created_at' => $c->created_at,
+                    // 프로필 사진·캐릭터(2026-10-11) — 회원 상세에서 캐릭터 고르기
+                    'photo_url' => \App\Support\CaregiverProfileExtras::photoUrl((int) $c->id, $c->photo_path, $c->photo_updated_at),
+                    'avatar_key' => $c->avatar_key ?? null,
                 ];
             }
         }

@@ -94,6 +94,37 @@ class CaregiverProfileExtras
         ];
     }
 
+    /** 사진 대신 고를 수 있는 캐릭터(2026-10-11) — 그림은 public/caregiver-avatars/{key}.jpg, 원본은 resources/caregiver-avatars */
+    public const AVATARS = [
+        'c1' => '단발 · 코랄', 'c2' => '숏컷 · 초록', 'c3' => '묶은 머리 · 하늘', 'c4' => '곱슬 · 보라',
+        'c5' => '은발 · 베이지', 'c6' => '포니테일 · 민트', 'c7' => '가르마 · 남색', 'c8' => '안경 · 주황',
+    ];
+
+    /** 캐릭터를 사진 자리(caregiver-photos/{id}.jpg)에 넣는다 — 사진을 보여 주는 모든 화면이 그대로 캐릭터를 보여 준다. 본인(앱)·관리자 공용 */
+    public static function setAvatar(int $caregiverId, string $key): void
+    {
+        $src = public_path("caregiver-avatars/{$key}.jpg");
+        abort_if(!isset(self::AVATARS[$key]) || !is_file($src), 422, '고를 수 없는 캐릭터예요.');
+        $path = "caregiver-photos/{$caregiverId}.jpg";
+        \Illuminate\Support\Facades\Storage::disk('local')->put($path, (string) file_get_contents($src));
+        DB::table('caregivers')->where('id', $caregiverId)->update(['photo_path' => $path, 'photo_updated_at' => now(), 'avatar_key' => $key, 'updated_at' => now()]);
+    }
+
+    /** 캐릭터만 지운다(실제 사진이면 건드리지 않음). 지웠으면 true */
+    public static function clearAvatar(int $caregiverId): bool
+    {
+        $r = DB::table('caregivers')->where('id', $caregiverId)->first(['photo_path', 'avatar_key']);
+        if (!$r || !$r->avatar_key) {
+            return false;
+        }
+        if ($r->photo_path) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($r->photo_path);
+        }
+        DB::table('caregivers')->where('id', $caregiverId)->update(['photo_path' => null, 'photo_updated_at' => null, 'avatar_key' => null, 'updated_at' => now()]);
+
+        return true;
+    }
+
     /** 탈퇴 파기 — 사진 파일까지 */
     public static function purge(int $caregiverId): void
     {

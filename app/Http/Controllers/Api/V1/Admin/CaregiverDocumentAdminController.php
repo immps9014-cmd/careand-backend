@@ -111,4 +111,32 @@ class CaregiverDocumentAdminController extends Controller
         return response()->json(['success' => true, 'message' => $status === 'verified' ? '확인 완료로 처리했어요.' : '반려했어요. 돌봄전문가에게 알림을 보냈어요.',
             'data' => ['missing_required' => $this->docs->missingRequired($id)]]);
     }
+
+    /**
+     * POST /v1/admin/caregivers/{id}/avatar {key: c1~c8 | null} — 관리자가 사진 대신 캐릭터를 골라 주거나 지운다(2026-10-11).
+     * null 은 캐릭터만 지운다(본인이 올린 실제 사진은 관리자가 캐릭터로 덮지 않도록 막는다 — 덮으려면 force=true).
+     */
+    public function avatar(\Illuminate\Http\Request $request, int $id): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['present', 'nullable', 'in:' . implode(',', array_keys(\App\Support\CaregiverProfileExtras::AVATARS))],
+            'force' => ['sometimes', 'boolean'],
+        ], ['key.in' => '고를 수 없는 캐릭터예요.']);
+        $cg = \Illuminate\Support\Facades\DB::table('caregivers')->where('id', $id)->whereNull('deleted_at')->first(['id', 'photo_path', 'avatar_key']);
+        if (!$cg) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_FOUND', 'message' => '돌봄전문가를 찾을 수 없습니다.'], 404);
+        }
+        if ($data['key'] === null) {
+            \App\Support\CaregiverProfileExtras::clearAvatar($id);
+            $msg = '캐릭터를 지웠습니다.';
+        } else {
+            if ($cg->photo_path && !$cg->avatar_key && !($data['force'] ?? false)) {
+                return response()->json(['success' => false, 'error_code' => 'HAS_PHOTO', 'message' => '본인이 올린 실제 사진이 있어요. 캐릭터로 바꾸려면 한 번 더 확인해 주세요.'], 409);
+            }
+            \App\Support\CaregiverProfileExtras::setAvatar($id, $data['key']);
+            $msg = '캐릭터로 바꿨습니다.';
+        }
+
+        return response()->json(['success' => true, 'message' => $msg, 'data' => \App\Support\CaregiverProfileExtras::forOwnerOrAdmin($id)]);
+    }
 }

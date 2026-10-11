@@ -71,25 +71,12 @@ class CaregiverProfileExtraController extends Controller
         return response()->json(['success' => true, 'message' => '사진을 바꿨어요.', 'data' => CaregiverProfileExtras::forOwnerOrAdmin($cg->id)]);
     }
 
-    /** 사진 대신 고를 수 있는 캐릭터(2026-10-11) — 그림은 public/caregiver-avatars/{key}.jpg, 원본은 resources/caregiver-avatars */
-    public const AVATARS = [
-        'c1' => '단발 · 코랄', 'c2' => '숏컷 · 초록', 'c3' => '묶은 머리 · 하늘', 'c4' => '곱슬 · 보라',
-        'c5' => '은발 · 베이지', 'c6' => '포니테일 · 민트', 'c7' => '가르마 · 남색', 'c8' => '안경 · 주황',
-    ];
-
-    /**
-     * POST /v1/caregivers/me/avatar {key} — 사진 대신 캐릭터. 그림을 사진 자리(caregiver-photos/{id}.jpg)에 복사해
-     * 사진을 보여 주는 모든 화면(보호자 앱·회원웹·관리자)이 그대로 캐릭터를 보여 준다.
-     */
+    /** POST /v1/caregivers/me/avatar {key} — 사진 대신 캐릭터(2026-10-11, CaregiverProfileExtras::setAvatar 와 관리자 공용) */
     public function chooseAvatar(Request $request): JsonResponse
     {
         $cg = $this->mine($request);
-        $data = $request->validate(['key' => ['required', 'in:' . implode(',', array_keys(self::AVATARS))]], ['key.in' => '고를 수 없는 캐릭터예요.']);
-        $src = public_path("caregiver-avatars/{$data['key']}.jpg");
-        abort_if(!is_file($src), 500, '캐릭터 그림을 찾지 못했어요.');
-        $path = "caregiver-photos/{$cg->id}.jpg";
-        Storage::disk('local')->put($path, (string) file_get_contents($src));
-        DB::table('caregivers')->where('id', $cg->id)->update(['photo_path' => $path, 'photo_updated_at' => now(), 'avatar_key' => $data['key'], 'updated_at' => now()]);
+        $data = $request->validate(['key' => ['required', 'in:' . implode(',', array_keys(CaregiverProfileExtras::AVATARS))]], ['key.in' => '고를 수 없는 캐릭터예요.']);
+        CaregiverProfileExtras::setAvatar((int) $cg->id, $data['key']);
 
         return response()->json(['success' => true, 'message' => '캐릭터로 바꿨어요.', 'data' => CaregiverProfileExtras::forOwnerOrAdmin($cg->id)]);
     }
