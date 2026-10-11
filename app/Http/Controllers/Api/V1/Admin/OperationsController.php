@@ -1482,7 +1482,7 @@ class OperationsController extends Controller
     {
         // 탈퇴 회원(소프트삭제)도 상세 조회 허용 — deleted_at 필터 없이 조회.
         $u = DB::table('users')
-            ->select('id', 'name', 'email', 'phone', 'role', 'status', 'created_at', 'deleted_at as withdrawn_at')
+            ->select('id', 'name', 'email', 'phone', 'role', 'status', 'created_at', 'deleted_at as withdrawn_at', 'birth_date')
             ->where('id', $id)->first();
 
         if (!$u) {
@@ -1498,6 +1498,7 @@ class OperationsController extends Controller
             'name' => $u->name,
             'email' => $u->email,
             'phone' => $u->phone,
+            'birth_date' => $u->birth_date, // 선택(2026-10-11) YYYY-MM-DD
             'role' => $u->role,
             'status' => $u->status,
             'created_at' => $u->created_at,

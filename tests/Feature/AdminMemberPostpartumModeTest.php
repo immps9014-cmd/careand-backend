@@ -49,7 +49,9 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => 'voucher'], $this->h($tok))
             ->assertOk()->assertJsonPath('data.postpartum_mode', 'voucher');
         $this->assertSame(['services' => ['postpartum', 'childcare'], 'postpartum_mode' => 'voucher'], $g->fresh()->preferences);
-        $this->getJson("/api/v1/admin/members/{$u->id}", $this->h($tok))->assertJsonPath('data.guardian.postpartum_mode', 'voucher');
+        $u->update(['birth_date' => '1991-02-03']);
+        $this->getJson("/api/v1/admin/members/{$u->id}", $this->h($tok))->assertJsonPath('data.guardian.postpartum_mode', 'voucher')
+            ->assertJsonPath('data.birth_date', '1991-02-03');
 
         // null = 지우기(미선택)
         $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => null], $this->h($tok))->assertOk();
