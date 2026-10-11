@@ -39,4 +39,27 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->assertSame(collect([$unsetBySvc, $unsetByIntent])->sort()->values()->all(), $ids('unset'));
         $this->assertNotContains($other, $ids('unset'));
     }
+
+    public function test_admin_updates_postpartum_mode_keeping_services(): void
+    {
+        [, $tok] = $this->createAdminUser();
+        [$u, $g] = $this->createGuardianUser();
+        $g->update(['intent' => 'postpartum', 'preferences' => ['services' => ['postpartum', 'childcare']]]);
+
+        $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => 'voucher'], $this->h($tok))
+            ->assertOk()->assertJsonPath('data.postpartum_mode', 'voucher');
+        $this->assertSame(['services' => ['postpartum', 'childcare'], 'postpartum_mode' => 'voucher'], $g->fresh()->preferences);
+        $this->getJson("/api/v1/admin/members/{$u->id}", $this->h($tok))->assertJsonPath('data.guardian.postpartum_mode', 'voucher');
+
+        // null = 지우기(미선택)
+        $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => null], $this->h($tok))->assertOk();
+        $this->assertSame(['services' => ['postpartum', 'childcare']], $g->fresh()->preferences);
+
+        $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => 'monthly'], $this->h($tok))->assertStatus(422);
+        [$cgUser] = $this->createCaregiverUser();
+        $this->patchJson("/api/v1/admin/members/{$cgUser->id}/postpartum-mode", ['mode' => 'voucher'], $this->h($tok))->assertStatus(404);
+        // 회원 관리 쓰기 권한 없는 분석가는 막힘
+        [, $anTok] = $this->createAdminUser('analyst');
+        $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => 'hourly'], $this->h($anTok))->assertStatus(403);
+    }
 }

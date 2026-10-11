@@ -1165,6 +1165,43 @@ class OperationsController extends Controller
     }
 
     /**
+     * PATCH /v1/admin/members/{id}/postpartum-mode {mode: voucher|hourly|null}
+     * 보호자의 산모신생아 이용 방식(guardians.preferences.postpartum_mode) 수정 — 가입 때 잘못 골랐거나 이전 가입자 상담 후 채울 때(2026-10-11).
+     * null 이면 지운다(미선택). preferences 의 다른 값(services 등)은 그대로 둔다.
+     */
+    public function updateMemberPostpartumMode(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'mode' => ['present', 'nullable', 'in:voucher,hourly'],
+        ]);
+
+        $g = DB::table('guardians')
+            ->join('users', 'users.id', '=', 'guardians.user_id')
+            ->whereNull('users.deleted_at')->where('users.id', $id)->where('users.role', 'guardian')
+            ->first(['guardians.id', 'guardians.preferences']);
+        if (!$g) {
+            return response()->json(['success' => false, 'error_code' => 'NOT_FOUND', 'message' => '보호자 회원을 찾을 수 없습니다.'], 404);
+        }
+
+        $prefs = json_decode((string) $g->preferences, true) ?: [];
+        if ($data['mode'] === null) {
+            unset($prefs['postpartum_mode']);
+        } else {
+            $prefs['postpartum_mode'] = $data['mode'];
+        }
+        DB::table('guardians')->where('id', $g->id)->update([
+            'preferences' => $prefs ? json_encode($prefs, JSON_UNESCAPED_UNICODE) : null,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => '산모신생아 이용 방식을 저장했습니다.',
+            'data' => ['id' => $id, 'postpartum_mode' => $data['mode']],
+        ]);
+    }
+
+    /**
      * PATCH /v1/admin/organizations/{id}
      * 기관 정보 수정(분야 등)
      */
@@ -1509,6 +1546,7 @@ class OperationsController extends Controller
                     'relation' => $g->relation,
                     'services' => json_decode((string) $g->preferences, true)['services'] ?? [],
                     'postpartum_mode' => json_decode((string) $g->preferences, true)['postpartum_mode'] ?? null,
+                    'intent' => $g->intent ?? 'care',
                     'contact_address' => $g->contact_address,
                     'seniors' => $seniors->values(),
                     'patients' => $patients->values(),
