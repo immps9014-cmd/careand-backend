@@ -80,6 +80,71 @@ class ExportController extends Controller
         ]);
     }
 
+    /**
+     * GET /v1/admin/exports/payments?(결제 내역 화면과 같은 필터) — 결제 내역 엑셀(.xlsx, 2026-10-11).
+     * 사람 이름은 마스킹, 금액은 숫자 칸(합계 가능). 사유·감사로그는 회원 다운로드와 같은 규칙.
+     */
+    public function payments(Request $request)
+    {
+        $reason = trim(rawurldecode((string) $request->header('X-Access-Reason', '')));
+        if (mb_strlen($reason) < 5) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'REASON_REQUIRED',
+                'message' => '개인정보 다운로드 사유를 5자 이상 입력해야 합니다.',
+            ], 422);
+        }
+        ['rows' => $rows, 'summary' => $s] = \App\Support\AdminPaymentList::build($request);
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'export.payments.xlsx',
+            'entity_type' => 'exports',
+            'details' => ['filters' => $request->only(['period', 'from', 'to', 'kind', 'status', 'q']), 'range' => [$s['from'], $s['to']], 'rows' => $rows->count(), 'masked' => true],
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 500),
+            'reason' => mb_substr($reason, 0, 300),
+        ]);
+
+        $kind = ['card' => '카드 결제', 'voucher_prepaid' => '바우처 선납', 'voucher_refund' => '바우처 환불'];
+        $status = ['paid' => '완료', 'pending' => '대기', 'failed' => '실패', 'cancelled' => '취소', 'refunded' => '환불'];
+        $method = ['card' => '카드', 'account' => '계좌', 'voucher_only' => '바우처만', 'cash' => '현금', 'local_currency' => '지역화폐'];
+        $domain = ['senior' => '시니어돌봄', 'nursing' => '병원간병', 'living_support' => '생활관리', 'postpartum' => '산모신생아', 'childcare' => '아이돌봄', 'mental_care' => '마음돌봄', 'housekeeping' => '가사'];
+
+        $sheet = [
+            ['개인정보 마스킹 파일 — 다운로드: ' . $request->user()->email . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['기간 ' . $s['from'] . ' ~ ' . $s['to'] . ' (한국 시각) · 매출 합계 ' . number_format($s['revenue']) . '원 = 카드 결제 완료 ' . number_format($s['card_paid']['amount']) . '원(' . $s['card_paid']['count'] . '건) + 바우처 순매출 ' . number_format($s['voucher']['net']) . '원'],
+            ['일시', '종류', '결제자', '대상자', '담당', '분야', '수단', '주문·계약번호', '금액(원)', '상태'],
+        ];
+        foreach ($rows as $r) {
+            $sheet[] = [
+                $r['at'] ? str_replace('T', ' ', substr($r['at'], 0, 16)) : '',
+                $kind[$r['kind']] ?? $r['kind'],
+                self::maskName($r['payer_name']),
+                self::maskName($r['recipient_name']),
+                self::maskName($r['caregiver_name']),
+                $r['service_domain'] ? ($domain[$r['service_domain']] ?? $r['service_domain']) : '',
+                $r['method'] ? ($method[$r['method']] ?? $r['method']) : '',
+                (string) ($r['ref'] ?? ''),
+                (int) $r['amount'],
+                $status[$r['status']] ?? $r['status'],
+            ];
+        }
+        $sheet[] = [];
+        $sheet[] = ['', '', '', '', '', '', '', '매출 합계', (int) $s['revenue'], '카드 완료+바우처 선납−환불'];
+
+        $bin = \App\Support\SimpleXlsx::build('결제 내역', $sheet, [
+            'header_row' => 3, 'money_cols' => [8], 'widths' => [17, 12, 10, 10, 10, 11, 9, 22, 13, 14],
+        ]);
+        $file = 'careand_payments_' . $s['from'] . '_' . $s['to'] . '.xlsx';
+
+        return response($bin, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $file . '"',
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
     /** 홍길동 → 홍○○, 남궁민수 → 남○○○ */
     public static function maskName(?string $v): string
     {
