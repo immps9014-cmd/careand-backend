@@ -1579,6 +1579,21 @@ class OperationsController extends Controller
             $query->where('users.status', $request->input('status'));
         }
 
+        // 산모신생아 이용 방식(가입 때 선택, guardians.preferences.postpartum_mode — 2026-10-11)
+        // voucher|hourly = 그 값, unset = 산모신생아를 골랐지만 방식이 없는 회원(이전 가입자 등)
+        $ppMode = $request->input('postpartum_mode');
+        if (in_array($ppMode, ['voucher', 'hourly'], true)) {
+            $query->where('users.role', 'guardian')
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(g.preferences, '$.postpartum_mode')) = ?", [$ppMode]);
+        } elseif ($ppMode === 'unset') {
+            $query->where('users.role', 'guardian')
+                ->where(function ($w) {
+                    $w->where('g.intent', 'postpartum')
+                        ->orWhereRaw("JSON_CONTAINS(JSON_EXTRACT(g.preferences, '$.services'), '\"postpartum\"')");
+                })
+                ->whereRaw("JSON_EXTRACT(g.preferences, '$.postpartum_mode') IS NULL");
+        }
+
         $sort = $request->input('sort', 'recent');
         if ($sort === 'name') {
             $query->orderBy('users.name');
