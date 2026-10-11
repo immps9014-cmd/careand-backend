@@ -145,6 +145,83 @@ class ExportController extends Controller
         ]);
     }
 
+    /**
+     * GET /v1/admin/exports/settlements?status=draft|confirmed|paid|failed|disputed — 정산 엑셀(.xlsx, 2026-10-11).
+     * 정산 화면과 같은 상태 필터. 돌봄전문가 이름은 마스킹, 계좌·이체번호·이의 내용은 넣지 않는다. 금액은 숫자 칸.
+     */
+    public function settlements(Request $request)
+    {
+        $reason = trim(rawurldecode((string) $request->header('X-Access-Reason', '')));
+        if (mb_strlen($reason) < 5) {
+            return response()->json([
+                'success' => false,
+                'error_code' => 'REASON_REQUIRED',
+                'message' => '개인정보 다운로드 사유를 5자 이상 입력해야 합니다.',
+            ], 422);
+        }
+        $st = (string) $request->query('status', '');
+        $rows = DB::table('settlements as s')
+            ->leftJoin('caregivers as c', 'c.id', '=', 's.caregiver_id')
+            ->leftJoin('users as u', 'u.id', '=', 'c.user_id')
+            ->when($st === 'disputed', fn ($q) => $q->where('s.dispute_status', 'open'))
+            ->when($st !== '' && $st !== 'disputed', fn ($q) => $q->where('s.status', $st))
+            ->orderByDesc('s.period_start')->orderBy('s.id')
+            ->get(['s.id', 'u.name', 's.period_start', 's.period_end', 's.gross_amount', 's.withholding_tax_3_3', 's.net_amount',
+                's.status', 's.hometax_filing_no', 's.confirmed_at', 's.paid_at', 's.caregiver_ack_at', 's.dispute_status']);
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'export.settlements.xlsx',
+            'entity_type' => 'exports',
+            'details' => ['status' => $st ?: 'all', 'rows' => $rows->count(), 'masked' => true],
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 500),
+            'reason' => mb_substr($reason, 0, 300),
+        ]);
+
+        $statusLabel = ['draft' => '작성중', 'confirmed' => '확정·지급대기', 'paid' => '지급완료', 'failed' => '실패'];
+        $disputeLabel = ['open' => '이의제기(답변 대기)', 'resolved' => '이의 처리됨'];
+        $filterLabel = ['' => '전체', 'draft' => '작성중', 'confirmed' => '확정', 'paid' => '지급완료', 'failed' => '실패', 'disputed' => '이의제기'];
+        $kst = fn ($v) => $v ? \Carbon\Carbon::parse($v, 'UTC')->setTimezone('Asia/Seoul')->format('Y-m-d H:i') : '';
+        $sum = fn ($k) => (int) $rows->sum(fn ($r) => (int) round((float) $r->{$k}));
+
+        $sheet = [
+            ['개인정보 마스킹 파일 — 다운로드: ' . $request->user()->email . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['상태 ' . ($filterLabel[$st] ?? $st) . ' · ' . $rows->count() . '건 · 돌봄전문가 ' . $rows->pluck('name')->unique()->count() . '명 · 실지급 합계 ' . number_format($sum('net_amount')) . '원 (시각은 한국 시각)'],
+            ['정산ID', '돌봄전문가', '정산 시작일', '정산 종료일', '총액(원)', '원천징수 3.3%(원)', '실지급액(원)', '상태', '이의제기', '홈택스 신고번호', '확정 시각', '입금 시각', '전문가 확인 시각'],
+        ];
+        foreach ($rows as $r) {
+            $sheet[] = [
+                (int) $r->id,
+                self::maskName($r->name),
+                (string) $r->period_start,
+                (string) $r->period_end,
+                (int) round((float) $r->gross_amount),
+                (int) round((float) $r->withholding_tax_3_3),
+                (int) round((float) $r->net_amount),
+                $statusLabel[$r->status] ?? $r->status,
+                $r->dispute_status ? ($disputeLabel[$r->dispute_status] ?? $r->dispute_status) : '',
+                (string) ($r->hometax_filing_no ?? ''),
+                $kst($r->confirmed_at),
+                $kst($r->paid_at),
+                $kst($r->caregiver_ack_at),
+            ];
+        }
+        $sheet[] = [];
+        $sheet[] = ['', '', '', '합계', $sum('gross_amount'), $sum('withholding_tax_3_3'), $sum('net_amount')];
+
+        $bin = \App\Support\SimpleXlsx::build('정산', $sheet, [
+            'header_row' => 3, 'money_cols' => [4, 5, 6], 'widths' => [8, 11, 12, 12, 13, 16, 14, 13, 17, 18, 17, 17, 17],
+        ]);
+        $file = 'careand_settlements_' . ($st ?: 'all') . '_' . now('Asia/Seoul')->format('Ymd') . '.xlsx';
+
+        return response($bin, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $file . '"',
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
     /** 홍길동 → 홍○○, 남궁민수 → 남○○○ */
     public static function maskName(?string $v): string
     {
