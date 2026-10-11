@@ -39,6 +39,7 @@ class CareSessionResource extends JsonResource
 
             'match' => $this->whenLoaded('match', fn () => [
                 'id' => $this->match->id,
+                'service_domain' => $this->match->request->service_domain ?? null,   // 돌봄일지 분야 배지(2026-10-11)
                 'hourly_rate' => (float) $this->match->hourly_rate,
                 'estimated_amount' => (float) $this->match->estimated_amount,
                 'caregiver' => [
