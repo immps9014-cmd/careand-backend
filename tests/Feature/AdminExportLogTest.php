@@ -45,6 +45,23 @@ class AdminExportLogTest extends TestCase
 
         $this->assertCount(1, $this->getJson('/api/v1/admin/exports/logs?period=today&result=blocked', $this->h($tok))->json('data'));
         $this->assertCount(1, $this->getJson('/api/v1/admin/exports/logs?period=today&kind=members', $this->h($tok))->json('data'));
+        // 기록 엑셀 — 같은 필터, 조건 「k=v」, 관리자 이름은 그대로(책임 추적), 이 다운로드도 기록에 「다운로드 기록」으로 남는다
+        $res = $this->get('/api/v1/admin/exports/list/export-logs?period=today', $this->h($tok, $ok))->assertOk();
+        $tmp = tempnam(sys_get_temp_dir(), 'x');
+        file_put_contents($tmp, $res->getContent());
+        $zip = new \ZipArchive();
+        $zip->open($tmp);
+        $xml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        @unlink($tmp);
+        $this->assertStringContainsString('관리자갑', $xml);
+        $this->assertStringContainsString('role=guardian', $xml);
+        $this->assertStringContainsString('사유 없음', $xml);
+        $this->assertStringContainsString('<row r="6">', $xml);   // 머리 3줄 + 기록 3줄
+        $this->assertStringNotContainsString('<row r="7">', $xml);
+        $again = collect($this->getJson('/api/v1/admin/exports/logs?period=today', $this->h($tok))->json('data'));
+        $this->assertSame('다운로드 기록', $again->firstWhere('kind', 'list:export-logs')['kind_label']);
+
         [, $br] = $this->createAdminUser('branch');
         $this->getJson('/api/v1/admin/exports/logs', $this->h($br))->assertStatus(403);
     }

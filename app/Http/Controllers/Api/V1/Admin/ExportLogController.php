@@ -19,7 +19,7 @@ class ExportLogController extends Controller
     private const KIND = [
         'members' => '회원 목록', 'payments' => '결제 내역', 'settlements' => '정산',
         'list:matching' => '매칭 요청', 'list:contracts' => '계약·일정', 'list:care-sessions' => '케어 진행 현황', 'list:monitoring' => '위험 알림',
-        'list:caregivers' => '돌봄전문가 자격검증', 'list:care-logs' => 'AI 일지 검수', 'list:mnh-contracts' => '바우처 계약',
+        'list:caregivers' => '돌봄전문가 자격검증', 'list:care-logs' => 'AI 일지 검수', 'list:mnh-contracts' => '바우처 계약', 'list:export-logs' => '다운로드 기록',
     ];
 
     /** GET /v1/admin/exports/logs?period=…&from&to&result=all|success|blocked&actor_id=&kind=&page= */

@@ -68,6 +68,13 @@ class ListExportController extends Controller
                 ['분야', 'service_domain', 'domain'], ['출근', 'actual_start', 'kst'], ['퇴근', 'actual_end', 'kst'], ['돌봄 시간(분)', 'duration_min', 'num'],
                 ['방문 상태', 'session_status', $sess], ['검수', 'review_status', $review], ['검수 시각', 'reviewed_at', 'kst'],
             ]],
+            // 관리자 본인 기록(책임 추적용)이라 관리자 이름·이메일은 가리지 않는다 — 회원 개인정보는 원래 담기지 않음
+            'export-logs' => ['다운로드 기록', ExportLogController::class, 'index', [
+                ['기록ID', 'id', 'num'], ['일시', 'at', 'kst'], ['관리자', 'actor_name'], ['관리자 이메일', 'actor_email'],
+                ['결과', 'result', ['success' => '다운로드', 'blocked' => '거부']],
+                ['응답', 'status', [200 => '정상', 401 => '로그인 필요', 403 => '권한 없음', 404 => '없는 목록', 422 => '사유 없음', 429 => '요청 과다', 500 => '서버 오류']],
+                ['종류', 'kind_label'], ['조건', 'filters', 'filters'], ['건수', 'rows', 'num'], ['사유', 'reason'], ['IP', 'ip'],
+            ]],
             'mnh-contracts' => ['산모신생아 바우처 계약', MnhAdminController::class, 'contracts', [
                 ['계약번호', 'contract_no'], ['산모', 'client_name', 'name'], ['상태', 'status_label'], ['지원유형', 'support_label'], ['일수', 'days', 'num'],
                 ['개시일', 'start_date'], ['종료일', 'end_date'], ['총액(원)', 'total_price', 'money'], ['정부지원(원)', 'gov_support', 'money'],
@@ -171,6 +178,9 @@ class ListExportController extends Controller
             'domain' => self::DOMAIN[$v] ?? (string) $v,
             'voucher' => self::VOUCHER[$v] ?? (string) $v,
             'yn' => $v ? '예' : '아니오',
+            'filters' => is_array($v) && $v && !array_is_list($v)
+                ? implode(' · ', array_map(fn ($k, $x) => $k . '=' . (is_array($x) ? implode(',', $x) : $x), array_keys($v), $v))
+                : '없음',
             default => is_array($v) ? implode(', ', array_map('strval', $v)) : (is_bool($v) ? ($v ? '예' : '아니오') : (string) $v),
         };
     }
