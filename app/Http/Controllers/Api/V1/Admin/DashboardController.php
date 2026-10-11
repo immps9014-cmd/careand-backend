@@ -42,6 +42,12 @@ class DashboardController extends Controller
                 'active_seniors' => Senior::count(),
                 'active_caregivers' => Caregiver::where('status', 'active')->count(),
                 'by_domain' => $this->domainBreakdown(),
+                // 산모신생아 바우처 계약(2026-10-11) — ongoing=확정+서비스 중, applied=신청(운영팀 확인 전), unpaid=본인부담금 선납 전(신청·확정)
+                'mnh_contracts' => [
+                    'ongoing' => DB::table('mnh_contracts')->whereIn('status', ['confirmed', 'active'])->count(),
+                    'applied' => DB::table('mnh_contracts')->where('status', 'applied')->count(),
+                    'unpaid' => DB::table('mnh_contracts')->whereIn('status', ['applied', 'confirmed'])->whereNull('prepaid_at')->count(),
+                ],
             ];
         });
 

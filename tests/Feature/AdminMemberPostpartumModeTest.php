@@ -134,4 +134,26 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->assertSame(['contract', 'eligible'], collect($this->getJson('/api/v1/admin/care-sessions?per_page=100', $h)->assertOk()->json('data'))
             ->pluck('voucher')->sort()->values()->all());
     }
+
+    /** 관리자 대시보드 KPI — 바우처 계약 건수(진행 중=확정+서비스 중, 신청 대기, 선납 대기) */
+    public function test_dashboard_kpi_counts_mnh_contracts(): void
+    {
+        [, $tok] = $this->createAdminUser();
+        [$gUser] = $this->createGuardianUser();
+        $clientId = \Illuminate\Support\Facades\DB::table('postpartum_clients')->insertGetId([
+            'user_id' => $gUser->id, 'name' => '산모', 'phone_encrypted' => 'x', 'birth_date' => '1995-01-01', 'address' => '서울',
+            'region_code' => '11', 'delivery_date' => now()->toDateString(), 'delivery_type' => 'natural', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // 신청(미선납) · 확정(미선납) · 확정(선납) · 서비스 중 · 완료 · 취소
+        foreach ([['applied', null], ['confirmed', null], ['confirmed', now()], ['active', now()], ['completed', now()], ['cancelled', null]] as $i => [$st, $paid]) {
+            \Illuminate\Support\Facades\DB::table('mnh_contracts')->insert([
+                'contract_no' => "T-{$i}", 'postpartum_client_id' => $clientId, 'user_id' => $gUser->id, 'year' => 2026, 'days' => 10,
+                'start_date' => now()->toDateString(), 'payment_method' => 'cash', 'status' => $st, 'prepaid_at' => $paid,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        \Illuminate\Support\Facades\Cache::forget('admin:kpi');
+        $this->getJson('/api/v1/admin/dashboard/kpi', $this->h($tok))->assertOk()
+            ->assertJsonPath('data.mnh_contracts', ['ongoing' => 3, 'applied' => 1, 'unpaid' => 2]);
+    }
 }
