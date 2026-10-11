@@ -31,6 +31,9 @@ class CareSessionResource extends JsonResource
         return [
             'id' => $this->id,
             'status' => $this->status,
+            // 예정 시각(세션에 없으면 매칭 일정) — 시작 전 돌봄일지 제목 등(2026-10-11). KST ISO
+            'scheduled_start' => \App\Support\Kst::iso($this->scheduled_start ?? $this->match?->scheduled_start),
+            'scheduled_end' => \App\Support\Kst::iso($this->scheduled_end ?? $this->match?->scheduled_end),
             'actual_start' => $this->actual_start?->toIso8601String(),
             'actual_end' => $this->actual_end?->toIso8601String(),
             'duration_min' => $this->duration_min,
