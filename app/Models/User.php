@@ -20,6 +20,7 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'fcm_token',
         'status',
+        'birth_date',
     ];
 
     protected $hidden = [
@@ -34,6 +35,7 @@ class User extends Authenticatable implements JWTSubject
         'password' => 'hashed',
         'totp_secret' => 'encrypted',
         'totp_enabled_at' => 'datetime',
+        'birth_date' => 'date:Y-m-d',
     ];
 
 

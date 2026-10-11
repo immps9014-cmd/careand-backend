@@ -392,6 +392,8 @@ class AuthController extends Controller
             'email' => ['sometimes', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'current_password' => ['required_with:password', 'current_password:api'],
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
+            // 생년월일(선택) — null 이면 지운다
+            'birth_date' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'after:1900-01-01', 'before:today'],
         ], [
             'current_password.required_with' => '현재 비밀번호를 입력해주세요.',
             'current_password.current_password' => '현재 비밀번호가 일치하지 않습니다.',
@@ -399,9 +401,11 @@ class AuthController extends Controller
             'email.unique' => '이미 사용 중인 이메일입니다.',
             'password.confirmed' => '새 비밀번호 확인이 일치하지 않습니다.',
             'password.min' => '비밀번호는 8자 이상이어야 합니다.',
+            'birth_date.before' => '생년월일은 오늘 이전 날짜여야 합니다.',
+            'birth_date.date_format' => '생년월일 형식이 올바르지 않습니다.',
         ]);
 
-        $payload = array_intersect_key($validated, array_flip(['name', 'phone', 'email']));
+        $payload = array_intersect_key($validated, array_flip(['name', 'phone', 'email', 'birth_date']));
         if (!empty($validated['password'])) {
             $payload['password'] = $validated['password']; // User 모델 casts(password => hashed)로 자동 해시
         }

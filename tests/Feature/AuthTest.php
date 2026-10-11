@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, \Tests\AuthHelpers;
 
     public function test_otp_send_returns_success(): void
     {
@@ -121,6 +121,18 @@ class AuthTest extends TestCase
             'email' => 'pp_bad', 'phone' => '01099997003', 'phone_verify_token' => $otp->issueVerifyToken('01099997003'), 'name' => '잘못된 값',
             'services' => ['postpartum'], 'intent' => 'postpartum', 'postpartum_mode' => 'monthly',
         ])->assertStatus(422);
+    }
+
+    /** 회원 생년월일(선택, 2026-10-11) — 내 정보에서 저장·지우기, 응답 user.birth_date */
+    public function test_update_me_birth_date(): void
+    {
+        [$u, , $tok] = $this->createGuardianUser();
+        $h = ['Authorization' => "Bearer {$tok}"];
+        $this->withHeaders($h)->patchJson('/api/v1/auth/me', ['birth_date' => '1993-04-05'])->assertOk()->assertJsonPath('user.birth_date', '1993-04-05');
+        $this->assertSame('1993-04-05', $u->fresh()->birth_date->format('Y-m-d'));
+        $this->withHeaders($h)->getJson('/api/v1/auth/me')->assertJsonPath('user.birth_date', '1993-04-05');
+        $this->withHeaders($h)->patchJson('/api/v1/auth/me', ['birth_date' => now()->addDay()->format('Y-m-d')])->assertStatus(422);
+        $this->withHeaders($h)->patchJson('/api/v1/auth/me', ['birth_date' => null])->assertOk()->assertJsonPath('user.birth_date', null);
     }
 
     public function test_login_with_correct_credentials(): void

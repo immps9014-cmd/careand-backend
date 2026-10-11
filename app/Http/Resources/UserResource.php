@@ -19,6 +19,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'name' => $this->name,
+            'birth_date' => $this->birth_date?->format('Y-m-d'), // 선택(2026-10-11)
             'role' => $this->role,
             'status' => $this->status,
             'phone_verified' => $this->phone_verified_at !== null,
