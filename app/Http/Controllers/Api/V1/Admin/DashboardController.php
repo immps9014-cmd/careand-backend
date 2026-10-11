@@ -52,17 +52,21 @@ class DashboardController extends Controller
     public function kpi(Request $request): JsonResponse
     {
         $kpi = Cache::remember('admin:kpi', 300, function () {
+            // 오늘·이번 주는 한국 시각 경계(2026-10-11 수정 — 이전엔 UTC 라 월요일 09시부터 셌다), 결제 내역 화면과 같은 KstPeriod
+            [$todayFrom, $todayTo] = \App\Support\KstPeriod::range('today');
+            [$weekFrom, $weekTo] = \App\Support\KstPeriod::range('this_week');
+
             return [
                 'matches_in_progress' => CareMatch::whereIn('status', ['confirmed', 'in_progress'])->count(),
                 'matches_today' => CareMatch::whereDate('created_at', today())->count(),
                 // 결제 매출 + 산모신생아 바우처 선납(환불 차감) — VoucherRevenue
                 'revenue_today' => (int) Payment::where('status', 'paid')
-                    ->whereDate('paid_at', today())
-                    ->sum('total_amount') + VoucherRevenue::net(today(), today()->addDay()),
+                    ->where('paid_at', '>=', $todayFrom)->where('paid_at', '<', $todayTo)
+                    ->sum('total_amount') + VoucherRevenue::net($todayFrom, $todayTo),
                 'revenue_this_week' => (int) Payment::where('status', 'paid')
-                    ->where('paid_at', '>=', now()->startOfWeek())
-                    ->sum('total_amount') + VoucherRevenue::net(now()->startOfWeek(), now()->addSecond()),
-                'voucher_revenue_this_week' => VoucherRevenue::net(now()->startOfWeek(), now()->addSecond()),
+                    ->where('paid_at', '>=', $weekFrom)->where('paid_at', '<', $weekTo)
+                    ->sum('total_amount') + VoucherRevenue::net($weekFrom, $weekTo),
+                'voucher_revenue_this_week' => VoucherRevenue::net($weekFrom, $weekTo),
                 'high_alerts_unresolved' => AnomalyAlert::high()->unresolved()->count(),
                 'pending_caregivers' => Caregiver::where('status', 'pending')->count(),
                 'active_users' => User::where('status', 'active')->count(),
@@ -79,12 +83,10 @@ class DashboardController extends Controller
         });
 
         // 전주 대비 증감
+        [$lwFrom, $lwTo] = \App\Support\KstPeriod::range('last_week');
         $lastWeekRevenue = Payment::where('status', 'paid')
-            ->whereBetween('paid_at', [
-                now()->subWeek()->startOfWeek(),
-                now()->subWeek()->endOfWeek(),
-            ])
-            ->sum('total_amount') + VoucherRevenue::net(now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek());
+            ->where('paid_at', '>=', $lwFrom)->where('paid_at', '<', $lwTo)
+            ->sum('total_amount') + VoucherRevenue::net($lwFrom, $lwTo);
 
         $kpi['revenue_change_pct'] = $lastWeekRevenue > 0
             ? round((($kpi['revenue_this_week'] - $lastWeekRevenue) / $lastWeekRevenue) * 100, 1)

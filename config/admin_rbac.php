@@ -36,6 +36,7 @@ return [
         'cs'            => ['label' => 'CS / 분쟁',            'read' => $ops,                                   'write' => $ops],
         'announcements' => ['label' => '공지·푸시',            'read' => $ops,                                   'write' => ['super', 'branch']],
         'contents'      => ['label' => '안내 콘텐츠·지역 공지',  'read' => $ops,                                   'write' => ['super', 'branch']],   // CAREN-REF-01 3단계
+        'payments'      => ['label' => '결제 내역',            'read' => ['super', 'branch', 'analyst'],          'write' => ['super']],   // 조회 전용(2026-10-11)
         'settlements'   => ['label' => '정산',                 'read' => ['super', 'branch'],                    'write' => ['super', 'branch']],
         'ai-models'     => ['label' => 'AI 모델',              'read' => ['super', 'analyst', 'developer'],      'write' => ['super', 'developer']],
         'ontology'      => ['label' => '온톨로지 분석',         'read' => ['super', 'analyst', 'developer'],      'write' => ['super', 'developer']],
