@@ -131,6 +131,7 @@ Route::prefix('v1')->group(function () {
         // 보호자
         Route::prefix('guardians')->group(function () {
             Route::get('me/sessions', [GuardianController::class, 'mySessions']);
+            Route::patch('me/postpartum-mode', [GuardianController::class, 'updatePostpartumMode']);   // 내 정보 — 산모신생아 이용 방식(10-11)
             Route::get('reviewable', [GuardianController::class, 'reviewableCares']);
             Route::post('reviews', [GuardianController::class, 'submitReview']);
         });

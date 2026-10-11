@@ -1178,21 +1178,12 @@ class OperationsController extends Controller
         $g = DB::table('guardians')
             ->join('users', 'users.id', '=', 'guardians.user_id')
             ->whereNull('users.deleted_at')->where('users.id', $id)->where('users.role', 'guardian')
-            ->first(['guardians.id', 'guardians.preferences']);
+            ->first(['guardians.id']);
         if (!$g) {
             return response()->json(['success' => false, 'error_code' => 'NOT_FOUND', 'message' => '보호자 회원을 찾을 수 없습니다.'], 404);
         }
 
-        $prefs = json_decode((string) $g->preferences, true) ?: [];
-        if ($data['mode'] === null) {
-            unset($prefs['postpartum_mode']);
-        } else {
-            $prefs['postpartum_mode'] = $data['mode'];
-        }
-        DB::table('guardians')->where('id', $g->id)->update([
-            'preferences' => $prefs ? json_encode($prefs, JSON_UNESCAPED_UNICODE) : null,
-            'updated_at' => now(),
-        ]);
+        \App\Support\GuardianPostpartumMode::set((int) $g->id, $data['mode']);
 
         return response()->json([
             'success' => true,

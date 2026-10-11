@@ -16,6 +16,27 @@ use Illuminate\Support\Facades\DB;
 class GuardianController extends Controller
 {
     /**
+     * PATCH /v1/guardians/me/postpartum-mode {mode: voucher|hourly|null}
+     * 내 정보에서 산모신생아 이용 방식 바꾸기(가입 때 고른 값, App\Support\GuardianPostpartumMode). 응답 user 로 앱이 회원정보를 갱신한다.
+     */
+    public function updatePostpartumMode(Request $request): JsonResponse
+    {
+        $data = $request->validate(['mode' => ['present', 'nullable', 'in:voucher,hourly']]);
+        $user = $request->user();
+        if (! $user->guardian) {
+            return response()->json(['success' => false, 'message' => '보호자 회원만 바꿀 수 있습니다.'], 403);
+        }
+        \App\Support\GuardianPostpartumMode::set((int) $user->guardian->id, $data['mode']);
+        $user->load(['guardian', 'caregiver', 'organization', 'admin']);
+
+        return response()->json([
+            'success' => true,
+            'message' => '이용 방식을 저장했어요.',
+            'user' => new \App\Http\Resources\UserResource($user),
+        ]);
+    }
+
+    /**
      * GET /v1/guardians/me/sessions
      * 보호자 본인 매칭의 케어 세션 목록 — AI 일지 수신/열람 진입점.
      * 인력 CaregiverController::mySessions 미러 + review_status / has_summary 추가.

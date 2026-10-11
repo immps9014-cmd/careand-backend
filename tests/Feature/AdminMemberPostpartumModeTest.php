@@ -62,4 +62,22 @@ class AdminMemberPostpartumModeTest extends TestCase
         [, $anTok] = $this->createAdminUser('analyst');
         $this->patchJson("/api/v1/admin/members/{$u->id}/postpartum-mode", ['mode' => 'hourly'], $this->h($anTok))->assertStatus(403);
     }
+
+    /** 앱 내 정보 — 본인이 바꾸기(PATCH guardians/me/postpartum-mode) */
+    public function test_guardian_updates_own_postpartum_mode(): void
+    {
+        [$u, $g, $tok] = $this->createGuardianUser();
+        $g->update(['intent' => 'postpartum', 'preferences' => ['services' => ['postpartum']]]);
+
+        $this->patchJson('/api/v1/guardians/me/postpartum-mode', ['mode' => 'hourly'], $this->h($tok))
+            ->assertOk()->assertJsonPath('user.guardian.preferences.postpartum_mode', 'hourly');
+        $this->assertSame(['services' => ['postpartum'], 'postpartum_mode' => 'hourly'], $g->fresh()->preferences);
+
+        $this->patchJson('/api/v1/guardians/me/postpartum-mode', ['mode' => null], $this->h($tok))->assertOk();
+        $this->assertSame(['services' => ['postpartum']], $g->fresh()->preferences);
+        $this->patchJson('/api/v1/guardians/me/postpartum-mode', ['mode' => 'x'], $this->h($tok))->assertStatus(422);
+
+        [, , $cgTok] = $this->createCaregiverUser();
+        $this->patchJson('/api/v1/guardians/me/postpartum-mode', ['mode' => 'voucher'], $this->h($cgTok))->assertStatus(403);
+    }
 }
