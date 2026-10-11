@@ -262,6 +262,7 @@ class CsController extends Controller
             'summary' => ['open' => (int) $sum->o, 'in_progress' => (int) $sum->p, 'total' => (int) $sum->t],
             'issues' => $rows->map(fn ($r) => CareIssueController::present($r, true) + [
                 'caregiver_name' => $r->caregiver_name, 'reporter_name' => $r->reporter_name, 'reporter_phone' => $r->reporter_phone,
+                'service_domain' => $r->service_domain, // 관리자 화면이 자체 라벨(병원 간병)로 표시 — 10-12
                 'service_label' => \App\Support\ServiceDomains::label((string) $r->service_domain),
                 'handled_by_name' => $r->handled_by ? ($staff[$r->handled_by] ?? null) : null,
                 'caregiver_issue_count' => (int) ($per[$r->caregiver_id] ?? 0),
