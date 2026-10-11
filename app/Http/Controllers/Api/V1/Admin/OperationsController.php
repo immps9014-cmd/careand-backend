@@ -1633,6 +1633,12 @@ class OperationsController extends Controller
             $intentRoles = ['housekeeping', 'postpartum', 'childcare', 'mental_care'];
             if (in_array($role, $intentRoles, true)) {
                 $query->where('users.role', 'guardian')->where('g.intent', $role);
+            } elseif ($role === 'guardian_all') {
+                // 대시보드 「보호자」(가사·산모·아이·마음 요청자 포함) 에서 넘어온 목록 — 2026-10-11
+                $query->where('users.role', 'guardian');
+            } elseif ($role === 'service') {
+                // 대시보드 「전체」(돌봄 이용자+제공자, 운영자·기관 제외) 에서 넘어온 목록
+                $query->whereIn('users.role', ['guardian', 'caregiver']);
             } elseif ($role === 'guardian') {
                 $query->where('users.role', 'guardian')
                     ->where(function ($w) use ($intentRoles) {

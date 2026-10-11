@@ -237,5 +237,13 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->assertSame(2, $g['total']);
         $this->assertSame(0, collect($g['bands'])->pluck('count', 'key')['50s']);
         $this->assertSame(1, collect($get('caregiver')['bands'])->pluck('count', 'key')['50s']);
+
+        // 막대를 누르면 가는 회원 목록과 인원이 같아야 한다(role=service|guardian_all|caregiver + age_band)
+        $n = fn (string $q) => $this->getJson("/api/v1/admin/members?{$q}&per_page=100", $this->h($tok))->assertOk()->json('meta.total');
+        $this->assertSame(1, $n('role=service&age_band=30s'));
+        $this->assertSame(1, $n('role=service&age_band=unknown'));   // 운영자(생년월일 있음)·미입력 보호자 중 보호자만
+        $this->assertSame(1, $n('role=guardian_all&age_band=30s'));
+        $this->assertSame(0, $n('role=guardian_all&age_band=50s'));
+        $this->assertSame(1, $n('role=caregiver&age_band=50s'));
     }
 }
