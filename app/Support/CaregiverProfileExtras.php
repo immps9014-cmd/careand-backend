@@ -79,13 +79,14 @@ class CaregiverProfileExtras
     /** 본인·관리자용 묶음. $admin 이면 비상연락처 원문 */
     public static function forOwnerOrAdmin(int $caregiverId): array
     {
-        $r = DB::table('caregivers')->where('id', $caregiverId)->first(['emergency_contact', 'work_preferences', 'photo_path', 'photo_updated_at']);
+        $r = DB::table('caregivers')->where('id', $caregiverId)->first(['emergency_contact', 'work_preferences', 'photo_path', 'photo_updated_at', 'avatar_key']);
         $pref = $r && $r->work_preferences ? json_decode($r->work_preferences, true) : null;
 
         return [
             'emergency_contact' => $r ? self::emergency($r->emergency_contact) : null,
             'work_preferences' => $pref,
             'photo_url' => $r ? self::photoUrl($caregiverId, $r->photo_path, $r->photo_updated_at) : null,
+            'avatar_key' => $r?->avatar_key,   // 사진 대신 캐릭터면 c1~c8
             'missing' => array_values(array_filter([
                 !$r || !$r->emergency_contact ? 'emergency_contact' : null,
                 !$r || !$r->photo_path ? 'photo' : null,
@@ -101,6 +102,6 @@ class CaregiverProfileExtras
             Storage::disk('local')->delete($path);
         }
         DB::table('caregivers')->where('id', $caregiverId)->update(['emergency_contact' => null, 'work_preferences' => null,
-            'photo_path' => null, 'photo_updated_at' => null]);
+            'photo_path' => null, 'photo_updated_at' => null, 'avatar_key' => null]);
     }
 }

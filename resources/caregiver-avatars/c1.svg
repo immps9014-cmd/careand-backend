@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<title>단발 · 코랄</title>
+<rect width="512" height="512" fill="#FDEBE4"/>
+<circle cx="256" cy="256" r="230" fill="#FFFFFF" opacity="0.55"/>
+<path d="M150 250 Q150 120 256 112 Q362 120 362 250 L362 330 Q330 350 300 330 L212 330 Q182 350 150 330 Z" fill="#3B2A22"/>
+<path d="M96 512 Q100 380 200 352 L312 352 Q412 380 416 512 Z" fill="#D5603E"/>
+<path d="M214 352 L256 404 L298 352 Z" fill="#FFFFFF"/>
+<rect x="228" y="300" width="56" height="60" rx="20" fill="#E9B896"/>
+<ellipse cx="256" cy="244" rx="92" ry="104" fill="#F6D3B8"/>
+<ellipse cx="166" cy="252" rx="16" ry="22" fill="#F6D3B8"/><ellipse cx="346" cy="252" rx="16" ry="22" fill="#F6D3B8"/>
+<path d="M168 220 Q176 140 256 136 Q336 140 344 220 Q300 176 256 184 Q220 190 190 214 Z" fill="#3B2A22"/>
+<path d="M206 222 Q222 212 238 222" stroke="#3A352B" stroke-width="6" stroke-linecap="round" fill="none"/>
+<path d="M274 222 Q290 212 306 222" stroke="#3A352B" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="222" cy="248" rx="9" ry="11" fill="#3A352B"/><ellipse cx="290" cy="248" rx="9" ry="11" fill="#3A352B"/>
+<circle cx="225" cy="244" r="3" fill="#FFFFFF"/><circle cx="293" cy="244" r="3" fill="#FFFFFF"/>
+
+<ellipse cx="200" cy="284" rx="18" ry="11" fill="#F29C8A" opacity="0.55"/><ellipse cx="312" cy="284" rx="18" ry="11" fill="#F29C8A" opacity="0.55"/>
+<path d="M232 292 Q256 314 280 292" stroke="#B5523A" stroke-width="7" stroke-linecap="round" fill="none"/>
+<g transform="translate(300 418)"><rect x="-26" y="-20" width="52" height="40" rx="8" fill="#FFFFFF"/><path d="M0 12 C-18 0 -14 -14 -5 -12 C-1 -11 0 -7 0 -6 C0 -7 1 -11 5 -12 C14 -14 18 0 0 12 Z" fill="#D5603E"/></g>
+</svg>

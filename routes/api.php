@@ -124,6 +124,7 @@ Route::prefix('v1')->group(function () {
             Route::put('me/work-preferences', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'updatePreferences']);
             Route::post('me/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'uploadPhoto'])->middleware('throttle:20,1');
             Route::delete('me/photo', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'deletePhoto']);
+            Route::post('me/avatar', [\App\Http\Controllers\Api\V1\CaregiverProfileExtraController::class, 'chooseAvatar'])->middleware('throttle:20,1');   // 사진 대신 캐릭터(10-11)
             Route::get('{id}', [CaregiverController::class, 'show'])->whereNumber('id');
             Route::get('{id}/reviews', [CaregiverController::class, 'reviews'])->whereNumber('id');
         });

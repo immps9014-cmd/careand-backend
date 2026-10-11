@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<title>묶은 머리 · 하늘</title>
+<rect width="512" height="512" fill="#E7F0FB"/>
+<circle cx="256" cy="256" r="230" fill="#FFFFFF" opacity="0.55"/>
+
+<path d="M96 512 Q100 380 200 352 L312 352 Q412 380 416 512 Z" fill="#2F64B5"/>
+<path d="M214 352 L256 404 L298 352 Z" fill="#FFFFFF"/>
+<rect x="228" y="300" width="56" height="60" rx="20" fill="#F0C7A9"/>
+<ellipse cx="256" cy="244" rx="92" ry="104" fill="#FBE0CC"/>
+<ellipse cx="166" cy="252" rx="16" ry="22" fill="#FBE0CC"/><ellipse cx="346" cy="252" rx="16" ry="22" fill="#FBE0CC"/>
+<circle cx="256" cy="112" r="40" fill="#5A3A28"/><path d="M168 226 Q172 144 256 138 Q340 144 344 226 Q318 178 256 176 Q194 178 168 226 Z" fill="#5A3A28"/>
+<path d="M206 222 Q222 212 238 222" stroke="#3A352B" stroke-width="6" stroke-linecap="round" fill="none"/>
+<path d="M274 222 Q290 212 306 222" stroke="#3A352B" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="222" cy="248" rx="9" ry="11" fill="#3A352B"/><ellipse cx="290" cy="248" rx="9" ry="11" fill="#3A352B"/>
+<circle cx="225" cy="244" r="3" fill="#FFFFFF"/><circle cx="293" cy="244" r="3" fill="#FFFFFF"/>
+
+<ellipse cx="200" cy="284" rx="18" ry="11" fill="#F29C8A" opacity="0.55"/><ellipse cx="312" cy="284" rx="18" ry="11" fill="#F29C8A" opacity="0.55"/>
+<path d="M232 292 Q256 314 280 292" stroke="#B5523A" stroke-width="7" stroke-linecap="round" fill="none"/>
+<g transform="translate(300 418)"><rect x="-26" y="-20" width="52" height="40" rx="8" fill="#FFFFFF"/><path d="M0 12 C-18 0 -14 -14 -5 -12 C-1 -11 0 -7 0 -6 C0 -7 1 -11 5 -12 C14 -14 18 0 0 12 Z" fill="#2F64B5"/></g>
+</svg>
