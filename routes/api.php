@@ -304,6 +304,7 @@ Route::prefix('v1')->group(function () {
             Route::get('exports/members', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'members']);
             Route::get('exports/payments', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'payments']);   // 결제 내역 엑셀(10-11)
             Route::get('exports/settlements', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'settlements']);   // 정산 엑셀(10-11)
+            Route::get('exports/list/{list}', [\App\Http\Controllers\Api\V1\Admin\ListExportController::class, 'export'])->where('list', '[a-z-]+');   // 목록 엑셀 공용(10-11)
             // 테스트 계정 아이디·비밀번호 목록(슈퍼관리자만 — 'test-accounts' 영역, 조회마다 감사로그)
             Route::get('test-accounts', [\App\Http\Controllers\Api\V1\Admin\TestAccountController::class, 'index']);
 
