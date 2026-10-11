@@ -36,6 +36,12 @@ class CareSessionFlowTest extends TestCase
         [$admin] = $this->createAdminUser();
         $x = $this->scene();
         $home = [37.5663, 126.9019];   // SeniorFactory 좌표
+        // 결제 전엔 반경 안이어도 출근 불가(2026-10-04 CHECKIN_REQUIRES_PAYMENT)
+        $this->postJson("/api/v1/care-sessions/{$x['s']->id}/checkin", ['lat' => $home[0], 'lng' => $home[1]], $this->h($x['cTok']))
+            ->assertStatus(422)->assertJson(['error_code' => 'PAYMENT_REQUIRED']);
+        $this->markPaid($x['m']);
+        // 출근은 방문 60분 전부터(checkin_early_minutes) — 기본 장면은 이틀 뒤라 30분 뒤로 당긴다
+        DB::table('care_sessions')->where('id', $x['s']->id)->update(['scheduled_start' => now()->addMinutes(30), 'scheduled_end' => now()->addMinutes(150)]);
         $this->postJson("/api/v1/care-sessions/{$x['s']->id}/checkin", ['lat' => $home[0] + 0.05, 'lng' => $home[1]], $this->h($x['cTok']))
             ->assertStatus(422)->assertJson(['error_code' => 'GPS_TOO_FAR']);
         $this->postJson("/api/v1/care-sessions/{$x['s']->id}/checkin", ['lat' => $home[0] + 0.01, 'lng' => $home[1]], $this->h($x['cTok']))

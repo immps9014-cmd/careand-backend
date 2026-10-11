@@ -74,7 +74,7 @@ class MatchingFlowTest extends TestCase
         $this->assertSame(1, $this->notifications('MATCH_OFFER_TIMEOUT')->where('user_id', $gUser->id)->count());
     }
 
-    /** UT-18·11 6시간 미매칭 관리자 알림 1회, 24시간 전 리마인더 양쪽 1회 */
+    /** UT-18·11 6시간 미매칭 관리자 알림 1회, 24시간 전 리마인더 양쪽 1회(결제 완료 건) — 미결제 건은 보호자에게 결제 안내 */
     public function test_unmatched_alert_and_reminder(): void
     {
         [$admin] = $this->createAdminUser();
@@ -83,14 +83,19 @@ class MatchingFlowTest extends TestCase
         $stale = $this->makeRequest($guardian);
         DB::table('match_requests')->where('id', $stale->id)->update(['created_at' => now()->subHours(7)]);
         $soon = $this->makeRequest($guardian, null, ['scheduled_start' => now()->addHours(5)]);
-        $this->makeMatch($soon, $cg);
+        [$paidMatch] = $this->makeMatch($soon, $cg);
+        $this->markPaid($paidMatch);
+        $unpaid = $this->makeRequest($guardian, null, ['scheduled_start' => now()->addHours(8)]);
+        $this->makeMatch($unpaid, $cg);
 
         $this->artisan('matching:watch');
         $this->artisan('matching:watch');
         $this->assertSame(1, $this->notifications('MATCH_UNMATCHED_ALERT')->where('user_id', $admin->id)->count());
         $rem = $this->notifications('CARE_REMINDER');
-        $this->assertSame(2, $rem->count());
-        $this->assertEqualsCanonicalizing([$gUser->id, $cgUser->id], $rem->pluck('user_id')->all());
+        $this->assertSame(3, $rem->count());   // 결제 건: 보호자+돌봄전문가, 미결제 건: 돌봄전문가만
+        $this->assertEqualsCanonicalizing([$gUser->id, $cgUser->id, $cgUser->id], $rem->pluck('user_id')->all());
+        $due = $this->notifications('PAYMENT_DUE');
+        $this->assertSame([$gUser->id], $due->pluck('user_id')->all());
     }
 
     /** UT-18 운영자 수동 매칭 — 충돌 시 409, force 로 강행 */

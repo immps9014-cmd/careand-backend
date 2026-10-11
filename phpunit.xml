@@ -22,6 +22,11 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
         <env name="DB_DATABASE" value="careand_platform_test"/>
+        <!-- 외부 연동은 테스트에서 항상 스텁 — 운영 .env 의 PG_LIVE=true(토스 샌드박스)가 새어 들어와 실제 승인을 부르던 문제(2026-10-11) -->
+        <env name="EXTERNAL_STUB" value="true"/>
+        <env name="PG_LIVE" value="false"/>
+        <env name="ALIMTALK_LIVE" value="false"/>
+        <env name="FCM_V1_ENABLED" value="false"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

@@ -93,6 +93,16 @@ trait Scenario
         return [$m, $s];
     }
 
+    /** 매칭 결제 완료(payments.paid) — 2026-10-04부터 미결제면 출근이 막히고 보호자 리마인더가 결제 안내로 바뀐다(MatchPaid) */
+    protected function markPaid(CareMatch $m): void
+    {
+        DB::table('payments')->insert([
+            'guardian_id' => DB::table('match_requests')->where('id', $m->request_id)->value('guardian_id'), 'match_id' => $m->id,
+            'total_amount' => 36000, 'amount_self_pay' => 36000, 'amount_ltc_pay' => 0, 'method' => 'card', 'pg_provider' => 'toss',
+            'status' => 'paid', 'paid_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     protected function makeSummary(CareSession $s, string $guardianText = '오늘 산책을 함께 했어요. 기분이 좋으셨어요.'): int
     {
         return DB::table('ai_log_summaries')->insertGetId([
