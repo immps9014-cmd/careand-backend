@@ -196,7 +196,10 @@ class OperationsController extends Controller
             );
 
         if ($request->filled('status')) {
-            $query->where('m.status', $request->input('status'));
+            // ongoing = 확정+진행중(대시보드 「진행중 매칭」 KPI 와 같은 묶음, 2026-10-11)
+            $request->input('status') === 'ongoing'
+                ? $query->whereIn('m.status', ['confirmed', 'in_progress'])
+                : $query->where('m.status', $request->input('status'));
         }
         if ($request->filled('domain')) {
             $query->where('r.service_domain', $request->input('domain'));
@@ -231,6 +234,7 @@ class OperationsController extends Controller
             'all' => (int) array_sum($byStatus->all()),
             'confirmed' => (int) ($byStatus['confirmed'] ?? 0),
             'in_progress' => (int) ($byStatus['in_progress'] ?? 0),
+            'ongoing' => (int) (($byStatus['confirmed'] ?? 0) + ($byStatus['in_progress'] ?? 0)),
             'completed' => (int) ($byStatus['completed'] ?? 0),
             'cancelled' => (int) ($byStatus['cancelled'] ?? 0),
             'no_show' => (int) ($byStatus['no_show'] ?? 0),
@@ -1435,7 +1439,10 @@ class OperationsController extends Controller
             ->select('severity', DB::raw('COUNT(*) as c'))->groupBy('severity')->pluck('c', 'severity');
 
         $listBase = $applyStatus(DB::table('anomaly_alerts as a')->leftJoin('seniors as s', 's.id', '=', 'a.senior_id'));
-        if ($severity && $severity !== 'all') {
+        if ($severity === 'high_up') {
+            // 높음 이상(높음+긴급) — 대시보드 「미해결 위험 알림」 KPI(AnomalyAlert::high) 와 같은 묶음(2026-10-11)
+            $listBase->whereIn('a.severity', ['high', 'critical']);
+        } elseif ($severity && $severity !== 'all') {
             $listBase->where('a.severity', $severity);
         }
 

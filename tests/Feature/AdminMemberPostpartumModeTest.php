@@ -253,4 +253,38 @@ class AdminMemberPostpartumModeTest extends TestCase
         $this->assertSame(0, $n('role=guardian_all&age_band=50s'));
         $this->assertSame(1, $n('role=caregiver&age_band=50s'));
     }
+
+    /** 대시보드 KPI 카드 → 목록: 진행중 매칭=계약 목록 status=ongoing, 미해결 위험 알림=모니터링 high_up+unresolved, 검수 대기=pending */
+    public function test_dashboard_kpis_match_linked_lists(): void
+    {
+        [, $tok] = $this->createAdminUser();
+        $h = $this->h($tok);
+        [, $g] = $this->createGuardianUser();
+        [, $cg] = $this->createCaregiverUser();
+        $this->createCaregiverUser('pending');
+        $this->createCaregiverUser('pending');
+        $this->makeMatch($this->makeRequest($g), $cg);                     // confirmed
+        $this->makeMatch($this->makeRequest($g), $cg, 'in_progress');      // in_progress
+        $this->makeMatch($this->makeRequest($g), $cg, 'completed');        // 제외
+        $senior = $this->createSeniorFor($g);
+        foreach ([['critical', 'new'], ['high', 'acknowledged'], ['high', 'resolved'], ['mid', 'new']] as [$sev, $st]) {
+            \Illuminate\Support\Facades\DB::table('anomaly_alerts')->insert([
+                'senior_id' => $senior->id, 'risk_type' => 'fall', 'risk_score' => 80, 'severity' => $sev, 'status' => $st,
+                'trigger_pattern' => '{}', 'detected_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        \Illuminate\Support\Facades\Cache::forget('admin:kpi');
+        $kpi = $this->getJson('/api/v1/admin/dashboard/kpi', $h)->assertOk()->json('data');
+
+        $this->assertSame(2, $kpi['matches_in_progress']);
+        $c = $this->getJson('/api/v1/admin/contracts?status=ongoing&per_page=100', $h)->assertOk();
+        $this->assertCount($kpi['matches_in_progress'], $c->json('data'));
+        $this->assertSame(2, $c->json('counts.ongoing'));
+
+        $this->assertSame(2, $kpi['high_alerts_unresolved']);
+        $this->assertSame($kpi['high_alerts_unresolved'],
+            $this->getJson('/api/v1/admin/monitoring/alerts?status=unresolved&severity=high_up', $h)->assertOk()->json('meta.total'));
+
+        $this->assertSame(2, $kpi['pending_caregivers']);
+    }
 }
