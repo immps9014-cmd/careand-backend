@@ -119,6 +119,7 @@ class AuthController extends Controller
                 // 소셜 가입은 쓸 일 없는 무작위 비밀번호(비밀번호 로그인 불가 — 필요하면 비밀번호 재설정으로 만든다)
                 'password' => $data['password'] ?? Str::random(40),
                 'phone_verified_at' => now(),
+                'birth_date' => $data['birth_date'] ?? null,   // 선택(2026-10-11)
             ]);
             if ($social) {
                 DB::table('social_accounts')->insert([

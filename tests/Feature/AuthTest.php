@@ -117,6 +117,16 @@ class AuthTest extends TestCase
         ])->assertStatus(201);
         $this->assertSame(['services' => ['childcare']], User::where('email', 'pp_none')->first()->guardian->preferences);
 
+        // 생년월일(선택)도 가입 때 저장
+        $this->postJson('/api/v1/auth/signup', $base + [
+            'email' => 'pp_birth', 'phone' => '01099997004', 'phone_verify_token' => $otp->issueVerifyToken('01099997004'), 'name' => '생일 산모',
+            'services' => ['postpartum'], 'intent' => 'postpartum', 'birth_date' => '1994-07-08',
+        ])->assertStatus(201)->assertJsonPath('user.birth_date', '1994-07-08');
+        $this->postJson('/api/v1/auth/signup', $base + [
+            'email' => 'pp_birth2', 'phone' => '01099997005', 'phone_verify_token' => $otp->issueVerifyToken('01099997005'), 'name' => '미래',
+            'services' => ['senior'], 'relation' => '자녀', 'birth_date' => now()->addDay()->format('Y-m-d'),
+        ])->assertStatus(422);
+
         $this->postJson('/api/v1/auth/signup', $base + [
             'email' => 'pp_bad', 'phone' => '01099997003', 'phone_verify_token' => $otp->issueVerifyToken('01099997003'), 'name' => '잘못된 값',
             'services' => ['postpartum'], 'intent' => 'postpartum', 'postpartum_mode' => 'monthly',

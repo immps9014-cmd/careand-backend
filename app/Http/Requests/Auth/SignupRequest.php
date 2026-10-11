@@ -40,6 +40,8 @@ class SignupRequest extends FormRequest
             'services.*' => ['string', 'distinct', 'in:senior,living_support,postpartum,childcare,mental_care'],
             // 산모신생아 이용 방식(2026-10-11, 앱 가입 카드): voucher=정부 바우처 · hourly=시간 단위. services 에 postpartum 이 있을 때만 guardians.preferences.postpartum_mode 에 보관
             'postpartum_mode' => ['nullable', 'in:voucher,hourly'],
+            // 생년월일(선택) — users.birth_date. 본인 산모 등록 때 자동으로 채운다
+            'birth_date' => ['nullable', 'date_format:Y-m-d', 'after:1900-01-01', 'before:today'],
             'agree_terms' => ['required', 'accepted'],
             'agree_privacy' => ['required', 'accepted'],
         ];
