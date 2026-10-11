@@ -68,9 +68,9 @@ class ListExportController extends Controller
                 ['분야', 'service_domain', 'domain'], ['출근', 'actual_start', 'kst'], ['퇴근', 'actual_end', 'kst'], ['돌봄 시간(분)', 'duration_min', 'num'],
                 ['방문 상태', 'session_status', $sess], ['검수', 'review_status', $review], ['검수 시각', 'reviewed_at', 'kst'],
             ]],
-            // 관리자 본인 기록(책임 추적용)이라 관리자 이름·이메일은 가리지 않는다 — 회원 개인정보는 원래 담기지 않음
+            // 관리자 이름·이메일도 가린다(10-11 사용자 결정) — 누가 받았는지는 화면(원문)에서 확인, 파일엔 관리자ID로 대조
             'export-logs' => ['다운로드 기록', ExportLogController::class, 'index', [
-                ['기록ID', 'id', 'num'], ['일시', 'at', 'kst'], ['관리자', 'actor_name'], ['관리자 이메일', 'actor_email'],
+                ['기록ID', 'id', 'num'], ['일시', 'at', 'kst'], ['관리자ID', 'actor_id', 'num'], ['관리자', 'actor_name', 'name'], ['관리자 이메일', 'actor_email', 'email'],
                 ['결과', 'result', ['success' => '다운로드', 'blocked' => '거부']],
                 ['응답', 'status', [200 => '정상', 401 => '로그인 필요', 403 => '권한 없음', 404 => '없는 목록', 422 => '사유 없음', 429 => '요청 과다', 500 => '서버 오류']],
                 ['종류', 'kind_label'], ['조건', 'filters', 'filters'], ['건수', 'rows', 'num'], ['사유', 'reason'], ['IP', 'ip'],
@@ -112,7 +112,7 @@ class ListExportController extends Controller
 
         $filterText = $filters ? collect($filters)->map(fn ($v, $k) => $k . '=' . (is_array($v) ? implode(',', $v) : $v))->implode(' · ') : '없음';
         $sheet = [
-            ['개인정보 마스킹 파일 — 다운로드: ' . $request->user()->email . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['개인정보 마스킹 파일 — 다운로드: 관리자ID ' . $request->user()->id . '(' . ExportController::maskEmail($request->user()->email) . ')' . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
             [$title . ' · ' . count($rows) . '건 · 조건: ' . $filterText . ' · 시각은 한국 시각'],
             array_map(fn ($c) => $c[0], $cols),
         ];

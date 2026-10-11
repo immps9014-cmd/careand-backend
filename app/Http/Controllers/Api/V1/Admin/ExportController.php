@@ -54,7 +54,7 @@ class ExportController extends Controller
         $cgLabel = ['pending' => '검수 대기', 'active' => '승인', 'rejected' => '반려', 'suspended' => '정지'];
         $statusLabel = ['active' => '활성', 'suspended' => '정지', 'withdrawn' => '탈퇴'];
         $sheet = [
-            ['개인정보 마스킹 파일 — 다운로드: ' . $request->user()->email . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['개인정보 마스킹 파일 — 다운로드: 관리자ID ' . $request->user()->id . '(' . ExportController::maskEmail($request->user()->email) . ')' . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
             ['대상 ' . ($roleLabel[$role] ?? '전체(보호자·돌봄전문가·기관)') . ' · ' . $rows->count() . '명 · 이름·이메일·휴대폰은 가림 · 가입일은 한국 시각'],
             ['회원ID', '구분', '이름', '이메일', '휴대폰', '상태', '가입일', '인력 검증상태', '서비스 도메인·요청 성격'],
         ];
@@ -113,7 +113,7 @@ class ExportController extends Controller
         $domain = ['senior' => '시니어돌봄', 'nursing' => '병원간병', 'living_support' => '생활관리', 'postpartum' => '산모신생아', 'childcare' => '아이돌봄', 'mental_care' => '마음돌봄', 'housekeeping' => '가사'];
 
         $sheet = [
-            ['개인정보 마스킹 파일 — 다운로드: ' . $request->user()->email . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['개인정보 마스킹 파일 — 다운로드: 관리자ID ' . $request->user()->id . '(' . ExportController::maskEmail($request->user()->email) . ')' . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
             ['기간 ' . $s['from'] . ' ~ ' . $s['to'] . ' (한국 시각) · 매출 합계 ' . number_format($s['revenue']) . '원 = 카드 결제 완료 ' . number_format($s['card_paid']['amount']) . '원(' . $s['card_paid']['count'] . '건) + 바우처 순매출 ' . number_format($s['voucher']['net']) . '원'],
             ['일시', '종류', '결제자', '대상자', '담당', '분야', '수단', '주문·계약번호', '금액(원)', '상태'],
         ];
@@ -187,7 +187,7 @@ class ExportController extends Controller
         $sum = fn ($k) => (int) $rows->sum(fn ($r) => (int) round((float) $r->{$k}));
 
         $sheet = [
-            ['개인정보 마스킹 파일 — 다운로드: ' . $request->user()->email . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['개인정보 마스킹 파일 — 다운로드: 관리자ID ' . $request->user()->id . '(' . ExportController::maskEmail($request->user()->email) . ')' . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
             ['상태 ' . ($filterLabel[$st] ?? $st) . ' · ' . $rows->count() . '건 · 돌봄전문가 ' . $rows->pluck('name')->unique()->count() . '명 · 실지급 합계 ' . number_format($sum('net_amount')) . '원 (시각은 한국 시각)'],
             ['정산ID', '돌봄전문가', '정산 시작일', '정산 종료일', '총액(원)', '원천징수 3.3%(원)', '실지급액(원)', '상태', '이의제기', '홈택스 신고번호', '확정 시각', '입금 시각', '전문가 확인 시각'],
         ];

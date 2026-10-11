@@ -45,7 +45,7 @@ class AdminExportLogTest extends TestCase
 
         $this->assertCount(1, $this->getJson('/api/v1/admin/exports/logs?period=today&result=blocked', $this->h($tok))->json('data'));
         $this->assertCount(1, $this->getJson('/api/v1/admin/exports/logs?period=today&kind=members', $this->h($tok))->json('data'));
-        // 기록 엑셀 — 같은 필터, 조건 「k=v」, 관리자 이름은 그대로(책임 추적), 이 다운로드도 기록에 「다운로드 기록」으로 남는다
+        // 기록 엑셀 — 같은 필터, 조건 「k=v」, 관리자 이름·이메일도 마스킹(관리자ID 로 대조), 이 다운로드도 기록에 「다운로드 기록」으로 남는다
         $res = $this->get('/api/v1/admin/exports/list/export-logs?period=today', $this->h($tok, $ok))->assertOk();
         $tmp = tempnam(sys_get_temp_dir(), 'x');
         file_put_contents($tmp, $res->getContent());
@@ -54,7 +54,10 @@ class AdminExportLogTest extends TestCase
         $xml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
         $zip->close();
         @unlink($tmp);
-        $this->assertStringContainsString('관리자갑', $xml);
+        $this->assertStringContainsString('관○○', $xml);
+        $this->assertStringNotContainsString('관리자갑', $xml);
+        $this->assertStringNotContainsString((string) $admin->email, $xml);
+        $this->assertMatchesRegularExpression('/<v>' . $admin->id . '<\/v>/', $xml);   // 관리자ID 는 숫자 그대로
         $this->assertStringContainsString('role=guardian', $xml);
         $this->assertStringContainsString('사유 없음', $xml);
         $this->assertStringContainsString('<row r="6">', $xml);   // 머리 3줄 + 기록 3줄
