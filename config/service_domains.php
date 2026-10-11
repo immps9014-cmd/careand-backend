@@ -60,7 +60,7 @@ return [
             'hasSubject'  => ['table' => 'nursing_patients', 'fk' => 'nursing_patient_id'],
             'requestedBy' => ['organization', 'guardian'],
         ],
-        'domain_label'     => '간병',
+        'domain_label'     => '병원 간병', // 10-12 가입·관리자 화면과 통일(옛 '간병')
         'qualification'    => [
             'license_required' => true,
             'license_label'    => '간병 관련 자격번호',
