@@ -80,4 +80,23 @@ class AdminMemberPostpartumModeTest extends TestCase
         [, , $cgTok] = $this->createCaregiverUser();
         $this->patchJson('/api/v1/guardians/me/postpartum-mode', ['mode' => 'voucher'], $this->h($cgTok))->assertStatus(403);
     }
+
+    /** 파트너앱 받은 제안 — 가입 때 정부 바우처를 고른 보호자의 요청은 voucher=eligible, 아니면 null */
+    public function test_caregiver_offers_carry_voucher_flag(): void
+    {
+        [, $cg, $cgTok] = $this->createCaregiverUser();
+        [, $gv] = $this->createGuardianUser();
+        $gv->update(['intent' => 'postpartum', 'preferences' => ['services' => ['postpartum'], 'postpartum_mode' => 'voucher']]);
+        [, $gh] = $this->createGuardianUser();
+        $gh->update(['preferences' => ['services' => ['postpartum'], 'postpartum_mode' => 'hourly']]);
+        $rv = $this->makeRequest($gv);
+        $rh = $this->makeRequest($gh);
+        $this->makeCandidate($rv, $cg);
+        $this->makeCandidate($rh, $cg);
+
+        $rows = collect($this->getJson('/api/v1/caregivers/me/matches', $this->h($cgTok))->assertOk()->json('data'))->keyBy('request_id');
+        $this->assertSame('eligible', $rows[$rv->id]['voucher']);
+        $this->assertNull($rows[$rh->id]['voucher']);
+        $this->assertSame([$rv->id => 'eligible'], \App\Support\GuardianPostpartumMode::voucherFlags([$rv->id, $rh->id]));
+    }
 }

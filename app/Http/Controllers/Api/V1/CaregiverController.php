@@ -643,8 +643,9 @@ class CaregiverController extends Controller
             ->get();
         $babies = \App\Models\MatchRequest::newbornSummaries($rows->pluck('postpartum_client_id'));
         $homes = \App\Support\PostpartumCareProfile::summaries($rows->pluck('postpartum_client_id'));
+        $vouchers = \App\Support\GuardianPostpartumMode::voucherFlags($rows->pluck('request_id'));
         $rows = $rows
-            ->map(function ($r) use ($babies, $homes) {
+            ->map(function ($r) use ($babies, $homes, $vouchers) {
                 $est = $r->price_estimate ? json_decode($r->price_estimate, true) : null;
 
                 return [
@@ -666,6 +667,7 @@ class CaregiverController extends Controller
                     'senior_name' => $r->senior_name ?? '(미상)',
                     'newborn_summary' => $babies[$r->postpartum_client_id] ?? null, // 산후: 「아기 1명 · 생후 12일」
                     'household_summary' => $homes[$r->postpartum_client_id] ?? null, // 「조리원 14일 후 · 반려동물: 고양이 · CCTV: 거실」
+                    'voucher' => $vouchers[$r->request_id] ?? null, // contract=바우처 계약 방문 · eligible=바우처 대상 가정(계약 전)
                     'category' => $r->category_name,
                     'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements), // 함께 필요한 돌봄
                     // 역경매 입찰 (입찰 화면용)
@@ -722,6 +724,7 @@ class CaregiverController extends Controller
         $homes = \App\Support\PostpartumCareProfile::summaries($rows->pluck('postpartum_client_id'));
         // 결제 완료된 매칭 — 미결제면 출근이 막히므로 앱이 미리 「보호자 결제 대기」를 보여 준다
         $paidMatches = \App\Support\MatchPaid::ids($rows->pluck('match_id'));
+        $vouchers = \App\Support\GuardianPostpartumMode::voucherFlags($rows->pluck('request_id'));
         $rows = $rows
             ->map(function ($r) {
                 $r->place = in_array($r->status, ['scheduled', 'in_progress'], true) ? $this->visitPlace((int) $r->request_id) : null;
@@ -734,6 +737,7 @@ class CaregiverController extends Controller
                 'senior_name' => $r->senior_name ?? '(미상)',
                 'newborn_summary' => $babies[$r->postpartum_client_id] ?? null,
                 'household_summary' => $homes[$r->postpartum_client_id] ?? null,
+                'voucher' => $vouchers[$r->request_id] ?? null,
                 'extra_categories' => \App\Models\MatchRequest::extraCategoryNames($r->requirements),
                 'paid' => isset($paidMatches[$r->match_id]),
                 'scheduled_start' => \App\Support\Kst::iso($r->scheduled_start),

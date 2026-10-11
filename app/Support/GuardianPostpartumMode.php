@@ -26,4 +26,30 @@ class GuardianPostpartumMode
             'updated_at' => now(),
         ]);
     }
+
+    /**
+     * 돌봄전문가 화면용 바우처 표시 — 요청 id → 'contract'(바우처 계약으로 생긴 방문) | 'eligible'(계약은 없지만 보호자가 가입 때 정부 바우처를 고름).
+     * 해당 없으면 키가 없다. 받은 제안·열린 요청·일정 목록이 같이 쓴다(2026-10-11).
+     */
+    public static function voucherFlags(iterable $requestIds): array
+    {
+        $ids = collect($requestIds)->filter()->map(fn ($v) => (int) $v)->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+        $out = [];
+        $rows = DB::table('match_requests as r')
+            ->leftJoin('guardians as g', 'g.id', '=', 'r.guardian_id')
+            ->whereIn('r.id', $ids)
+            ->get(['r.id', 'r.mnh_contract_id', DB::raw("JSON_UNQUOTE(JSON_EXTRACT(g.preferences, '$.postpartum_mode')) as pp_mode")]);
+        foreach ($rows as $r) {
+            if ($r->mnh_contract_id) {
+                $out[$r->id] = 'contract';
+            } elseif ($r->pp_mode === 'voucher') {
+                $out[$r->id] = 'eligible';
+            }
+        }
+
+        return $out;
+    }
 }

@@ -1377,6 +1377,12 @@ class MatchRequestController extends Controller
             }
             $items[] = $this->openRequestSummary($r, $caregiver);
         }
+        // 바우처 표시(contract|eligible) — 받은 제안·일정과 같은 기준
+        $vouchers = \App\Support\GuardianPostpartumMode::voucherFlags(array_column($items, 'request_id'));
+        foreach ($items as &$it) {
+            $it['voucher'] = $vouchers[$it['request_id']] ?? null;
+        }
+        unset($it);
 
         usort($items, function ($a, $b) {
             $da = $a['distance_km'] ?? 9999;
