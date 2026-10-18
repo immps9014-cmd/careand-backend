@@ -879,8 +879,10 @@ class OperationsController extends Controller
                 'name' => $match->caregiver_name,
                 'id' => (int) $match->caregiver_id,
                 'status' => $match->match_status,
-                'scheduled_start' => $match->scheduled_start,
-                'scheduled_end' => $match->scheduled_end,
+                // 한국 시각 ISO — 원문(UTC)을 그대로 보내 화면이 9시간 이르게 보였고, 매칭 변경 창이 그 값을 채워
+                // 그대로 저장하면(입력은 KST 로 해석) 일정이 9시간 당겨졌다(10-18)
+                'scheduled_start' => \App\Support\Kst::iso($match->scheduled_start),
+                'scheduled_end' => \App\Support\Kst::iso($match->scheduled_end),
                 'estimated_amount' => $match->estimated_amount !== null ? (int) $match->estimated_amount : null,
                 'is_manual' => (bool) $match->is_manual,
                 // 결제 상태 — 미결제면 출근이 막힌다. 앱 밖에서 받은 돈은 여기서 기록(OfflinePaymentController)
