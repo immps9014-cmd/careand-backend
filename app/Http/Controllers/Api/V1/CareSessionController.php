@@ -87,10 +87,20 @@ class CareSessionController extends Controller
             if ($contractId && ($c = \App\Models\MnhContract::find($contractId))) {
                 $missing = app(\App\Services\MnhDocumentService::class)->contractStatus($c)['missing_before_start'];
                 if ($missing) {
+                    // 문 앞에서 막힌 것 — 담당 관리자에게 바로(같은 방문은 6시간에 한 번)
+                    if (\Illuminate\Support\Facades\Cache::add("mnh:checkin-blocked:{$session->id}", 1, now()->addHours(6))) {
+                        $notifier = app(\App\Services\NotificationService::class);
+                        $payload = ['contract_id' => $c->id, 'contract_no' => $c->contract_no, 'session_id' => $session->id, 'missing' => $missing,
+                            'caregiver_name' => $request->user()->name,
+                            'client_name' => \Illuminate\Support\Facades\DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->value('name')];
+                        foreach ($notifier->adminsFor('mnh') as $adminId) {
+                            $notifier->notifySafely($adminId, \App\Services\NotificationService::TYPE_MNH_CHECKIN_BLOCKED, $payload);
+                        }
+                    }
                     return response()->json([
                         'success' => false,
                         'error_code' => 'DOCS_UNSIGNED',
-                        'message' => '이용자 서명이 남은 서류가 있어 출근할 수 없어요: ' . implode(', ', $missing) . '. 운영팀에 알려 주세요.',
+                        'message' => '이용자 서명이 남은 서류가 있어 출근할 수 없어요: ' . implode(', ', $missing) . '. 담당 관리자에게 방금 알렸어요. 잠시 뒤 다시 출근을 눌러 주세요.',
                     ], 422);
                 }
             }

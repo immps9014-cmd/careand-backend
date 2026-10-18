@@ -57,6 +57,9 @@ class NotificationService
     public const TYPE_MNH_PROVISION_MISSING = 'MNH_PROVISION_MISSING';               // 끝난 방문인데 제공기록지 서명 없음 → 건강관리사(매일 20:00, 2026-10-18)
     public const TYPE_MNH_PROVISION_MISSING_DIGEST = 'MNH_PROVISION_MISSING_DIGEST'; // 그날 누락 묶음 → 산모신생아 담당 관리자
     public const TYPE_MNH_SURVEY_REMIND = 'MNH_SURVEY_REMIND';                       // 모니터링 설문 미응답 → 산모(발행 1·3일 뒤, 매일 10:00)
+    public const TYPE_MNH_DOCS_DUE = 'MNH_DOCS_DUE';                                 // 48시간 안 방문인데 시작 전 서류 서명 전 → 산모(매일 17:00, 2026-10-19)
+    public const TYPE_MNH_DOCS_DUE_DIGEST = 'MNH_DOCS_DUE_DIGEST';                   // 같은 날 미비 계약 묶음 → 산모신생아 담당 관리자
+    public const TYPE_MNH_CHECKIN_BLOCKED = 'MNH_CHECKIN_BLOCKED';                   // 서류 미비로 출근이 막힘 → 산모신생아 담당 관리자(바로)
     public const TYPE_MNH_SURVEY_PENDING = 'MNH_SURVEY_PENDING';                     // 3일째 미응답 묶음 → 산모신생아 담당 관리자(전화 모니터링)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
@@ -187,6 +190,7 @@ class NotificationService
             $type === self::TYPE_CARE_REMINDER => '/schedule',
             $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/session/{$sid}" : '/schedule',
             $type === self::TYPE_MNH_PROVISION_MISSING => $sid ? "/session/{$sid}" : '/schedule',
+            $type === self::TYPE_MNH_DOCS_DUE => '/mnh/docs',
             $type === self::TYPE_MNH_SURVEY_REMIND => isset($payload['contract_id']) ? "/mnh/{$payload['contract_id']}" : '/mypage',
             in_array($type, [self::TYPE_CARE_LATE, self::TYPE_CARE_NOSHOW, self::TYPE_CARE_ISSUE_UPDATED], true) && $guardian => $rid ? "/request/{$rid}" : '/home',
             in_array($type, [self::TYPE_MATCH_REQUEST_ASSIGNED, self::TYPE_MATCH_REQUEST_CANCELLED, self::TYPE_MATCH_CONFIRMED,
@@ -572,6 +576,22 @@ class NotificationService
                 'body' => implode(' · ', array_map(fn ($i) => sprintf('%s %s 산모(%s)', $i['date'] ?? '', $i['client_name'] ?? '', $i['caregiver_name'] ?? '-'),
                     array_slice($payload['items'] ?? [], 0, 3)))
                     . (($payload['count'] ?? 0) > 3 ? ' 외 ' . ($payload['count'] - 3) . '건' : '') . ' — 관리자 → 산모신생아 → 서류 보관함에서 확인해 주세요.',
+            ],
+            self::TYPE_MNH_DOCS_DUE => [
+                'title' => '첫 방문 전에 서명할 서류가 있어요',
+                'body' => sprintf('바우처 계약 서류 %d건에 아직 서명하지 않으셨어요. 서명이 끝나야 관리사가 방문할 수 있어요. 내 정보 → 내 서류에서 한 번에 서명할 수 있어요.', (int) ($payload['count'] ?? 0)),
+            ],
+            self::TYPE_MNH_DOCS_DUE_DIGEST => [
+                'title' => sprintf('시작 전 서류 미비 %d건(48시간 안 방문)', $payload['count'] ?? 0),
+                'body' => implode(' · ', array_map(fn ($i) => sprintf('%s %s 산모(%s)', $i['contract_no'] ?? '', $i['client_name'] ?? '', implode(', ', array_slice($i['missing'] ?? [], 0, 2))
+                    . (count($i['missing'] ?? []) > 2 ? ' 외' : '')), array_slice($payload['items'] ?? [], 0, 2)))
+                    . (($payload['count'] ?? 0) > 2 ? ' 외 ' . ($payload['count'] - 2) . '건' : '')
+                    . (!empty($payload['enforce']) ? ' — 서명이 끝나지 않으면 출근이 막혀요. 초기상담·제공계획서는 관리자가 발행해야 해요.' : ' — 계약 상세에서 확인해 주세요.'),
+            ],
+            self::TYPE_MNH_CHECKIN_BLOCKED => [
+                'title' => '⚠ 서류 미비로 출근이 막혔어요',
+                'body' => sprintf('%s 관리사가 %s 산모 댁 출근을 시도했지만 서명이 남은 서류가 있어 막혔어요: %s. 계약 %s 상세에서 바로 처리해 주세요.',
+                    $payload['caregiver_name'] ?? '담당', $payload['client_name'] ?? '', implode(', ', $payload['missing'] ?? []), $payload['contract_no'] ?? ''),
             ],
             self::TYPE_MNH_SURVEY_REMIND => [
                 'title' => '서비스 만족도 설문에 답해 주세요',

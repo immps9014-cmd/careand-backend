@@ -70,6 +70,13 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/mnh-survey-remind.log'));
 
+        // 바우처 시작 전 서류 미비 사전 알림(48시간 안 방문 — 서류 보관함 5단계, 2026-10-19) — 매일 17:00 KST
+        $schedule->command('mnh:docs-before-start')
+            ->dailyAt('17:00')
+            ->timezone('Asia/Seoul')
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/mnh-docs-before-start.log'));
+
         // 보유기간 지난 개인정보 파기(음성 원본 30일·위치 90일·탈퇴 30일) — 개인정보 처리방침 제3조·제6조 (2026-09-28 S2-5)
         $schedule->command('privacy:purge --execute')
             ->dailyAt('04:40')
