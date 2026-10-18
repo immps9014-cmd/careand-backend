@@ -550,13 +550,24 @@ class MnhAdminController extends Controller
         return response()->json(['success' => true, 'message' => '특이사항을 남겼어요.', 'data' => MnhContractPresenter::detail($c, $this->svc, true)]);
     }
 
-    /** POST /v1/admin/mnh/contracts/{id}/cancel {reason} */
+    /** GET /v1/admin/mnh/contracts/{id}/cancel-quote?notice_date= — 위약금·환불 제안(CAREN-MNH-02 D) */
+    public function cancelQuote(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate(['notice_date' => ['nullable', 'date_format:Y-m-d']]);
+
+        return response()->json(['success' => true, 'data' => $this->svc->cancelQuote(MnhContract::findOrFail($id), $data['notice_date'] ?? null)]);
+    }
+
+    /** POST /v1/admin/mnh/contracts/{id}/cancel {reason, refund_amount?, penalty_amount?, notice_date?} */
     public function cancel(Request $request, int $id): JsonResponse
     {
-        $data = $request->validate(['reason' => ['required', 'string', 'max:500'], 'refund_amount' => ['nullable', 'integer', 'min:0']]);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500'], 'refund_amount' => ['nullable', 'integer', 'min:0'],
+            'penalty_amount' => ['nullable', 'integer', 'min:0'], 'notice_date' => ['nullable', 'date_format:Y-m-d']]);
         $refund = isset($data['refund_amount']) ? (int) $data['refund_amount'] : null;
+        $penalty = isset($data['penalty_amount']) ? (int) $data['penalty_amount'] : null;
 
-        return $this->run($id, fn ($c) => $this->svc->cancel($c, $data['reason'], $request->user()->id, $refund), '계약을 취소했어요. 지난 기록은 남아 있어요.');
+        return $this->run($id, fn ($c) => $this->svc->cancel($c, $data['reason'], $request->user()->id, $refund, $penalty, $data['notice_date'] ?? null),
+            '계약을 취소했어요. 지난 기록은 남아 있어요.');
     }
 
     /** GET /v1/admin/mnh/caregivers?all=1 — 배정 후보(기본은 산모신생아 직군, all=1 이면 활동 중 전체) */

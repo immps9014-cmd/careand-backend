@@ -527,11 +527,47 @@ class MnhContractService
         return $end > $limit ? sprintf('종료 예정일(%s)이 바우처 유효기간(출산 후 90일, %s)을 넘어요. 운영팀과 일정을 조정해 주세요.', $end, $limit) : null;
     }
 
-    /** 계약 취소. 선납이 있으면 돌려준 금액($refund, 0~선납액)을 받아 매출에서 뺀다(VoucherRevenue). */
-    public function cancel(MnhContract $c, string $reason, ?int $actor, ?int $refund = null): void
+    /**
+     * 취소 정산 제안(CAREN-MNH-02 D) — 이용계약서 해지 조항 그대로: 해지를 알린 날($noticeDate, KST)부터 오늘까지가
+     * cancel_notice_days 보다 짧으면 위약금 = 서비스 총 요금 × cancel_penalty_pct. 비율이 미등록이면 위약금을 제안하지 않는다.
+     * 환불 제안 = 선납액 − 받은 서비스의 본인부담금(본인부담금 × 완료일/계약일) − 위약금(0~선납액). 관리자가 고칠 수 있다.
+     */
+    public function cancelQuote(MnhContract $c, ?string $noticeDate = null): array
+    {
+        $terms = config('mnh_docs.terms');
+        $today = self::todayKst();
+        $noticeDate = $noticeDate && $noticeDate <= $today ? $noticeDate : $today;
+        $noticedDays = (int) Carbon::parse($noticeDate, self::TZ)->diffInDays(Carbon::parse($today, self::TZ));
+        $late = $noticedDays < $terms['cancel_notice_days'];
+        $pct = $terms['cancel_penalty_pct'];
+        $penalty = $late && $pct !== null ? (int) round((int) $c->total_price * $pct / 100) : 0;
+        $done = $this->sessions($c)->where('status', 'completed')->count();
+        $used = $c->days > 0 ? (int) round((int) $c->self_pay * $done / $c->days) : 0;
+        $prepaid = $c->prepaid_at ? (int) $c->prepaid_amount : 0;
+
+        return [
+            'notice_date' => $noticeDate, 'noticed_days' => $noticedDays, 'notice_days' => $terms['cancel_notice_days'],
+            'late' => $late, 'penalty_pct' => $pct, 'total_price' => (int) $c->total_price,
+            'suggested_penalty' => $penalty, 'completed_days' => $done, 'days' => (int) $c->days, 'used_self_pay' => $used,
+            'prepaid' => (bool) $c->prepaid_at, 'prepaid_amount' => $prepaid,
+            'suggested_refund' => $c->prepaid_at ? max(0, min($prepaid, $prepaid - $used - $penalty)) : null,
+        ];
+    }
+
+    /**
+     * 계약 취소. 선납이 있으면 돌려준 금액($refund, 0~선납액)을 받아 매출에서 뺀다(VoucherRevenue).
+     * $penalty 는 받은(또는 환불에서 뺀) 위약금 기록 — 매출 계산은 환불액으로만 한다(위약금이 선납에서 빠졌으면 이미 반영).
+     */
+    public function cancel(MnhContract $c, string $reason, ?int $actor, ?int $refund = null, ?int $penalty = null, ?string $noticeDate = null): void
     {
         if (in_array($c->status, ['completed', 'cancelled'], true)) {
             throw new MnhContractException('CLOSED', '이미 종료·취소된 계약이에요.');
+        }
+        if ($noticeDate !== null && $noticeDate > self::todayKst()) {
+            throw new MnhContractException('NOTICE_FUTURE', '해지를 알린 날은 오늘이나 그 전이어야 해요.');
+        }
+        if ($penalty !== null && $penalty > (int) $c->total_price) {
+            throw new MnhContractException('PENALTY_RANGE', sprintf('위약금은 서비스 총 요금 %s원을 넘을 수 없어요.', number_format((int) $c->total_price)));
         }
         if ($c->prepaid_at) {
             if ($refund === null) {
@@ -541,7 +577,7 @@ class MnhContractService
                 throw new MnhContractException('REFUND_RANGE', sprintf('환불액은 0원에서 선납액 %s원 사이여야 해요.', number_format((int) $c->prepaid_amount)));
             }
         }
-        DB::transaction(function () use ($c, $reason, $actor, $refund) {
+        DB::transaction(function () use ($c, $reason, $actor, $refund, $penalty, $noticeDate) {
             $now = now();
             if ($c->match_request_id) {
                 $ids = $this->sessions($c)->where('status', 'scheduled')->pluck('id');
@@ -551,9 +587,10 @@ class MnhContractService
                 DB::table('match_requests')->where('id', $c->match_request_id)
                     ->update(['status' => $hasDone ? 'matched' : 'cancelled', 'updated_at' => $now]);
             }
-            $c->update(['status' => 'cancelled', 'cancel_reason' => $reason]
+            $c->update(['status' => 'cancelled', 'cancel_reason' => $reason, 'cancel_notice_date' => $noticeDate, 'penalty_amount' => $penalty]
                 + ($c->prepaid_at ? ['refund_amount' => $refund, 'refunded_at' => $refund > 0 ? $now : null] : []));
-            $this->log($c, 'cancelled', null, ['reason' => $reason] + ($c->prepaid_at ? ['refund_amount' => $refund] : []), $actor);
+            $this->log($c, 'cancelled', null, ['reason' => $reason] + ($c->prepaid_at ? ['refund_amount' => $refund] : [])
+                + ($penalty ? ['penalty_amount' => $penalty] : []) + ($noticeDate ? ['notice_date' => $noticeDate] : []), $actor);
         });
     }
 

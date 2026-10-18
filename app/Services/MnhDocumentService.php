@@ -140,7 +140,8 @@ class MnhDocumentService
         $v['cancel_penalty'] = $pct === null ? null : '서비스 총 요금의 ' . rtrim(rtrim(number_format($pct, 1), '0'), '.') . '%'
             . ($c && $c->total_price ? '(' . number_format((int) round($c->total_price * $pct / 100)) . '원)' : '');
         if ($c) {
-            $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->first(['name', 'birth_date', 'address', 'address_detail', 'emergency_contact', 'delivery_type']);
+            $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)
+                ->first(['name', 'birth_date', 'address', 'address_detail', 'emergency_contact', 'delivery_type', 'delivery_date', 'expected_delivery_date', 'breastfeeding_intent']);
             $dow = ['', '월', '화', '수', '목', '금', '토', '일'];
             $v += [
                 'contract_no' => $c->contract_no,
@@ -167,6 +168,13 @@ class MnhDocumentService
                 'newborn_birth' => DB::table('newborns')->where('postpartum_client_id', $c->postpartum_client_id)->orderBy('birth_order')->get(['gender', 'birth_weight_g'])
                     ->map(fn ($b) => trim(['M' => '남아', 'F' => '여아'][$b->gender] ?? '아기') . ($b->birth_weight_g ? ' 출생 ' . number_format($b->birth_weight_g) . 'g' : ''))
                     ->implode(', ') ?: null,
+                // 제공 계획서(D단계) — 분만일(아직이면 예정일)·희망 수유·추가 서비스 금액·제공일 목록(「11월 18·19일, 12월 1일」)
+                'delivery_date' => !empty($client->delivery_date) ? $kdate($client->delivery_date)
+                    : (!empty($client->expected_delivery_date) ? $kdate($client->expected_delivery_date) . '(예정)' : null),
+                'feeding_label' => ['exclusive' => '모유', 'mixed' => '혼합', 'formula' => '분유', 'undecided' => '미정'][$client->breastfeeding_intent ?? ''] ?? null,
+                'addon_total' => $won((int) $c->addon_total),
+                'service_dates' => collect($this->contracts->serviceDates($c))->groupBy(fn ($d) => (int) substr($d, 5, 2))
+                    ->map(fn ($ds, $m) => $m . '월 ' . $ds->map(fn ($d) => (int) substr($d, 8, 2))->implode('·') . '일')->implode(', ') ?: null,
             ];
             $caregiverId ??= $c->caregiver_id;
         }

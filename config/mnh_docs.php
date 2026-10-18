@@ -172,6 +172,42 @@ TXT,
 계약번호 {{contract_no}} · 서비스 기간 {{start_date}} ~ {{end_date}}
 TXT,
         ],
+        'service_plan' => [
+            // 사회서비스 제공 계획서(각종서식 사진, CAREN-MNH-02 D 2026-10-18) — 관리자가 서비스 내용·목표·유의 사항을 채워 발행,
+            // 이용자가 확인 서명. 초기상담 기록지(상담 내용)와 따로 둔다. 주민번호는 넣지 않는다(생년월일까지).
+            'label' => '사회서비스 제공 계획서', 'signer' => 'client', 'before_start' => true, 'auto' => null,
+            'fields' => [
+                ['key' => 'services', 'label' => '서비스 내용', 'type' => 'checks', 'filled_by' => 'admin', 'options' => [
+                    '산모 영양관리(산모 식사)', '산모 신체관리(부종·유방 관리)', '산모 회음부 관리(좌욕)', '산모 정서·심리 지원',
+                    '위생관리(산모·신생아 공간 청소)', '세탁물 관리(산모·신생아 세탁물)', '신생아 건강관리·정보 제공(목욕·제대·수유·예방접종 안내·아기 돌보기)',
+                ]],
+                ['key' => 'goals', 'label' => '서비스 목표', 'type' => 'textarea', 'filled_by' => 'admin'],
+                ['key' => 'cautions', 'label' => '유의 사항', 'type' => 'textarea', 'filled_by' => 'admin'],
+            ],
+            'body' => <<<'TXT'
+## 이용자
+- 이름: {{client_name}} (생년월일 {{client_birth}})
+- 주소: {{client_address}}
+- 분만 이력: {{birth_order_label}} · 분만일 {{delivery_date}} · 분만 형태 {{delivery_type_label}}
+- 신생아: {{newborn_birth}} · 희망 수유 방법 {{feeding_label}}
+
+## 계약 금액
+- 서비스 유형: {{support_label}}
+- 서비스 가격 {{total_price}} = 정부지원금 {{gov_support}} + 본인부담금 {{self_pay}}
+- 추가 서비스 금액: {{addon_total}}
+
+## 제공 기간과 일정
+- 제공 기간: {{start_date}} ~ {{end_date}} ({{days}}일간)
+- 제공 일정: {{weekdays}}, 하루 {{daily_time}}(점심을 겸한 휴게시간 1시간 포함)
+- 제공일: {{service_dates}}
+- 건강관리사의 점심 식사는 이용자가 제공한다. 제공하지 않으면 식사비를 따로 낸다.
+- 담당 건강관리사: {{caregiver_name}}
+
+서비스 내용·목표·유의 사항은 아래 표와 같습니다.
+
+제공기관 {{provider_name}} · 계약번호 {{contract_no}} · 작성일 {{today}}
+TXT,
+        ],
         'receipt' => [
             'label' => '본인부담금 영수증', 'signer' => 'client', 'before_start' => false, 'auto' => 'prepaid',
             'body' => <<<'TXT'

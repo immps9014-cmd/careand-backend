@@ -433,6 +433,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('holidays', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'holidays']);
                 Route::post('holidays', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'storeHoliday']);
                 Route::delete('holidays/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deleteHoliday'])->whereNumber('id');
+                Route::get('contracts/{id}/cancel-quote', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancelQuote'])->whereNumber('id');
                 Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancel'])->whereNumber('id');
                 // 전자서명 서류(3단계)
                 Route::get('contracts/{id}/documents', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'forContract'])->whereNumber('id');

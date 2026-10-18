@@ -161,7 +161,10 @@ class MnhDocAdminController extends Controller
             'support_label' => '단태아 · 첫째아 · (유형) · 표준', 'start_date' => '2026년 11월 2일', 'end_date' => '2026년 11월 13일', 'days' => 10,
             'weekdays' => '월화수목금', 'daily_time' => '09:00부터 8시간', 'total_price' => '(서비스 가격)', 'gov_support' => '(정부지원금)',
             'self_pay' => '(본인부담금)', 'payment_method' => '현금', 'prepaid_amount' => '(받은 금액)', 'prepaid_date' => '2026년 10월 30일',
-            'receipt_no' => 'MNH-2026-0001-R', 'caregiver_name' => '김○○', 'session_date' => '2026년 11월 2일', 'session_time' => '09:00 ~ 17:00', 'session_seq' => 1];
+            'receipt_no' => 'MNH-2026-0001-R', 'caregiver_name' => '김○○', 'session_date' => '2026년 11월 2일', 'session_time' => '09:00 ~ 17:00', 'session_seq' => 1,
+            'fetus_type_label' => '단태아', 'birth_order_label' => '첫째아', 'delivery_type_label' => '자연분만', 'newborn_birth' => '여아 출생 3,200g',
+            'delivery_date' => '2026년 10월 28일', 'feeding_label' => '혼합', 'addon_total' => '0원',
+            'service_dates' => '11월 2·3·4·5·6·9·10·11·12·13일'];
 
         return response()->json(['success' => true, 'data' => ['html' => MnhDocumentService::render($body, $this->docs->vars(null) + $sample)]]);
     }
