@@ -26,7 +26,7 @@ class GenerateMnhDocumentPdfJob implements ShouldQueue
     public function handle(MnhDocumentService $svc): void
     {
         $doc = MnhDocument::find($this->documentId);
-        if ($doc && $doc->status === 'signed' && !$doc->pdf_path) {
+        if ($doc && MnhDocumentService::isFinal($doc) && !$doc->pdf_path) {
             $svc->generatePdf($doc);
         }
     }

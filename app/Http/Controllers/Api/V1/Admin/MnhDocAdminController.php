@@ -102,7 +102,7 @@ class MnhDocAdminController extends Controller
         $doc = MnhDocument::findOrFail($id);
         $pdf = MnhDocumentService::readFile($doc->pdf_path);
         if ($pdf === null) {
-            return $this->fail('PDF_NOT_READY', $doc->status === 'signed' ? 'PDF를 만드는 중이에요.' : '서명 전 서류예요.', 409);
+            return $this->fail('PDF_NOT_READY', MnhDocumentService::isFinal($doc) ? 'PDF를 만드는 중이에요.' : '서명 전 서류예요.', 409);
         }
 
         return response($pdf, 200, ['Content-Type' => 'application/pdf',

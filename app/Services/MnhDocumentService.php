@@ -313,9 +313,14 @@ class MnhDocumentService
         if ($c && $type !== 'provision_record') {
             $this->contracts->log($c, 'doc_issued', null, ['doc_id' => $doc->id, 'doc_type' => $type], $actor);
         }
+        if (!self::needsSign($type)) {
+            $doc->update(['content_hash' => self::issueHash($doc)]);
+            GenerateMnhDocumentPdfJob::dispatch($doc->id)->afterCommit();
+        }
         if ($signerUserId && !in_array($type, ['provision_record'], true)) {
             $this->notifier->notifySafely((int) $signerUserId, NotificationService::TYPE_MNH_DOC_SIGN, [
                 'doc_id' => $doc->id, 'contract_id' => $c?->id, 'label' => $doc->title, 'for_caregiver' => $cfg['signer'] === 'caregiver',
+                'no_sign' => !self::needsSign($type),
             ]);
         }
 
@@ -425,6 +430,9 @@ class MnhDocumentService
         if ($doc->status !== 'issued') {
             throw new MnhContractException('NOT_SIGNABLE', $doc->status === 'signed' ? '이미 서명한 서류예요.' : '취소된 서류예요.');
         }
+        if (!self::needsSign($doc->doc_type)) {
+            throw new MnhContractException('NOT_SIGNABLE', '서명할 필요가 없는 서류예요. PDF로 받아 보관하시면 돼요.');
+        }
         if (!preg_match('#^data:image/png;base64,([A-Za-z0-9+/=]+)$#', $signature, $m)) {
             throw new MnhContractException('BAD_SIGNATURE', '서명을 다시 그려 주세요.');
         }
@@ -515,8 +523,11 @@ class MnhDocumentService
     /** 서명 위변조 확인 — 저장된 해시와 다시 계산한 값 비교 */
     public function verify(MnhDocument $doc): ?bool
     {
-        if ($doc->status !== 'signed') {
+        if (!self::isFinal($doc)) {
             return null;
+        }
+        if ($doc->status === 'issued') {   // 서명 없는 발급본
+            return $doc->content_hash ? hash_equals((string) $doc->content_hash, self::issueHash($doc)) : false;
         }
         $png = self::readFile($doc->signature_path);
         if ($png === null) {
@@ -584,10 +595,29 @@ class MnhDocumentService
                 ->setTimezone(self::TZ)->toDateString() : null,
             'void_reason' => $doc->void_reason,
             'sign_auth' => $doc->sign_auth,
+            'needs_sign' => self::needsSign($doc->doc_type),
         ] + ($admin ? ['signed_ip' => $doc->signed_ip, 'content_hash' => $doc->content_hash, 'captured_by' => $doc->captured_by] : []);
     }
 
     /** PDF 원본 HTML(서명 이미지는 data URI, 글꼴은 시스템 Noto CJK) */
+    /** 서명받는 서류인가 — config sign=false 면 발급만(본인부담금 영수증, 10-19) */
+    public static function needsSign(string $type): bool
+    {
+        return (self::type($type)['sign'] ?? true) !== false;
+    }
+
+    /** 내용이 확정된 서류(서명 완료, 또는 서명 없는 서류의 발급본) — PDF·무결성 대상 */
+    public static function isFinal(MnhDocument $doc): bool
+    {
+        return $doc->status === 'signed' || ($doc->status === 'issued' && !self::needsSign($doc->doc_type));
+    }
+
+    /** 서명 없는 서류의 무결성 해시 — 문서번호·본문·발급 시각 */
+    private static function issueHash(MnhDocument $doc): string
+    {
+        return hash('sha256', implode("\n", [$doc->id, $doc->content_html, $doc->created_at?->toIso8601String()]));
+    }
+
     /** 산모 서명 때 문자 인증을 받는가 — config mnh_docs.sign_otp(auto = 실제 문자 발송 중일 때만) */
     public static function signOtpRequired(): bool
     {
@@ -639,15 +669,17 @@ table.calc tr:first-child th{background:#f4f2ee;font-weight:600}
 <h1>' . e($doc->title) . '</h1>
 <div class="meta">문서번호 ' . e($no) . ' · 서식 v' . (int) $doc->template_version . ' · 제공기관 ' . e($p['name']) . '</div>
 ' . $doc->content_html . self::fieldsHtml($doc) . '
-<div class="sign"><div>' . e($who) . ' <b>' . e((string) $doc->signer_name) . '</b> (서명)</div><div class="box">' . $sigImg . '</div></div>
-<div class="audit">전자서명 일시 ' . e($signedAt) . ' · 접속 IP ' . e((string) $doc->signed_ip) . e(self::authLine($doc->sign_auth)) . '<br>무결성 해시(SHA-256) ' . e((string) $doc->content_hash) . '</div>
+' . (self::needsSign($doc->doc_type)
+    ? '<div class="sign"><div>' . e($who) . ' <b>' . e((string) $doc->signer_name) . '</b> (서명)</div><div class="box">' . $sigImg . '</div></div>
+<div class="audit">전자서명 일시 ' . e($signedAt) . ' · 접속 IP ' . e((string) $doc->signed_ip) . e(self::authLine($doc->sign_auth)) . '<br>'
+    : '<div class="audit">발급 일시 ' . e($doc->created_at?->copy()->setTimezone(self::TZ)->format('Y-m-d H:i:s') . ' (KST)') . ' · 서명 없이 발급하는 서류<br>') . '무결성 해시(SHA-256) ' . e((string) $doc->content_hash) . '</div>
 </body></html>';
     }
 
     /** PDF 생성(큐) — 근로계약서는 돌봄전문가 서류함(employment_contract)에도 넣는다 */
     public function generatePdf(MnhDocument $doc): void
     {
-        if ($doc->status !== 'signed') {
+        if (!self::isFinal($doc)) {
             return;
         }
         $dir = storage_path('app/tmp-mnh');

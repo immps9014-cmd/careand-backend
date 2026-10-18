@@ -208,7 +208,7 @@ class MnhDocumentController extends Controller
         $doc = $this->authorized($request, $id);
         $pdf = MnhDocumentService::readFile($doc->pdf_path);
         if ($pdf === null) {
-            return $this->fail('PDF_NOT_READY', $doc->status === 'signed' ? 'PDF를 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.' : '서명한 뒤에 받을 수 있어요.', 409);
+            return $this->fail('PDF_NOT_READY', MnhDocumentService::isFinal($doc) ? 'PDF를 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.' : '서명한 뒤에 받을 수 있어요.', 409);
         }
 
         return response($pdf, 200, [
@@ -223,7 +223,7 @@ class MnhDocumentController extends Controller
     {
         $doc = $this->authorized($request, $id);
         if (!$doc->pdf_path) {
-            return $this->fail('PDF_NOT_READY', $doc->status === 'signed' ? 'PDF를 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.' : '서명한 뒤에 받을 수 있어요.', 409);
+            return $this->fail('PDF_NOT_READY', MnhDocumentService::isFinal($doc) ? 'PDF를 만드는 중이에요. 잠시 뒤 다시 눌러 주세요.' : '서명한 뒤에 받을 수 있어요.', 409);
         }
         $path = \Illuminate\Support\Facades\URL::temporarySignedRoute('mnh.doc.pdf.signed', now()->addMinutes(5), ['id' => $doc->id], false);
 
@@ -233,7 +233,8 @@ class MnhDocumentController extends Controller
     /** GET /v1/mnh/documents/{id}/pdf-signed?expires=&signature= — 서명 링크로만(라우트 signed:relative) */
     public function pdfSigned(int $id): Response
     {
-        $doc = MnhDocument::where('id', $id)->where('status', 'signed')->firstOrFail();
+        $doc = MnhDocument::where('id', $id)->whereIn('status', ['signed', 'issued'])->firstOrFail();
+        abort_unless(MnhDocumentService::isFinal($doc), 404);   // 서명 완료 또는 서명 없이 발급한 서류(영수증)
         $pdf = MnhDocumentService::readFile($doc->pdf_path);
         abort_if($pdf === null, 404);
 

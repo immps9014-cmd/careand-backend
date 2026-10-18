@@ -529,7 +529,10 @@ class NotificationService
                 'title' => '이용자 평가를 남겨 주세요',
                 'body' => sprintf('바우처 %s 서비스가 끝났어요. 기본 예절·업무범위·휴게시간·협조를 평가해 주세요(이용자에게는 보이지 않아요).', $payload['contract_no'] ?? ''),
             ],
-            self::TYPE_MNH_DOC_SIGN => [
+            self::TYPE_MNH_DOC_SIGN => !empty($payload['no_sign']) ? [
+                'title' => '「' . ($payload['label'] ?? '서류') . '」이(가) 발급됐어요',
+                'body' => '서명은 필요 없어요. 내 정보 → 내 서류에서 보고 PDF로 받을 수 있어요.',
+            ] : [
                 'title' => '전자서명이 필요한 서류가 있어요',
                 'body' => sprintf('「%s」를 확인하고 서명해 주세요. %s', $payload['label'] ?? '서류',
                     !empty($payload['for_caregiver']) ? '마이페이지 → 내 계약서에서 할 수 있어요.' : '마이페이지 → 바우처 계약에서 할 수 있어요.'),

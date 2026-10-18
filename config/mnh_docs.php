@@ -300,7 +300,8 @@ TXT,
 TXT,
         ],
         'receipt' => [
-            'label' => '본인부담금 영수증', 'signer' => 'client', 'before_start' => false, 'auto' => 'prepaid',
+            // 서명 없이 발급만(2026-10-19 사용자 지시) — signer 는 받는 사람(산모 「내 서류」에 보이게), sign=false
+            'label' => '본인부담금 영수증', 'signer' => 'client', 'sign' => false, 'before_start' => false, 'auto' => 'prepaid',
             'body' => <<<'TXT'
 ## 영수 내역
 - 받은 금액: {{prepaid_amount}}

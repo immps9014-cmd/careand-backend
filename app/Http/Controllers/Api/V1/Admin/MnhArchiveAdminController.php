@@ -20,6 +20,7 @@ use ZipArchive;
  * 관리자 — 바우처 서류 보관함(2026-10-18). 회원(산모)별 계약 서류·제공기록지·모니터링을 모아 보고 찾는다.
  * 검색: 산모 이름·계약번호·전화 뒤 4자리, 서류 종류·상태·기간(발행일/서명일/방문일)·담당 관리사.
  * 산모별 묶음: 계약마다 서류 종류별 최신 판 + 제공기록지 방문일 달력(완료인데 서명 없는 날 = 빠짐).
+ * 영수증처럼 서명 없이 발급하는 서류(config sign=false)는 「서명 대기」에 넣지 않고 발급본 PDF 를 묶음에 넣는다(10-19).
  * PDF 묶음 받기는 개인·건강정보 반출이라 X-Access-Reason(5자 이상) 필수 + 감사로그 mnh.documents.export.
  * 근로·프리랜서 계약서(관리사 서류)는 회원 서류가 아니라 「인력 계약」 탭에서만 다룬다.
  */
@@ -54,7 +55,10 @@ class MnhArchiveAdminController extends Controller
             ->whereIn('d.doc_type', array_keys($types));
 
         $status = $f['status'] ?? null;
-        if ($status && $status !== 'all') {
+        $noSign = array_keys(array_filter($types, fn ($t) => ($t['sign'] ?? true) === false));   // 발급만 하는 서류(영수증)
+        if ($status === 'issued') {
+            $q->where('d.status', 'issued')->whereNotIn('d.doc_type', $noSign);   // 「서명 대기」에 영수증은 넣지 않는다
+        } elseif ($status && $status !== 'all') {
             $q->where('d.status', $status);
         } elseif (!$status) {
             $q->where('d.status', '!=', 'void'); // 기본은 취소된 판을 뺀다
@@ -96,7 +100,7 @@ class MnhArchiveAdminController extends Controller
         return response()->json(['success' => true, 'data' => [
             'rows' => $rows->map(fn ($r) => [
                 'id' => $r->id, 'doc_type' => $r->doc_type, 'label' => $types[$r->doc_type]['label'], 'title' => $r->title,
-                'status' => $r->status, 'void_reason' => $r->void_reason,
+                'status' => $r->status, 'void_reason' => $r->void_reason, 'needs_sign' => ($types[$r->doc_type]['sign'] ?? true) !== false,
                 'issued_at' => Kst::iso($r->created_at), 'signed_at' => Kst::iso($r->signed_at), 'pdf_ready' => (bool) $r->pdf_path,
                 'session_date' => self::kstDate($r->scheduled_start),
                 'contract_id' => $r->contract_id, 'contract_no' => $r->contract_no,
@@ -147,8 +151,7 @@ class MnhArchiveAdminController extends Controller
                 'delivery_date' => $pc->delivery_date ?: null, 'expected_delivery_date' => $pc->expected_delivery_date ?: null,
             ],
             'contracts' => $out,
-            'pdf_count' => MnhDocument::whereIn('contract_id', $contracts->pluck('id'))->where('status', 'signed')->whereNotNull('pdf_path')
-                ->whereIn('doc_type', array_keys(self::memberTypes()))->count(),
+            'pdf_count' => self::finalWithPdf(MnhDocument::whereIn('contract_id', $contracts->pluck('id')))->count(),
         ]]);
     }
 
@@ -167,8 +170,7 @@ class MnhArchiveAdminController extends Controller
         }
         $contracts = $cq->get(['id', 'contract_no'])->keyBy('id');
         $types = self::memberTypes();
-        $docs = MnhDocument::whereIn('contract_id', $contracts->keys())->where('status', 'signed')->whereNotNull('pdf_path')
-            ->whereIn('doc_type', array_keys($types))->orderBy('contract_id')->orderBy('id')->get();
+        $docs = self::finalWithPdf(MnhDocument::whereIn('contract_id', $contracts->keys()))->orderBy('contract_id')->orderBy('id')->get();
         if ($docs->isEmpty()) {
             return $this->fail('NO_PDF', '내려받을 서명본 PDF가 없어요.', 404);
         }
@@ -187,7 +189,7 @@ class MnhArchiveAdminController extends Controller
             }
             $day = $d->doc_type === 'provision_record' && $d->care_session_id
                 ? self::kstDate(DB::table('care_sessions')->where('id', $d->care_session_id)->value('scheduled_start'))
-                : Carbon::parse($d->signed_at)->setTimezone(self::TZ)->toDateString();
+                : Carbon::parse($d->signed_at ?? $d->created_at)->setTimezone(self::TZ)->toDateString();
             $name = sprintf('%s/%02d_%s_%s_MNHD-%d.pdf', self::safe($contracts[$d->contract_id]->contract_no ?? (string) $d->contract_id),
                 ($order[$d->doc_type] ?? 99) + 1, self::safe($types[$d->doc_type]['label']), $day, $d->id);
             $zip->addFromString($name, $pdf);
@@ -231,6 +233,16 @@ class MnhArchiveAdminController extends Controller
             'missing' => $days->where('missing', true)->count()];
     }
 
+    /** 확정 서류(서명 완료 + 서명 없이 발급한 서류) 중 PDF 가 있는 것 */
+    private static function finalWithPdf($q)
+    {
+        $types = self::memberTypes();
+        $noSign = array_keys(array_filter($types, fn ($t) => ($t['sign'] ?? true) === false));
+
+        return $q->whereIn('doc_type', array_keys($types))->whereNotNull('pdf_path')
+            ->where(fn ($w) => $w->where('status', 'signed')->orWhere(fn ($x) => $x->where('status', 'issued')->whereIn('doc_type', $noSign ?: ['-'])));
+    }
+
     /** 회원(산모)이 서명하는 서류 종류 — config 순서 그대로(근로계약서 제외) */
     private static function memberTypes(): array
     {
@@ -239,7 +251,7 @@ class MnhArchiveAdminController extends Controller
 
     private static function brief(MnhDocument $d): array
     {
-        return ['id' => $d->id, 'status' => $d->status, 'template_version' => $d->template_version,
+        return ['id' => $d->id, 'status' => $d->status, 'needs_sign' => MnhDocumentService::needsSign($d->doc_type), 'template_version' => $d->template_version,
             'issued_at' => Kst::iso($d->created_at), 'signed_at' => Kst::iso($d->signed_at), 'pdf_ready' => (bool) $d->pdf_path];
     }
 
