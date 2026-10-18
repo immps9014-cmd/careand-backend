@@ -416,7 +416,12 @@ class MnhDocumentService
             'captured_by' => $capturedBy, 'content_hash' => $hash,
         ]);
         if ($doc->contract_id && $doc->doc_type !== 'provision_record') {
-            $this->contracts->log(MnhContract::find($doc->contract_id), 'doc_signed', null, ['doc_id' => $doc->id, 'doc_type' => $doc->doc_type], $capturedBy);
+            // 개인정보 동의서에서 동의하지 않은 항목은 이력에 같이 남긴다(담당 관리자가 계약 상세에서 바로 알게)
+            $refused = $doc->doc_type === 'privacy_consent'
+                ? array_values(array_map(fn ($f) => $f['label'], array_filter(self::type('privacy_consent')['fields'], fn ($f) => ($form[$f['key']] ?? null) === 'disagree')))
+                : [];
+            $this->contracts->log(MnhContract::find($doc->contract_id), 'doc_signed', null,
+                ['doc_id' => $doc->id, 'doc_type' => $doc->doc_type] + ($refused ? ['refused' => $refused] : []), $capturedBy);
         }
         GenerateMnhDocumentPdfJob::dispatch($doc->id);
         if ($doc->doc_type === 'provision_record') {
