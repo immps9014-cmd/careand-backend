@@ -39,10 +39,19 @@ class MnhDocumentController extends Controller
     /** GET /v1/mnh/my-documents — 내가 서명할(한) 서류 전체(돌봄전문가 계약서 등) */
     public function mine(Request $request): JsonResponse
     {
+        // include_records=1: 매일 제공기록지까지(앱 「내 서류」 계약별 묶음, 2026-10-18). 기본은 예전처럼 뺀다.
+        $withRecords = $request->boolean('include_records');
         $rows = MnhDocument::where('signer_user_id', $request->user()->id)->where('status', '!=', 'void')
-            ->where('doc_type', '!=', 'provision_record')->orderByDesc('id')->limit(100)->get();
+            ->when(!$withRecords, fn ($q) => $q->where('doc_type', '!=', 'provision_record'))
+            ->orderByDesc('id')->limit($withRecords ? 500 : 100)->get();
+        $contracts = MnhContract::whereIn('id', $rows->pluck('contract_id')->filter()->unique())->get(['id', 'contract_no', 'status', 'start_date'])->keyBy('id');
 
-        return response()->json(['success' => true, 'data' => $rows->map(fn ($d) => $this->brief($d))->values()]);
+        return response()->json(['success' => true, 'data' => $rows->map(fn ($d) => $this->brief($d) + [
+            'contract_no' => $contracts[$d->contract_id]->contract_no ?? null,
+            'contract_status' => $contracts[$d->contract_id]->status ?? null,
+            'contract_start' => isset($contracts[$d->contract_id]) && $contracts[$d->contract_id]->start_date
+                ? \Carbon\Carbon::parse($contracts[$d->contract_id]->start_date)->toDateString() : null,
+        ])->values()]);
     }
 
     /** GET /v1/mnh/documents/{id} */
