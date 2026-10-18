@@ -251,7 +251,8 @@ class MnhContractService
     }
 
     /** 담당 배정 — 정기 요청·매칭·일별 세션 생성 */
-    public function assign(MnhContract $c, int $caregiverId, bool $force, ?int $actor): void
+    /** @return array{doc_warnings: array} 계약 끝날 때까지 손봐야 할 담당 서류(경고만 — 배정은 막지 않음, CAREN-MNH-02 E) */
+    public function assign(MnhContract $c, int $caregiverId, bool $force, ?int $actor): array
     {
         if (!in_array($c->status, ['applied', 'confirmed'], true) || $c->match_request_id) {
             throw new MnhContractException('ALREADY_ASSIGNED', '이미 담당이 배정된 계약이에요. 교체는 「인력 교체」로 하세요.');
@@ -305,6 +306,14 @@ class MnhContractService
         $this->notifyAssigned($c, $caregiverId, $dates[0]);
         // 3단계: 개시 전 서명 서류(이용계약서·개인정보 동의·준수사항) 발행
         app(MnhDocumentService::class)->autoIssue($c->fresh(), 'assigned', $actor);
+
+        return ['doc_warnings' => $this->docWarnings($c, $caregiverId)];
+    }
+
+    /** 담당 서류 중 계약 종료일까지 문제 되는 것 */
+    public function docWarnings(MnhContract $c, int $caregiverId): array
+    {
+        return app(CaregiverDocumentService::class)->issuesUntil($caregiverId, $this->endDate($c));
     }
 
     /** 인력 교체 — $fromDate(KST) 이후 예정 세션을 새 담당 매칭으로 옮긴다 */
@@ -351,7 +360,7 @@ class MnhContractService
 
         $this->notifySwap($c, $oldCaregiverId, $caregiverId, $fromDate);
 
-        return ['moved' => $moving->count()];
+        return ['moved' => $moving->count(), 'doc_warnings' => $this->docWarnings($c, $caregiverId)];
     }
 
     /** 연기 — 그날을 제공일에서 빼고 끝에 하루 덧붙인다 */

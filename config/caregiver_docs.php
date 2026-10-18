@@ -6,6 +6,7 @@
  * 자격증 사본은 기존 caregivers.license_image_url 을 그대로 쓴다(여기 없음).
  * 산모신생아 건강관리 구비서류(domains=['postpartum'])는 그 직군 돌봄전문가에게만 보인다(2026-10-05).
  * enforce_on_approve=true 면 필수 서류가 전부 「확인」이어야 자격 승인 가능. 기본 false(경고만) — 시범운영 전 도입기업과 정해 켤 것.
+ * valid_days 가 있는 서류는 만료 expiry_notice_days(일) 전과 만료 날 본인·자격검증 관리자에게 알린다(caregivers:doc-expiry, CAREN-MNH-02 E, 2026-10-18).
  */
 return [
     'types' => [
@@ -21,13 +22,18 @@ return [
         'training_cert'       => ['label' => '교육수료증',                   'domains' => ['postpartum'], 'required' => true, 'public' => true, 'hint' => '산모신생아 건강관리사 양성교육 수료증'],
         'privacy_consent'     => ['label' => '개인정보활용 동의서',           'domains' => ['postpartum'], 'required' => true],
         'mental_drug_test'    => ['label' => '정신질환 및 약물중독 검사',      'domains' => ['postpartum'], 'required' => true, 'public' => true, 'hint' => '매년 갱신', 'valid_days' => 365],
-        'guardianship_absence'=> ['label' => '성년후견인 부존재 확인서',       'domains' => ['postpartum'], 'required' => true],
+        'guardianship_absence'=> ['label' => '성년후견인 부존재 확인서',       'domains' => ['postpartum'], 'required' => true, 'hint' => '법원 후견 등기사항부존재증명서 — 발급 3개월 이내'],
         'child_abuse_edu'     => ['label' => '아동학대 법정의무교육 이수증',   'domains' => ['postpartum'], 'required' => true, 'public' => true, 'hint' => '매년 이수', 'valid_days' => 365],
         'refresher_edu'       => ['label' => '보수교육 수료증',               'domains' => ['postpartum'], 'required' => true, 'public' => true, 'hint' => '매년 이수', 'valid_days' => 365],
         'child_abuse_consent' => ['label' => '아동학대범죄이력조회 동의서',    'domains' => ['postpartum'], 'required' => true],
         'vaccination'         => ['label' => '예방접종 확인서',               'domains' => ['postpartum'], 'required' => true, 'public' => true, 'hint' => '백일해(Tdap)·인플루엔자 등'],
         'other_license'       => ['label' => '기타 유관 자격증',              'domains' => ['postpartum'], 'required' => false, 'public' => true, 'hint' => '간호사·간호조무사·모유수유 전문가 등(선택)'],
+        // 실제 채용 서류 꾸러미(각종서식 사진, 2026-10-18)에 있던 것
+        'ssis_consent'        => ['label' => '사회서비스관리원 개인정보 제공 동의서', 'domains' => ['postpartum'], 'required' => true, 'hint' => '제공인력 등록용 — 교육·자격 이력, 결제 휴대폰, 일자리 현황(일모아) 제공 동의'],
+        'career_cert'         => ['label' => '경력증명서',                   'domains' => ['postpartum'], 'required' => false, 'hint' => '이전 제공기관 산모신생아 경력(선택)'],
     ],
+    // 만료 알림 단계(만료까지 남은 일수). 만료 날(0)에도 한 번 더 알린다.
+    'expiry_notice_days' => [30, 7],
     'max_kb' => 10240,
     'mimes' => ['jpg', 'jpeg', 'png', 'pdf', 'heic', 'webp'],
     'enforce_on_approve' => (bool) env('CAREGIVER_DOCS_ENFORCE', false),

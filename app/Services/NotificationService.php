@@ -55,6 +55,8 @@ class NotificationService
     public const TYPE_MNH_CLIENT_JOURNAL = 'MNH_CLIENT_JOURNAL'; // 산모 이용일지 → 산모신생아 담당 관리자(주의 기록은 바로, 그 밖엔 산모별 하루 1번)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
+    public const TYPE_CAREGIVER_DOC_EXPIRING = 'CAREGIVER_DOC_EXPIRING';   // 서류 만료 30·7일 전·만료 날 → 돌봄전문가(CAREN-MNH-02 E)
+    public const TYPE_CAREGIVER_DOCS_EXPIRING = 'CAREGIVER_DOCS_EXPIRING'; // 그날 만료 알림 묶음 → 자격검증 관리자
     public const TYPE_MATCH_REQUEST_CANCELLED = 'MATCH_REQUEST_CANCELLED'; // 보호자가 확정 전 요청 취소 → 지정받았던 돌봄전문가
     public const TYPE_MATCH_OFFER_TIMEOUT = 'MATCH_OFFER_TIMEOUT';         // 지정 후보 무응답 자동 거절 → 보호자(기능 10)
     public const TYPE_MATCH_UNMATCHED_ALERT = 'MATCH_UNMATCHED_ALERT';     // 장시간 미매칭 → 매칭 담당 관리자(기능 18)
@@ -175,7 +177,7 @@ class NotificationService
             in_array($type, [self::TYPE_PAYMENT_PAID, self::TYPE_PAYMENT_FAILED], true) => '/payments',
             str_starts_with($type, 'SETTLEMENT_') => '/settlements',
             $type === self::TYPE_REVIEW_REQUEST => '/satisfaction',
-            $type === self::TYPE_CAREGIVER_DOC_REJECTED => '/documents',
+            in_array($type, [self::TYPE_CAREGIVER_DOC_REJECTED, self::TYPE_CAREGIVER_DOC_EXPIRING], true) => '/documents',
             $type === self::TYPE_CERT_GRANTED => '/certificate',
             $type === self::TYPE_CARE_REMINDER => '/schedule',
             $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/session/{$sid}" : '/schedule',
@@ -456,6 +458,18 @@ class NotificationService
                 'title' => '월간 결산이 준비됐어요',
                 'body' => sprintf('%s 결산(매출 %s원)을 리포트 화면에서 확인해 주세요.',
                     $payload['month'] ?? '', number_format((int) ($payload['total'] ?? 0))),
+            ],
+            self::TYPE_CAREGIVER_DOC_EXPIRING => [
+                'title' => ($payload['days_left'] ?? 1) > 0 ? sprintf('서류 유효기간 %d일 남음', $payload['days_left']) : '서류 유효기간이 끝났어요',
+                'body' => sprintf('%s 유효기간이 %s%s. 새로 발급받아 「내 서류」에 올려 주세요.', $payload['doc_label'] ?? '서류',
+                    isset($payload['expires_at']) ? \Illuminate\Support\Carbon::parse($payload['expires_at'])->format('n월 j일') : '',
+                    ($payload['days_left'] ?? 1) > 0 ? '에 끝나요' : '로 끝났어요'),
+            ],
+            self::TYPE_CAREGIVER_DOCS_EXPIRING => [
+                'title' => sprintf('돌봄전문가 서류 만료 알림 %d건', $payload['count'] ?? 0),
+                'body' => implode(' · ', array_map(fn ($i) => sprintf('%s %s(%s)', $i['name'] ?? '', $i['doc_label'] ?? '',
+                    ($i['days_left'] ?? 0) > 0 ? $i['days_left'] . '일 남음' : '만료'), array_slice($payload['items'] ?? [], 0, 3)))
+                    . (($payload['count'] ?? 0) > 3 ? ' 외 ' . ($payload['count'] - 3) . '건' : '') . ' — 자격검증에서 확인해 주세요.',
             ],
             self::TYPE_CAREGIVER_DOC_REJECTED => [
                 'title' => '서류 보완 요청',

@@ -49,6 +49,13 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/caregivers-certify.log'));
 
+        // 돌봄전문가 서류 만료 알림(30·7일 전, 만료 날 — CAREN-MNH-02 E, 2026-10-18) — 매일 09:00 KST
+        $schedule->command('caregivers:doc-expiry')
+            ->dailyAt('09:00')
+            ->timezone('Asia/Seoul')
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/caregivers-doc-expiry.log'));
+
         // 보유기간 지난 개인정보 파기(음성 원본 30일·위치 90일·탈퇴 30일) — 개인정보 처리방침 제3조·제6조 (2026-09-28 S2-5)
         $schedule->command('privacy:purge --execute')
             ->dailyAt('04:40')

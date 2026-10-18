@@ -587,6 +587,11 @@ class MnhAdminController extends Controller
             return $this->fail($e->errorCode, $e->getMessage(), $e->status, $e->extra);
         }
 
+        if (is_array($r) && !empty($r['doc_warnings'])) {
+            // 배정·교체는 그대로 하고, 계약 끝까지 손봐야 할 담당 서류를 같이 알린다(CAREN-MNH-02 E)
+            $ok .= ' 담당 서류를 확인해 주세요: ' . \App\Services\CaregiverDocumentService::issuesLine($r['doc_warnings']);
+        }
+
         return response()->json(['success' => true, 'message' => $ok, 'result' => is_array($r) ? $r : null,
             'data' => MnhContractPresenter::detail($c->fresh(), $this->svc, true)]);
     }

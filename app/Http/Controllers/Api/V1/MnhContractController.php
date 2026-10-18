@@ -154,6 +154,13 @@ class MnhContractController extends Controller
         if (Carbon::parse($data['start_date'], 'Asia/Seoul')->lt($today->copy()->addDays($cfg['min_lead_days']))) {
             return $this->fail('START_TOO_SOON', '서비스 개시일은 내일 이후로 골라 주세요.');
         }
+        if (!$client->birth_confirmed && $client->expected_delivery_date) {
+            $opens = Carbon::parse($client->expected_delivery_date, 'Asia/Seoul')->startOfDay()->subDays($cfg['apply_before_due_days']);
+            if ($today->lt($opens)) {
+                return $this->fail('APPLY_TOO_EARLY', sprintf('바우처는 출산 예정일 %d일 전부터 신청할 수 있어요. %s부터 신청해 주세요.',
+                    $cfg['apply_before_due_days'], $opens->format('n월 j일')));
+            }
+        }
         $open = MnhContract::where('postpartum_client_id', $client->id)->whereIn('status', ['applied', 'confirmed', 'active'])->exists();
         if ($open) {
             return $this->fail('ALREADY_OPEN', '이 산모로 진행 중인 바우처 계약이 이미 있어요.');

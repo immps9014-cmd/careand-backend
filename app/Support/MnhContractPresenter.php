@@ -123,6 +123,9 @@ final class MnhContractPresenter
             $out['user'] = DB::table('users')->where('id', $c->user_id)->first(['id', 'name']);
             $out['client_emergency_contact'] = CaregiverProfileExtras::emergency($client->emergency_contact ?? null);   // 산모 비상연락처(2026-10-05)
             $out['care_profile_summary'] = PostpartumCareProfile::summaries(collect([$c->postpartum_client_id]))[$c->postpartum_client_id] ?? null;
+            // 담당 서류 중 계약 종료일까지 문제 되는 것(미제출·반려·만료·기간 중 만료, CAREN-MNH-02 E)
+            $out['caregiver_doc_issues'] = $c->caregiver_id && !in_array($c->status, ['completed', 'cancelled'], true)
+                ? $svc->docWarnings($c, (int) $c->caregiver_id) : [];
             $out['cancelled_sessions'] = $sessions->where('status', 'cancelled')->map(fn ($s) => [
                 'date' => $s->date, 'reason' => $s->cancel_reason, 'caregiver_name' => $s->caregiver_name,
             ])->values();

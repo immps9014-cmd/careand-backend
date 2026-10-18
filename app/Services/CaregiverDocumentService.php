@@ -122,6 +122,39 @@ class CaregiverDocumentService
         return $out;
     }
 
+    /**
+     * $until(Y-m-d)까지 일하려면 손봐야 할 서류 — 필수인데 「확인」이 아니거나, 확인됐어도 $until 전에 만료되는 것.
+     * [{type,label,status(missing|submitted|rejected|expired|expiring),expires_at}] — 배정·교체 경고와 계약 상세(CAREN-MNH-02 E).
+     */
+    public function issuesUntil(int $caregiverId, string $until): array
+    {
+        $out = [];
+        foreach ($this->checklist($caregiverId) as $c) {
+            $exp = $c['document']['expires_at'] ?? null;
+            if ($c['status'] === 'verified' && $exp && $exp < $until) {
+                $status = 'expiring';
+            } elseif ($c['required'] && $c['status'] !== 'verified') {
+                $status = $c['status'];
+            } else {
+                continue;
+            }
+            $out[] = ['type' => $c['type'], 'label' => $c['label'], 'status' => $status, 'expires_at' => $exp];
+        }
+        return $out;
+    }
+
+    /** issuesUntil 한 줄 요약 — 「건강진단서(보건증) 11월 20일 만료, 보수교육 수료증 미제출 외 3건」(앞 $max 개) */
+    public static function issuesLine(array $issues, int $max = 3): string
+    {
+        $word = ['missing' => '미제출', 'submitted' => '확인 대기', 'rejected' => '반려', 'expired' => '만료됨'];
+        // 만료·기간 중 만료를 먼저(미제출은 서류를 아직 안 올린 사람에게 많아서 뒤로)
+        usort($issues, fn ($a, $b) => (int) in_array($a['status'], ['missing', 'submitted'], true) <=> (int) in_array($b['status'], ['missing', 'submitted'], true));
+        $line = implode(', ', array_map(fn ($i) => $i['label'] . ' ' . ($i['status'] === 'expiring'
+            ? Carbon::parse($i['expires_at'])->format('n월 j일') . ' 만료'
+            : ($word[$i['status']] ?? $i['status'])), array_slice($issues, 0, $max)));
+        return $line . (count($issues) > $max ? ' 외 ' . (count($issues) - $max) . '건' : '');
+    }
+
     /** 필수 서류 중 「확인」이 아닌 것의 라벨 목록 */
     public function missingRequired(int $caregiverId): array
     {
