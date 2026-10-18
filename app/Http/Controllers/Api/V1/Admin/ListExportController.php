@@ -80,6 +80,7 @@ class ListExportController extends Controller
                 ['개시일', 'start_date'], ['종료일', 'end_date'], ['총액(원)', 'total_price', 'money'], ['정부지원(원)', 'gov_support', 'money'],
                 ['본인부담(원)', 'self_pay', 'money'], ['추가요금(원)', 'addon_total', 'money'], ['결제 수단', 'payment_method_label'],
                 ['선납', 'prepaid', 'yn'], ['선납 시각', 'prepaid_at', 'kst'], ['환불(원)', 'refund_amount', 'money'],
+                ['위약금(원)', 'penalty_amount', 'money'], ['위약금 미수(원)', 'penalty_outstanding', 'money'],
                 ['담당 관리사', 'caregiver_name', 'name'], ['진행(일)', 'completed_days', 'num'],
             ]],
         ];

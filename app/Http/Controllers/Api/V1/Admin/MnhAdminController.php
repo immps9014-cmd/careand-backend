@@ -235,6 +235,8 @@ class MnhAdminController extends Controller
     /* ───────────── 계약 ───────────── */
 
     /** GET /v1/admin/mnh/contracts?status=&q= */
+    private const PENALTY_OUTSTANDING_SQL = 'penalty_due > COALESCE((SELECT SUM(pc.amount) FROM mnh_penalty_collections pc WHERE pc.contract_id = mnh_contracts.id), 0)';
+
     public function contracts(Request $request): JsonResponse
     {
         $q = MnhContract::query()->orderByRaw("FIELD(status,'applied','confirmed','active','completed','cancelled')")->orderBy('start_date');
@@ -244,6 +246,9 @@ class MnhAdminController extends Controller
             $q->whereIn('status', ['confirmed', 'active']);
         } elseif ($s === 'unpaid') {
             $q->whereIn('status', ['applied', 'confirmed'])->whereNull('prepaid_at');
+        } elseif ($s === 'penalty_due') {
+            // 위약금 차액 중 아직 덜 받은 계약(받은 날 기록 합 < 받을 차액)
+            $q->whereRaw(self::PENALTY_OUTSTANDING_SQL);
         } elseif ($s) {
             $q->where('status', $s);
         }
@@ -256,7 +261,8 @@ class MnhAdminController extends Controller
         return response()->json(['success' => true, 'data' => $this->summaries($rows),
             'counts' => MnhContract::groupBy('status')->selectRaw('status, count(*) n')->pluck('n', 'status')
                 ->put('ongoing', MnhContract::whereIn('status', ['confirmed', 'active'])->count())
-                ->put('unpaid', MnhContract::whereIn('status', ['applied', 'confirmed'])->whereNull('prepaid_at')->count())]);
+                ->put('unpaid', MnhContract::whereIn('status', ['applied', 'confirmed'])->whereNull('prepaid_at')->count())
+                ->put('penalty_due', MnhContract::whereRaw(self::PENALTY_OUTSTANDING_SQL)->count())]);
     }
 
     /** GET /v1/admin/mnh/calendar?month=YYYY-MM — 그 달에 걸친 계약별 날짜 칸 */
@@ -668,9 +674,13 @@ class MnhAdminController extends Controller
         $done = DB::table('care_sessions as cs')->join('matches as m', 'm.id', '=', 'cs.match_id')
             ->whereIn('m.request_id', $rows->pluck('match_request_id')->filter())->where('cs.status', 'completed')
             ->groupBy('m.request_id')->selectRaw('m.request_id, count(*) n')->pluck('n', 'm.request_id');
+        $got = DB::table('mnh_penalty_collections')->whereIn('contract_id', $rows->where('penalty_due', '>', 0)->pluck('id'))
+            ->groupBy('contract_id')->selectRaw('contract_id, SUM(amount) s')->pluck('s', 'contract_id');
 
         return $rows->map(fn ($c) => MnhContractPresenter::summary($c, $this->svc, $clients[$c->postpartum_client_id] ?? null, $cg[$c->caregiver_id] ?? null)
-            + ['completed_days' => (int) ($done[$c->match_request_id] ?? 0)])->values()->all();
+            + ['completed_days' => (int) ($done[$c->match_request_id] ?? 0),
+                // 위약금 차액 중 아직 받지 못한 금액(없으면 0)
+                'penalty_outstanding' => $c->penalty_due ? max(0, (int) $c->penalty_due - (int) ($got[$c->id] ?? 0)) : 0])->values()->all();
     }
 
     private function fail(string $code, string $message, int $status = 422, array $extra = []): JsonResponse
