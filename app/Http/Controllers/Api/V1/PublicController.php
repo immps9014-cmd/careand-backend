@@ -36,12 +36,16 @@ class PublicController extends Controller
         // 평균 만족도는 실제 보호자 후기로 — 10건 미만이면 공개하지 않는다(null → 화면은 「집계 중」). 2026-09-29 S6 시드 평점 초기화
         $rv = DB::table('reviews')->where('reviewer_role', 'guardian')->selectRaw('COUNT(*) n, AVG(rating) a')->first();
         $ratingPublic = (int) $rv->n >= 10 ? round((float) $rv->a, 1) : null;
+        // 누적 완료 돌봄도 기준(config public_stats, 기본 100건) 미만이면 공개하지 않는다(null → 「집계 중」).
+        // 10/7 실제 기록으로 맞춘 뒤 첫 화면이 「2건」으로 보이던 것(2026-10-18 결정)
+        $sessionsMin = (int) config('public_stats.completed_sessions_min', 100);
+        $sessionsPublic = (int) $agg->sessions >= $sessionsMin ? (int) $agg->sessions : null;
 
         return response()->json([
             'success' => true,
             'data' => [
                 'caregivers' => (int) $agg->caregivers,
-                'completed_sessions' => (int) $agg->sessions,
+                'completed_sessions' => $sessionsPublic,
                 'rating_avg' => $ratingPublic,
                 'review_count' => (int) $rv->n,
                 'regions' => $regions,
