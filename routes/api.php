@@ -488,6 +488,9 @@ Route::prefix('v1')->group(function () {
             Route::get('matching/requests/{id}', [OperationsController::class, 'matchingRequestDetail'])->whereNumber('id');
             Route::post('matching/requests/{id}/manual-assign', [OperationsController::class, 'manualAssign'])->whereNumber('id');
             Route::patch('matching/requests/{id}/match', [OperationsController::class, 'updateMatch'])->whereNumber('id');
+            // 앱 밖에서 받은 결제(현금·계좌이체·현장 단말기) 기록 — 결제 전 출근 차단의 예외(10-18)
+            Route::post('matching/requests/{id}/offline-payment', [\App\Http\Controllers\Api\V1\Admin\OfflinePaymentController::class, 'store'])->whereNumber('id');
+            Route::delete('matching/requests/{id}/offline-payment/{paymentId}', [\App\Http\Controllers\Api\V1\Admin\OfflinePaymentController::class, 'destroy'])->whereNumber('id')->whereNumber('paymentId');
 
             // 회원·인력 통합관리 (#19)
             Route::get('members', [OperationsController::class, 'members']);

@@ -812,7 +812,7 @@ class OperationsController extends Controller
             ->where('m.request_id', $id)
             ->whereIn('m.status', ['confirmed', 'in_progress', 'completed'])
             ->orderByDesc('m.id')
-            ->select('cu.name as caregiver_name', 'm.caregiver_id', 'm.status as match_status', 'm.scheduled_start', 'm.scheduled_end', 'm.estimated_amount')
+            ->select('m.id as match_id', 'm.is_manual', 'cu.name as caregiver_name', 'm.caregiver_id', 'm.status as match_status', 'm.scheduled_start', 'm.scheduled_end', 'm.estimated_amount')
             ->first();
 
         $cands = DB::table('match_candidates as mc')
@@ -882,6 +882,9 @@ class OperationsController extends Controller
                 'scheduled_start' => $match->scheduled_start,
                 'scheduled_end' => $match->scheduled_end,
                 'estimated_amount' => $match->estimated_amount !== null ? (int) $match->estimated_amount : null,
+                'is_manual' => (bool) $match->is_manual,
+                // 결제 상태 — 미결제면 출근이 막힌다. 앱 밖에서 받은 돈은 여기서 기록(OfflinePaymentController)
+                'payment' => OfflinePaymentController::summary((int) $match->match_id),
             ] : null,
             'candidates' => $cands->map(fn ($c) => [
                 'id' => $c->id,

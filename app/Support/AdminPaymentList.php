@@ -40,7 +40,7 @@ final class AdminPaymentList
                 ->when($kw !== '', fn ($q) => $q->where(fn ($w) => $w->where('gu.name', 'like', "%{$kw}%")->orWhere('p.pg_order_id', 'like', "%{$kw}%")))
                 ->limit(2000)
                 ->get([
-                    'p.id', 'p.total_amount', 'p.status', 'p.method', 'p.pg_order_id', DB::raw("{$timeCol} as at"), 'p.match_id',
+                    'p.id', 'p.total_amount', 'p.status', 'p.method', 'p.pg_provider', 'p.pg_order_id', DB::raw("{$timeCol} as at"), 'p.match_id',
                     'r.id as request_id', 'r.service_domain', 'gu.name as guardian_name', 'cu.name as caregiver_name',
                     DB::raw('COALESCE(s.name, np.name, pp.name, ch.name, mcc.name, sa.label) as recipient_name'),
                 ]);
@@ -48,6 +48,8 @@ final class AdminPaymentList
                 'key' => 'p' . $p->id, 'kind' => 'card', 'id' => (int) $p->id,
                 'at' => Kst::iso($p->at), 'amount' => (int) round((float) $p->total_amount),
                 'status' => $p->status, 'method' => $p->method, 'ref' => $p->pg_order_id,
+                // 앱 밖에서 받아 관리자가 기록한 결제(현금·계좌이체·현장 단말기, 10-18)
+                'offline' => $p->pg_provider === 'offline',
                 'payer_name' => $p->guardian_name, 'recipient_name' => $p->recipient_name, 'caregiver_name' => $p->caregiver_name,
                 'service_domain' => $p->service_domain, 'request_id' => $p->request_id ? (int) $p->request_id : null, 'contract_id' => null,
             ]));

@@ -120,7 +120,7 @@ class ExportController extends Controller
         foreach ($rows as $r) {
             $sheet[] = [
                 $r['at'] ? str_replace('T', ' ', substr($r['at'], 0, 16)) : '',
-                $kind[$r['kind']] ?? $r['kind'],
+                !empty($r['offline']) ? '현장 결제' : ($kind[$r['kind']] ?? $r['kind']),
                 self::maskName($r['payer_name']),
                 self::maskName($r['recipient_name']),
                 self::maskName($r['caregiver_name']),

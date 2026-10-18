@@ -469,14 +469,14 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'message' => '결제가 완료된 건만 영수증을 볼 수 있어요.'], 422);
         }
         $ctx = app(NotificationService::class)->matchContext((int) $payment->match_id);
-        $methods = ['card' => '카드', 'toss' => '토스페이먼츠', 'voucher_only' => '바우처', 'transfer' => '계좌이체'];
+        $methods = ['card' => '카드', 'toss' => '토스페이먼츠', 'voucher_only' => '바우처', 'transfer' => '계좌이체', 'cash' => '현금'];
         $kst = fn ($t) => $t ? \Illuminate\Support\Carbon::parse($t)->setTimezone('Asia/Seoul')->format('Y-m-d H:i') : null;
 
         return response()->json(['success' => true, 'data' => [
             'receipt_no' => sprintf('CR-%s-%06d', ($payment->paid_at ?? $payment->created_at)->copy()->setTimezone('Asia/Seoul')->format('Ym'), $payment->id),
             'status' => $payment->status,
             'paid_at' => $kst($payment->paid_at),
-            'method' => $methods[$payment->method] ?? $payment->method,
+            'method' => ($methods[$payment->method] ?? $payment->method) . ($payment->pg_provider === 'offline' ? '(현장 결제)' : ''),
             'pg_tid_tail' => $payment->pg_tid ? substr($payment->pg_tid, -6) : null,
             'service' => $ctx?->service_label ?? '돌봄',
             'service_period' => $payment->match ? ($kst($payment->match->scheduled_start) . ' ~ ' . $kst($payment->match->scheduled_end)) : null,
@@ -502,7 +502,7 @@ class PaymentController extends Controller
         if (!$ctx) {
             return;
         }
-        $methods = ['card' => '카드', 'toss' => '토스페이먼츠', 'voucher_only' => '바우처', 'transfer' => '계좌이체'];
+        $methods = ['card' => '카드', 'toss' => '토스페이먼츠', 'voucher_only' => '바우처', 'transfer' => '계좌이체', 'cash' => '현금'];
         $svc->notifySafely((int) $ctx->guardian_user_id, NotificationService::TYPE_PAYMENT_PAID, [
             'payment_id' => $payment->id,
             'amount' => (int) $payment->amount_self_pay,
@@ -516,6 +516,15 @@ class PaymentController extends Controller
     {
         $payment = Payment::with('match.request.senior')->findOrFail($id);
         $this->authorize('update', $payment);
+
+        if ($payment->pg_provider === \App\Http\Controllers\Api\V1\Admin\OfflinePaymentController::PROVIDER) {
+            // 현금·계좌이체·현장 단말기로 받은 돈은 돌려줄 PG 가 없다 — 환불은 운영팀이 직접 하고 기록을 고친다
+            return response()->json([
+                'success' => false,
+                'error_code' => 'OFFLINE_PAYMENT',
+                'message' => '현장에서 낸 결제는 앱에서 취소할 수 없어요. 고객센터로 연락해 주세요.',
+            ], 422);
+        }
 
         if ($payment->status !== 'paid') {
             return response()->json([
