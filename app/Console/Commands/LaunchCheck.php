@@ -18,6 +18,9 @@ class LaunchCheck extends Command
 
     private int $todo = 0;
 
+    /** 옛 「케어앤에듀」 사업자번호 — 주식회사 케어앤 번호로 바뀌기 전까지 개시 상태가 아니다(2026-10-18) */
+    private const OLD_BIZ_NO = '106-23-91832';
+
     public function handle(): int
     {
         $this->line('케어앤 개시 전 전환 점검 — ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' KST');
@@ -93,6 +96,16 @@ class LaunchCheck extends Command
         $phone = $this->csPhone();
         $this->item('d', '고객센터 번호', $phone !== null && $phone !== '1600-0000',
             $phone ? "회원웹 {$phone}" : '회원웹 설정 못 읽음', '회원웹 NEXT_PUBLIC_CS_PHONE + 앱 빌드 --dart-define CS_PHONE');
+        // 사업자 정보 — 10-18 회사명을 「주식회사 케어앤」으로 바꿨지만 사업자번호·대표는 옛 「케어앤에듀」 값(운영사가 추후 수정).
+        // 영수증·바우처 서류는 config/company.php 를 읽고, 처리방침(www)은 페이지에 직접 적혀 있어 둘이 같은지도 본다.
+        $biz = (string) config('company.biz_no');
+        $privacy = @file_get_contents('/root/caren/careand-www/app/privacy/page.tsx');
+        $privacyOk = $privacy === false || $biz === '' || str_contains($privacy, $biz);
+        $old = $biz === self::OLD_BIZ_NO;
+        $this->item('e', '사업자 정보', $biz !== '' && !$old && $privacyOk,
+            ($biz === '' ? '사업자번호 비어 있음' : config('company.name') . ' · ' . $biz . ' · 대표 ' . config('company.ceo'))
+            . ($old ? '(옛 「케어앤에듀」 값)' : '') . ($privacyOk ? '' : ' · 처리방침의 번호와 다름'),
+            '.env COMPANY_BIZ_NO·COMPANY_CEO(주소 다르면 COMPANY_ADDRESS) → config:cache, 처리방침(www app/privacy/page.tsx) 번호·대표도 고치고 변경 이력 추가');
 
         $this->newLine();
         $this->line($this->todo ? "남은 전환 {$this->todo}건" : '모두 개시 상태');
