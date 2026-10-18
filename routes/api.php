@@ -445,6 +445,10 @@ Route::prefix('v1')->group(function () {
                 Route::post('documents/{id}/reissue', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'reissue'])->whereNumber('id');
                 Route::post('documents/{id}/void', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'void'])->whereNumber('id');
                 Route::get('documents/{id}/pdf', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'pdf'])->whereNumber('id');
+                // 서류 보관함 — 회원(산모)별 모아 보기·검색(2026-10-18)
+                Route::get('documents', [\App\Http\Controllers\Api\V1\Admin\MnhArchiveAdminController::class, 'search']);
+                Route::get('clients/{id}/documents', [\App\Http\Controllers\Api\V1\Admin\MnhArchiveAdminController::class, 'client'])->whereNumber('id');
+                Route::get('clients/{id}/documents/zip', [\App\Http\Controllers\Api\V1\Admin\MnhArchiveAdminController::class, 'zip'])->whereNumber('id');
                 Route::get('templates', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'templates']);
                 Route::put('templates/{type}', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'saveTemplate'])->where('type', '[a-z_]+');
                 Route::post('templates/{type}/preview', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'preview'])->where('type', '[a-z_]+');
