@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * 정부 바우처 거래 (사회서비스 전자바우처 SBA)
+ * 쓰지 않음(2026-10-18): 단말기 결제는 플랫폼에 기록하지 않기로 했다 — SbaService 머리말 참고. 표는 비어 있고 남겨만 둔다.
  */
 class VoucherTransaction extends Model
 {

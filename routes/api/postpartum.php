@@ -6,7 +6,6 @@ use App\Domains\Postpartum\Controllers\NewbornController;
 use App\Domains\Postpartum\Controllers\PostpartumChatbotController;
 use App\Domains\Postpartum\Controllers\PostpartumClientController;
 use App\Domains\Postpartum\Controllers\PostpartumMatchingController;
-use App\Domains\Postpartum\Controllers\VoucherController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -47,12 +46,6 @@ Route::middleware(['auth:api', 'throttle:api'])
         Route::prefix('epds')->group(function () {
             Route::post('/assessments', [EpdsController::class, 'submit']);
             Route::get('/clients/{client}/history', [EpdsController::class, 'history']);
-        });
-
-        // ===== 바우처 =====
-        Route::prefix('voucher-transactions')->group(function () {
-            Route::get('/', [VoucherController::class, 'index']);
-            Route::post('/use', [VoucherController::class, 'use']);
         });
 
         // ===== 산후 매칭 =====
