@@ -32,6 +32,9 @@ $done = ['done' => '실시', 'skip' => '미실시'];
 return [
     // 출근 차단 — 기본 꺼짐(경고만). 운영 개시 때 켠다.
     'enforce' => (bool) env('MNH_DOCS_ENFORCE', false),
+    // 산모가 서류에 서명할 때 휴대폰 문자 인증(2026-10-18). auto = 실제 문자 발송이 켜졌을 때만(EXTERNAL_STUB=false),
+    // true/false 로 강제. 스텁 모드에서 켜면 테스트 번호(010-0000-xxxx)만 123456 으로 통과한다.
+    'sign_otp' => env('MNH_SIGN_OTP', 'auto'),
 
     // 제공기관 표시 — 비우면 회사 정보(config/company.php)를 쓰고(MnhDocumentService::provider), 그것도 없으면 「(미등록)」(임의 생성 금지)
     'provider' => [

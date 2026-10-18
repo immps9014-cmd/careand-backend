@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MnhContract;
 use App\Models\MnhDocument;
 use App\Services\MnhDocumentService;
+use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,6 +71,7 @@ class MnhDocumentController extends Controller
             'form_data' => ['nullable', 'array'],
             'signer_name' => ['nullable', 'string', 'max:50'],
             'agree' => ['accepted'],
+            'otp_code' => ['nullable', 'string', 'max:10'],
         ]);
         $doc = $this->authorized($request, $id);
         $user = $request->user();
@@ -77,16 +79,127 @@ class MnhDocumentController extends Controller
         if (!$isCaregiverCapture && (int) $doc->signer_user_id !== (int) $user->id) {
             return $this->fail('NOT_SIGNER', '이 서류는 다른 분이 서명해야 해요.', 403);
         }
+        // 산모 본인 서류는 서명 직전 문자 인증(켜져 있을 때) — 제공기록지·관리사 서류는 해당 없음
+        $auth = null;
+        if (!$isCaregiverCapture && $doc->signer_role === 'client') {
+            $auth = $this->checkOtp($user, $data['otp_code'] ?? null);
+            if ($auth instanceof JsonResponse) {
+                return $auth;
+            }
+        }
         try {
             $doc = $this->docs->sign($doc, $data['signature'], $data['form_data'] ?? [],
                 $isCaregiverCapture ? ($data['signer_name'] ?? null) : null,
                 (string) $request->ip(), $request->userAgent(), (int) $user->id,
-                $isCaregiverCapture ? ['caregiver'] : [$doc->signer_role]);
+                $isCaregiverCapture ? ['caregiver'] : [$doc->signer_role], $auth);
         } catch (MnhContractException $e) {
             return $this->fail($e->errorCode, $e->getMessage(), $e->status);
         }
 
         return response()->json(['success' => true, 'message' => '서명했어요. PDF는 잠시 뒤 받을 수 있어요.', 'data' => $this->docs->present($doc->fresh())]);
+    }
+
+    /** GET /v1/mnh/sign-otp — 서명 때 문자 인증을 받는지·보낼 번호 끝자리 */
+    public function signOtpInfo(Request $request): JsonResponse
+    {
+        return response()->json(['success' => true, 'data' => [
+            'required' => MnhDocumentService::signOtpRequired(),
+            'phone_tail' => self::phoneTail($request->user()->phone),
+        ]]);
+    }
+
+    /** POST /v1/mnh/sign-otp — 로그인한 회원 휴대폰으로 서명 인증번호 보내기 */
+    public function sendSignOtp(Request $request, OtpService $otp): JsonResponse
+    {
+        $phone = preg_replace('/\D/', '', (string) $request->user()->phone);
+        if (strlen($phone) < 10) {
+            return $this->fail('NO_PHONE', '회원 정보에 휴대폰 번호가 없어요. 내 정보 → 계정 정보에서 번호를 확인해 주세요.');
+        }
+        try {
+            $otp->send($phone);
+        } catch (\RuntimeException $e) {
+            return $this->fail('OTP_SEND_FAILED', $e->getMessage(), 429);
+        }
+
+        return response()->json(['success' => true, 'message' => '인증번호를 보냈어요. 3분 안에 입력해 주세요.',
+            'data' => ['phone_tail' => self::phoneTail($phone), 'expires_in_sec' => 180]]);
+    }
+
+    /**
+     * POST /v1/mnh/documents/sign-bundle {ids[], signature, forms{id: {...}}, agree, otp_code}
+     * 계약 서류 여러 건을 한 번에 — 손서명 한 번·문자 인증 한 번을 서류마다 똑같이 남긴다(서류마다 「확인했어요」는 앱이 받는다).
+     * 하나라도 칸이 비거나 서명할 수 없으면 전부 되돌리고 그 서류를 알려 준다. 제공기록지는 넣을 수 없다(관리사 휴대폰에서 서명).
+     */
+    public function signBundle(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:10'],
+            'ids.*' => ['integer', 'distinct'],
+            'signature' => ['required', 'string', 'max:420000'],
+            'forms' => ['nullable', 'array'],
+            'agree' => ['accepted'],
+            'otp_code' => ['nullable', 'string', 'max:10'],
+        ]);
+        $user = $request->user();
+        $docs = collect($data['ids'])->map(fn ($id) => $this->authorized($request, (int) $id));
+        foreach ($docs as $doc) {
+            if ($doc->doc_type === 'provision_record' || $doc->signer_role !== 'client' || (int) $doc->signer_user_id !== (int) $user->id) {
+                return $this->fail('NOT_BUNDLABLE', "「{$doc->title}」은(는) 여기서 함께 서명할 수 없어요.", 422, ['doc_id' => $doc->id]);
+            }
+        }
+        $auth = $this->checkOtp($user, $data['otp_code'] ?? null);
+        if ($auth instanceof JsonResponse) {
+            return $auth;
+        }
+        $auth += ['bundle' => (string) \Illuminate\Support\Str::uuid(), 'bundle_size' => $docs->count()];
+        $current = null;
+        $files = [];   // 되돌릴 때 지울 서명 이미지(DB 는 롤백되지만 파일은 남는다)
+        try {
+            DB::transaction(function () use ($docs, $data, $request, $user, $auth, &$current, &$files) {
+                foreach ($docs as $doc) {
+                    $current = $doc;
+                    $signed = $this->docs->sign($doc, $data['signature'], (array) ($data['forms'][$doc->id] ?? []), null,
+                        (string) $request->ip(), $request->userAgent(), (int) $user->id, ['client'], $auth);
+                    $files[] = $signed->signature_path;
+                }
+            });
+        } catch (\Throwable $e) {
+            foreach (array_filter($files) as $f) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($f);
+            }
+            if (!$e instanceof MnhContractException) {
+                throw $e;
+            }
+
+            return $this->fail($e->errorCode, "「{$current?->title}」: " . $e->getMessage() . ' 아무 서류도 서명되지 않았어요.', $e->status, ['doc_id' => $current?->id]);
+        }
+
+        return response()->json(['success' => true, 'message' => "서류 {$docs->count()}건에 서명했어요. PDF는 잠시 뒤 받을 수 있어요.",
+            'data' => $docs->map(fn ($d) => $this->brief($d->fresh()))->values()]);
+    }
+
+    /** 문자 인증 확인 → 서명 기록에 남길 본인 확인 정보, 실패면 오류 응답 */
+    private function checkOtp($user, ?string $code): array|JsonResponse
+    {
+        $phone = preg_replace('/\D/', '', (string) $user->phone);
+        if (!MnhDocumentService::signOtpRequired()) {
+            return ['method' => 'login', 'verified_at' => now()->toIso8601String()];
+        }
+        if (!$code) {
+            return $this->fail('OTP_REQUIRED', '휴대폰으로 받은 인증번호를 입력해 주세요.');
+        }
+        if (strlen($phone) < 10 || !app(OtpService::class)->verify($phone, trim($code))) {
+            return $this->fail('OTP_INVALID', '인증번호가 맞지 않거나 시간이 지났어요. 다시 받아 주세요.');
+        }
+
+        return ['method' => 'sms', 'phone_tail' => self::phoneTail($phone), 'verified_at' => now()->toIso8601String()];
+    }
+
+    private static function phoneTail(?string $phone): ?string
+    {
+        $d = preg_replace('/\D/', '', (string) $phone);
+
+        return strlen($d) >= 4 ? substr($d, -4) : null;
     }
 
     /** GET /v1/mnh/documents/{id}/pdf */
@@ -190,8 +303,8 @@ class MnhDocumentController extends Controller
         return $p;
     }
 
-    private function fail(string $code, string $message, int $status = 422): JsonResponse
+    private function fail(string $code, string $message, int $status = 422, array $extra = []): JsonResponse
     {
-        return response()->json(['success' => false, 'error_code' => $code, 'message' => $message], $status);
+        return response()->json(['success' => false, 'error_code' => $code, 'message' => $message] + $extra, $status);
     }
 }

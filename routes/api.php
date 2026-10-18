@@ -163,6 +163,9 @@ Route::prefix('v1')->group(function () {
             Route::get('my-documents', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'mine']);
             Route::get('documents/{id}', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'show'])->whereNumber('id');
             Route::post('documents/{id}/sign', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'sign'])->whereNumber('id');
+            Route::post('documents/sign-bundle', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'signBundle']);
+            Route::get('sign-otp', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'signOtpInfo']);
+            Route::post('sign-otp', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'sendSignOtp'])->middleware('throttle:10,1');
             Route::get('documents/{id}/pdf', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdf'])->whereNumber('id');
             Route::get('documents/{id}/pdf-link', [\App\Http\Controllers\Api\V1\MnhDocumentController::class, 'pdfLink'])->whereNumber('id');
             // 양방향 평가(4단계) — 관리사 → 이용자, 내 종합평가

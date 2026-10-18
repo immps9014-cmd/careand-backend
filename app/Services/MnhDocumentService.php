@@ -420,7 +420,7 @@ class MnhDocumentService
     /**
      * 서명 — $formData 는 서명자(또는 제공기록지면 관리사)가 채운 칸. $signature 는 data:image/png;base64,...
      */
-    public function sign(MnhDocument $doc, string $signature, array $formData, ?string $signerName, string $ip, ?string $ua, int $capturedBy, array $filledBy): MnhDocument
+    public function sign(MnhDocument $doc, string $signature, array $formData, ?string $signerName, string $ip, ?string $ua, int $capturedBy, array $filledBy, ?array $auth = null): MnhDocument
     {
         if ($doc->status !== 'issued') {
             throw new MnhContractException('NOT_SIGNABLE', $doc->status === 'signed' ? '이미 서명한 서류예요.' : '취소된 서류예요.');
@@ -452,7 +452,7 @@ class MnhDocumentService
         $doc->update([
             'form_data' => $form ?: null, 'status' => 'signed', 'signer_name' => $name, 'signature_path' => $path,
             'signed_at' => $now, 'signed_ip' => $ip, 'signed_ua' => $ua ? mb_substr($ua, 0, 255) : null,
-            'captured_by' => $capturedBy, 'content_hash' => $hash,
+            'captured_by' => $capturedBy, 'content_hash' => $hash, 'sign_auth' => $auth,
         ]);
         if ($doc->contract_id && $doc->doc_type !== 'provision_record') {
             // 개인정보 동의서에서 동의하지 않은 항목은 이력에 같이 남긴다(담당 관리자가 계약 상세에서 바로 알게)
@@ -465,7 +465,7 @@ class MnhDocumentService
             $this->contracts->log(MnhContract::find($doc->contract_id), 'doc_signed', null,
                 ['doc_id' => $doc->id, 'doc_type' => $doc->doc_type] + ($refused ? ['refused' => $refused] : []), $capturedBy);
         }
-        GenerateMnhDocumentPdfJob::dispatch($doc->id);
+        GenerateMnhDocumentPdfJob::dispatch($doc->id)->afterCommit();   // 묶음 서명(트랜잭션) 중이면 커밋 뒤에
         if ($doc->doc_type === 'provision_record') {
             $this->flagProvision($doc, $form);
         }
@@ -583,10 +583,32 @@ class MnhDocumentService
             'session_date' => $doc->care_session_id ? Carbon::parse(DB::table('care_sessions')->where('id', $doc->care_session_id)->value('scheduled_start'), 'UTC')
                 ->setTimezone(self::TZ)->toDateString() : null,
             'void_reason' => $doc->void_reason,
+            'sign_auth' => $doc->sign_auth,
         ] + ($admin ? ['signed_ip' => $doc->signed_ip, 'content_hash' => $doc->content_hash, 'captured_by' => $doc->captured_by] : []);
     }
 
     /** PDF 원본 HTML(서명 이미지는 data URI, 글꼴은 시스템 Noto CJK) */
+    /** 산모 서명 때 문자 인증을 받는가 — config mnh_docs.sign_otp(auto = 실제 문자 발송 중일 때만) */
+    public static function signOtpRequired(): bool
+    {
+        $v = strtolower((string) config('mnh_docs.sign_otp', 'auto'));
+
+        return $v === 'auto' ? !config('services.external.stub') : in_array($v, ['1', 'true', 'on', 'yes'], true);
+    }
+
+    /** PDF 감사 줄의 본인 확인 문구 */
+    public static function authLine(?array $auth): string
+    {
+        if (!$auth) {
+            return '';
+        }
+        $s = ($auth['method'] ?? '') === 'sms'
+            ? ' · 본인 확인 휴대폰 문자 인증(끝자리 ' . ($auth['phone_tail'] ?? '-') . ')'
+            : ' · 본인 확인 로그인 계정';
+
+        return $s . (!empty($auth['bundle_size']) && $auth['bundle_size'] > 1 ? ' · 서류 ' . $auth['bundle_size'] . '건 함께 서명' : '');
+    }
+
     public function pdfHtml(MnhDocument $doc): string
     {
         $p = self::provider();
@@ -618,7 +640,7 @@ table.calc tr:first-child th{background:#f4f2ee;font-weight:600}
 <div class="meta">문서번호 ' . e($no) . ' · 서식 v' . (int) $doc->template_version . ' · 제공기관 ' . e($p['name']) . '</div>
 ' . $doc->content_html . self::fieldsHtml($doc) . '
 <div class="sign"><div>' . e($who) . ' <b>' . e((string) $doc->signer_name) . '</b> (서명)</div><div class="box">' . $sigImg . '</div></div>
-<div class="audit">전자서명 일시 ' . e($signedAt) . ' · 접속 IP ' . e((string) $doc->signed_ip) . '<br>무결성 해시(SHA-256) ' . e((string) $doc->content_hash) . '</div>
+<div class="audit">전자서명 일시 ' . e($signedAt) . ' · 접속 IP ' . e((string) $doc->signed_ip) . e(self::authLine($doc->sign_auth)) . '<br>무결성 해시(SHA-256) ' . e((string) $doc->content_hash) . '</div>
 </body></html>';
     }
 
