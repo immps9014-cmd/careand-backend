@@ -54,6 +54,10 @@ class NotificationService
     public const TYPE_MNH_EVAL_REQUEST = 'MNH_EVAL_REQUEST'; // 바우처 종료 → 관리사(이용자 평가)·관리자(기관 평가), 4단계         // 바우처 서류 서명 요청 → 이용자·돌봄전문가(3단계)           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
     public const TYPE_MNH_RECORD_FLAG = 'MNH_RECORD_FLAG';       // 제공기록지 주의 값(신생아 체온·이상변·회음부) → 산모신생아 담당 관리자(CAREN-MNH-02 B)
     public const TYPE_MNH_CLIENT_JOURNAL = 'MNH_CLIENT_JOURNAL'; // 산모 이용일지 → 산모신생아 담당 관리자(주의 기록은 바로, 그 밖엔 산모별 하루 1번)
+    public const TYPE_MNH_PROVISION_MISSING = 'MNH_PROVISION_MISSING';               // 끝난 방문인데 제공기록지 서명 없음 → 건강관리사(매일 20:00, 2026-10-18)
+    public const TYPE_MNH_PROVISION_MISSING_DIGEST = 'MNH_PROVISION_MISSING_DIGEST'; // 그날 누락 묶음 → 산모신생아 담당 관리자
+    public const TYPE_MNH_SURVEY_REMIND = 'MNH_SURVEY_REMIND';                       // 모니터링 설문 미응답 → 산모(발행 1·3일 뒤, 매일 10:00)
+    public const TYPE_MNH_SURVEY_PENDING = 'MNH_SURVEY_PENDING';                     // 3일째 미응답 묶음 → 산모신생아 담당 관리자(전화 모니터링)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
     public const TYPE_CAREGIVER_DOC_EXPIRING = 'CAREGIVER_DOC_EXPIRING';   // 서류 만료 30·7일 전·만료 날 → 돌봄전문가(CAREN-MNH-02 E)
@@ -182,6 +186,8 @@ class NotificationService
             $type === self::TYPE_CERT_GRANTED => '/certificate',
             $type === self::TYPE_CARE_REMINDER => '/schedule',
             $type === self::TYPE_CARE_LATE && !$guardian => $sid ? "/session/{$sid}" : '/schedule',
+            $type === self::TYPE_MNH_PROVISION_MISSING => $sid ? "/session/{$sid}" : '/schedule',
+            $type === self::TYPE_MNH_SURVEY_REMIND => isset($payload['contract_id']) ? "/mnh/{$payload['contract_id']}" : '/mypage',
             in_array($type, [self::TYPE_CARE_LATE, self::TYPE_CARE_NOSHOW, self::TYPE_CARE_ISSUE_UPDATED], true) && $guardian => $rid ? "/request/{$rid}" : '/home',
             in_array($type, [self::TYPE_MATCH_REQUEST_ASSIGNED, self::TYPE_MATCH_REQUEST_CANCELLED, self::TYPE_MATCH_CONFIRMED,
                 self::TYPE_CAREGIVER_APPROVED, self::TYPE_CAREGIVER_REJECTED, self::TYPE_ANOMALY_HIGH, self::TYPE_ANOMALY_CRITICAL], true) => '/home',
@@ -555,6 +561,27 @@ class NotificationService
             self::TYPE_CARE_ISSUE_UPDATED => [
                 'title' => ($payload['kind_label'] ?? '접수 건') . ' — ' . ($payload['status_label'] ?? ''),
                 'body' => '남겨 주신 내용을 운영팀이 처리했어요. 요청 화면에서 답변을 확인해 주세요.',
+            ],
+            self::TYPE_MNH_PROVISION_MISSING => [
+                'title' => '제공기록지 서명이 빠졌어요',
+                'body' => sprintf('%s %s 산모 댁 방문의 제공기록지에 산모 서명이 아직 없어요. 다음 방문 때 기록을 채우고 산모 서명을 받아 주세요.',
+                    $payload['date'] ?? '', $payload['client_name'] ?? ''),
+            ],
+            self::TYPE_MNH_PROVISION_MISSING_DIGEST => [
+                'title' => sprintf('제공기록지 누락 %d건', $payload['count'] ?? 0),
+                'body' => implode(' · ', array_map(fn ($i) => sprintf('%s %s 산모(%s)', $i['date'] ?? '', $i['client_name'] ?? '', $i['caregiver_name'] ?? '-'),
+                    array_slice($payload['items'] ?? [], 0, 3)))
+                    . (($payload['count'] ?? 0) > 3 ? ' 외 ' . ($payload['count'] - 3) . '건' : '') . ' — 관리자 → 산모신생아 → 서류 보관함에서 확인해 주세요.',
+            ],
+            self::TYPE_MNH_SURVEY_REMIND => [
+                'title' => '서비스 만족도 설문에 답해 주세요',
+                'body' => '산모신생아 건강관리 서비스는 어떠셨나요? 1~2분이면 끝나요. 남겨 주신 의견은 관리사 교육과 서비스 개선에 쓰여요. 마이페이지 → 바우처 계약에서 할 수 있어요.',
+            ],
+            self::TYPE_MNH_SURVEY_PENDING => [
+                'title' => sprintf('모니터링 설문 미응답 %d건', $payload['count'] ?? 0),
+                'body' => implode(' · ', array_map(fn ($i) => sprintf('%s 산모(%s)', $i['client_name'] ?? '', $i['contract_no'] ?? ''),
+                    array_slice($payload['items'] ?? [], 0, 3)))
+                    . (($payload['count'] ?? 0) > 3 ? ' 외 ' . ($payload['count'] - 3) . '건' : '') . ' — 3일째 답이 없어요. 전화 모니터링을 검토해 주세요(산모신생아 → 모니터링).',
             ],
             self::TYPE_MNH_RECORD_FLAG => [
                 'title' => '⚠ 제공기록지 — ' . implode(', ', $payload['flags'] ?? ['확인 필요']),

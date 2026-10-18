@@ -223,6 +223,61 @@ class ExportController extends Controller
         ]);
     }
 
+    /**
+     * GET /v1/admin/exports/mnh-satisfaction?from=&to=&caregiver_id= — 바우처 모니터링 설문 응답 엑셀(2026-10-18).
+     * 관리자 「모니터링」 탭과 같은 조회(MnhSurveyAdminController::rows). 한 줄 = 설문 한 건, 문항은 답 라벨, 이름은 마스킹.
+     */
+    public function mnhSatisfaction(Request $request)
+    {
+        $reason = trim(rawurldecode((string) $request->header('X-Access-Reason', '')));
+        if (mb_strlen($reason) < 5) {
+            return response()->json(['success' => false, 'error_code' => 'REASON_REQUIRED', 'message' => '개인정보 다운로드 사유를 5자 이상 입력해야 합니다.'], 422);
+        }
+        $f = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'], 'to' => ['nullable', 'date_format:Y-m-d'], 'caregiver_id' => ['nullable', 'integer'],
+        ]);
+        $rows = MnhSurveyAdminController::rows($f);
+        $fields = MnhSurveyAdminController::fields();
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'export.mnh_satisfaction.xlsx',
+            'entity_type' => 'exports',
+            'details' => ['filters' => $f, 'rows' => $rows->count(), 'masked' => true],
+            'ip_address' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 500),
+            'reason' => mb_substr($reason, 0, 300),
+        ]);
+
+        $kst = fn ($v) => $v ? \Carbon\Carbon::parse($v, 'UTC')->setTimezone('Asia/Seoul')->format('Y-m-d H:i') : '';
+        $signed = $rows->where('status', 'signed')->count();
+        $sheet = [
+            ['개인정보 마스킹 파일 — 다운로드: 관리자ID ' . $request->user()->id . '(' . self::maskEmail($request->user()->email) . ')' . ' · ' . now('Asia/Seoul')->format('Y-m-d H:i') . ' · 사유: ' . $reason],
+            ['발행일 ' . ($f['from'] ?? '처음') . ' ~ ' . ($f['to'] ?? '오늘') . ' · 설문 ' . $rows->count() . '건 · 응답 ' . $signed . '건 (점수 문항은 5=매우 그렇다/매우 좋음 ~ 1=전혀 그렇지 않다/매우 나쁨)'],
+            array_merge(['설문ID', '계약번호', '산모', '건강관리사', '발행 시각', '응답 시각', '상태'], array_map(fn ($x) => $x['label'], array_values($fields))),
+        ];
+        foreach ($rows as $r) {
+            $line = [(int) $r->id, (string) $r->contract_no, self::maskName($r->client_name), self::maskName($r->caregiver_name),
+                $kst($r->created_at), $kst($r->signed_at), $r->status === 'signed' ? '응답' : '미응답'];
+            foreach ($fields as $k => $x) {
+                $v = $r->form[$k] ?? null;
+                $line[] = $v === null || $v === '' ? '' : ($x['score'] && ctype_digit((string) $v) ? (int) $v : (string) ($x['options'][$v] ?? $v));
+            }
+            $sheet[] = $line;
+        }
+
+        $bin = \App\Support\SimpleXlsx::build('모니터링 설문', $sheet, [
+            'header_row' => 3, 'widths' => array_merge([8, 15, 10, 11, 17, 17, 8], array_fill(0, count($fields), 16)),
+        ]);
+        $file = 'careand_mnh_satisfaction_' . now('Asia/Seoul')->format('Ymd') . '.xlsx';
+
+        return response($bin, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $file . '"',
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
     /** 홍길동 → 홍○○, 남궁민수 → 남○○○ */
     public static function maskName(?string $v): string
     {

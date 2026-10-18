@@ -56,6 +56,20 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->appendOutputTo(storage_path('logs/caregivers-doc-expiry.log'));
 
+        // 바우처 제공기록지 누락 알림(끝난 방문인데 산모 서명 없음 — 서류 보관함 2단계, 2026-10-18) — 매일 20:00 KST
+        $schedule->command('mnh:provision-missing')
+            ->dailyAt('20:00')
+            ->timezone('Asia/Seoul')
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/mnh-provision-missing.log'));
+
+        // 바우처 모니터링 설문 미응답 다시 알림(발행 1·3일 뒤, 3일째는 관리자에게도) — 매일 10:00 KST
+        $schedule->command('mnh:survey-remind')
+            ->dailyAt('10:00')
+            ->timezone('Asia/Seoul')
+            ->onOneServer()
+            ->appendOutputTo(storage_path('logs/mnh-survey-remind.log'));
+
         // 보유기간 지난 개인정보 파기(음성 원본 30일·위치 90일·탈퇴 30일) — 개인정보 처리방침 제3조·제6조 (2026-09-28 S2-5)
         $schedule->command('privacy:purge --execute')
             ->dailyAt('04:40')

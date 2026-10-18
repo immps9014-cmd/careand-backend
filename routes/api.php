@@ -305,6 +305,7 @@ Route::prefix('v1')->group(function () {
             Route::get('exports/members', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'members']);
             Route::get('exports/payments', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'payments']);   // 결제 내역 엑셀(10-11)
             Route::get('exports/settlements', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'settlements']);   // 정산 엑셀(10-11)
+            Route::get('exports/mnh-satisfaction', [\App\Http\Controllers\Api\V1\Admin\ExportController::class, 'mnhSatisfaction']);   // 바우처 모니터링 설문 엑셀(10-18)
             Route::get('exports/logs', [\App\Http\Controllers\Api\V1\Admin\ExportLogController::class, 'index']);   // 다운로드 기록(10-11)
             Route::get('exports/list/{list}', [\App\Http\Controllers\Api\V1\Admin\ListExportController::class, 'export'])->where('list', '[a-z-]+');   // 목록 엑셀 공용(10-11)
             // 테스트 계정 아이디·비밀번호 목록(슈퍼관리자만 — 'test-accounts' 영역, 조회마다 감사로그)
@@ -449,6 +450,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('documents', [\App\Http\Controllers\Api\V1\Admin\MnhArchiveAdminController::class, 'search']);
                 Route::get('clients/{id}/documents', [\App\Http\Controllers\Api\V1\Admin\MnhArchiveAdminController::class, 'client'])->whereNumber('id');
                 Route::get('clients/{id}/documents/zip', [\App\Http\Controllers\Api\V1\Admin\MnhArchiveAdminController::class, 'zip'])->whereNumber('id');
+                Route::get('satisfaction', [\App\Http\Controllers\Api\V1\Admin\MnhSurveyAdminController::class, 'summary']);   // 모니터링 설문 집계
                 Route::get('templates', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'templates']);
                 Route::put('templates/{type}', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'saveTemplate'])->where('type', '[a-z_]+');
                 Route::post('templates/{type}/preview', [\App\Http\Controllers\Api\V1\Admin\MnhDocAdminController::class, 'preview'])->where('type', '[a-z_]+');
