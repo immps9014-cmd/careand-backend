@@ -587,6 +587,22 @@ class MnhAdminController extends Controller
         return response()->json(['success' => true, 'message' => $msg, 'data' => MnhContractPresenter::detail($c->fresh(), $this->svc, true)]);
     }
 
+    /** POST /v1/admin/mnh/contracts/{id}/penalty-collections {amount, method, collected_on, note?} — 위약금 차액 받은 것 기록 */
+    public function collectPenalty(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate(['amount' => ['required', 'integer', 'min:1'], 'method' => ['required', 'string', 'max:20'],
+            'collected_on' => ['required', 'date_format:Y-m-d'], 'note' => ['nullable', 'string', 'max:200']]);
+
+        return $this->run($id, fn ($c) => $this->svc->collectPenalty($c, (int) $data['amount'], $data['method'], $data['collected_on'],
+            $data['note'] ?? null, $request->user()->id), '받은 위약금 차액을 기록했어요.');
+    }
+
+    /** DELETE /v1/admin/mnh/contracts/{id}/penalty-collections/{rowId} — 잘못 적은 기록 지우기(이력은 남음) */
+    public function deletePenaltyCollection(Request $request, int $id, int $rowId): JsonResponse
+    {
+        return $this->run($id, fn ($c) => $this->svc->deletePenaltyCollection($c, $rowId, $request->user()->id), '기록을 지웠어요.');
+    }
+
     /** GET /v1/admin/mnh/contracts/{id}/cancel-quote?notice_date= — 위약금·환불 제안(CAREN-MNH-02 D) */
     public function cancelQuote(Request $request, int $id): JsonResponse
     {

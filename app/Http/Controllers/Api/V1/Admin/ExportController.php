@@ -107,9 +107,9 @@ class ExportController extends Controller
             'reason' => mb_substr($reason, 0, 300),
         ]);
 
-        $kind = ['card' => '카드 결제', 'voucher_prepaid' => '바우처 선납', 'voucher_refund' => '바우처 환불'];
+        $kind = ['card' => '카드 결제', 'voucher_prepaid' => '바우처 선납', 'voucher_refund' => '바우처 환불', 'voucher_penalty' => '바우처 위약금'];
         $status = ['paid' => '완료', 'pending' => '대기', 'failed' => '실패', 'cancelled' => '취소', 'refunded' => '환불'];
-        $method = ['card' => '카드', 'account' => '계좌', 'voucher_only' => '바우처만', 'cash' => '현금', 'local_currency' => '지역화폐'];
+        $method = ['card' => '카드', 'account' => '계좌', 'voucher_only' => '바우처만', 'cash' => '현금', 'local_currency' => '지역화폐', 'transfer' => '계좌이체'];
         $domain = ['senior' => '시니어돌봄', 'nursing' => '병원간병', 'living_support' => '생활관리', 'postpartum' => '산모신생아', 'childcare' => '아이돌봄', 'mental_care' => '마음돌봄', 'housekeeping' => '가사'];
 
         $sheet = [

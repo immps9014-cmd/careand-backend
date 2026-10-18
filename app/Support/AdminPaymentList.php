@@ -67,9 +67,11 @@ final class AdminPaymentList
                 $c = $info[$e->contract_id] ?? null;
 
                 return [
-                    'key' => 'v' . $e->kind . $e->contract_id, 'kind' => $e->kind === 'refund' ? 'voucher_refund' : 'voucher_prepaid', 'id' => (int) $e->contract_id,
+                    // 위약금 차액은 계약 하나에 여러 번 받을 수 있어 받은 기록 id 로 키를 만든다
+                    'key' => 'v' . $e->kind . $e->contract_id . (isset($e->row_id) ? '-' . $e->row_id : ''),
+                    'kind' => ['refund' => 'voucher_refund', 'penalty' => 'voucher_penalty'][$e->kind] ?? 'voucher_prepaid', 'id' => (int) $e->contract_id,
                     'at' => Kst::iso($e->at), 'amount' => (int) $e->amount,
-                    'status' => $e->kind === 'refund' ? 'refunded' : 'paid', 'method' => $c?->payment_method, 'ref' => $c?->contract_no,
+                    'status' => $e->kind === 'refund' ? 'refunded' : 'paid', 'method' => $e->method ?? $c?->payment_method, 'ref' => $c?->contract_no,
                     'payer_name' => $c?->payer_name, 'recipient_name' => $c?->client_name, 'caregiver_name' => $c?->caregiver_name,
                     'service_domain' => VoucherRevenue::DOMAIN, 'request_id' => null, 'contract_id' => (int) $e->contract_id,
                 ];
@@ -78,13 +80,14 @@ final class AdminPaymentList
 
         $rows = $rows->sortByDesc('at')->values();
         $paidCard = $rows->where('kind', 'card')->where('status', 'paid');
-        $voucher = $rows->whereIn('kind', ['voucher_prepaid', 'voucher_refund']);
+        $voucher = $rows->whereIn('kind', ['voucher_prepaid', 'voucher_refund', 'voucher_penalty']);
         $summary = [
             'from' => $fromYmd, 'to' => $toYmd,
             // 매출 = 대시보드 「이번 주 매출」과 같은 식(카드 결제 완료 + 바우처 선납 − 환불)
             'revenue' => (int) ($paidCard->sum('amount') + $voucher->sum('amount')),
             'card_paid' => ['count' => $paidCard->count(), 'amount' => (int) $paidCard->sum('amount')],
-            'voucher' => ['net' => (int) $voucher->sum('amount'), 'prepaid_count' => $voucher->where('kind', 'voucher_prepaid')->count(), 'refund_count' => $voucher->where('kind', 'voucher_refund')->count()],
+            'voucher' => ['net' => (int) $voucher->sum('amount'), 'prepaid_count' => $voucher->where('kind', 'voucher_prepaid')->count(), 'refund_count' => $voucher->where('kind', 'voucher_refund')->count(),
+                'penalty_count' => $voucher->where('kind', 'voucher_penalty')->count()],
             'by_status' => $rows->where('kind', 'card')->countBy('status'),
         ];
 

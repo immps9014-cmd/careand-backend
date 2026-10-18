@@ -14,7 +14,7 @@ class MnhContract extends Model
         'daily_start', 'daily_minutes', 'payment_method', 'prepaid_amount', 'prepaid_at',
         'prepaid_receipt_no', 'prepaid_by', 'status', 'match_request_id', 'caregiver_id',
         'member_note', 'admin_note', 'cancel_reason', 'holiday_work_dates', 'refund_amount', 'refunded_at',
-        'cancel_notice_date', 'penalty_amount',
+        'cancel_notice_date', 'penalty_amount', 'penalty_due',
         'addons', 'addon_total', 'provisional', 'start_change_request',
     ];
 
@@ -31,6 +31,7 @@ class MnhContract extends Model
         'refunded_at' => 'datetime',
         'refund_amount' => 'integer',
         'penalty_amount' => 'integer',
+        'penalty_due' => 'integer',
         'days' => 'integer', 'daily_minutes' => 'integer',
         'total_price' => 'integer', 'gov_support' => 'integer', 'self_pay' => 'integer', 'prepaid_amount' => 'integer',
     ];

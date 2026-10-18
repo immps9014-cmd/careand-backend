@@ -624,10 +624,82 @@ class MnhContractService
                 DB::table('match_requests')->where('id', $c->match_request_id)
                     ->update(['status' => $hasDone ? 'matched' : 'cancelled', 'updated_at' => $now]);
             }
-            $c->update(['status' => 'cancelled', 'cancel_reason' => $reason, 'cancel_notice_date' => $noticeDate, 'penalty_amount' => $penalty]
+            $due = $penalty ? $this->penaltyShortfall($c, $penalty, $refund) : null;
+            $c->update(['status' => 'cancelled', 'cancel_reason' => $reason, 'cancel_notice_date' => $noticeDate, 'penalty_amount' => $penalty,
+                'penalty_due' => $due ?: null]
                 + ($c->prepaid_at ? ['refund_amount' => $refund, 'refunded_at' => $refund > 0 ? $now : null] : []));
             $this->log($c, 'cancelled', null, ['reason' => $reason] + ($c->prepaid_at ? ['refund_amount' => $refund] : [])
-                + ($penalty ? ['penalty_amount' => $penalty] : []) + ($noticeDate ? ['notice_date' => $noticeDate] : []), $actor);
+                + ($penalty ? ['penalty_amount' => $penalty] : []) + ($due ? ['penalty_due' => $due] : []) + ($noticeDate ? ['notice_date' => $noticeDate] : []), $actor);
+        });
+    }
+
+    /**
+     * 위약금 중 선납으로 못 채운 차액 — 선납에서 환불·받은 서비스분을 빼고 남은 돈이 위약금을 덮는 만큼만 충당된다.
+     * 선납 전이면 위약금 전액이 차액. (화면의 차액 경고와 같은 계산)
+     */
+    public function penaltyShortfall(MnhContract $c, int $penalty, ?int $refund): int
+    {
+        $done = $this->sessions($c)->where('status', 'completed')->count();
+        $used = $c->days > 0 ? (int) round((int) $c->self_pay * $done / $c->days) : 0;
+        $covered = $c->prepaid_at ? max(0, (int) $c->prepaid_amount - (int) $refund - $used) : 0;
+
+        return max(0, $penalty - $covered);
+    }
+
+    /** 위약금 차액 현황 — 받아야 할 것·받은 것·남은 것·받은 내역 */
+    public function penaltyStatus(MnhContract $c): ?array
+    {
+        if (!$c->penalty_due) {
+            return null;
+        }
+        $rows = DB::table('mnh_penalty_collections')->where('contract_id', $c->id)->orderBy('collected_on')->orderBy('id')->get();
+        $got = (int) $rows->sum('amount');
+
+        return ['due' => (int) $c->penalty_due, 'collected' => $got, 'outstanding' => max(0, (int) $c->penalty_due - $got),
+            'rows' => $rows->map(fn ($r) => ['id' => $r->id, 'amount' => (int) $r->amount, 'method' => $r->method,
+                'method_label' => self::collectMethods()[$r->method] ?? $r->method, 'collected_on' => $r->collected_on, 'note' => $r->note])->values()->all()];
+    }
+
+    public static function collectMethods(): array
+    {
+        return config('mnh.payment_methods') + ['transfer' => '계좌이체'];
+    }
+
+    /** 위약금 차액 받은 것 기록 — 남은 금액까지만, 나눠 받을 수 있다. 받은 날 매출(VoucherRevenue)에 들어간다 */
+    public function collectPenalty(MnhContract $c, int $amount, string $method, string $date, ?string $note, ?int $actor): void
+    {
+        $st = $this->penaltyStatus($c);
+        if (!$st || $st['outstanding'] <= 0) {
+            throw new MnhContractException('NOTHING_DUE', '따로 받을 위약금 차액이 없어요.');
+        }
+        if ($amount < 1 || $amount > $st['outstanding']) {
+            throw new MnhContractException('AMOUNT_RANGE', sprintf('받은 금액은 1원에서 남은 차액 %s원 사이여야 해요.', number_format($st['outstanding'])));
+        }
+        if (!array_key_exists($method, self::collectMethods())) {
+            throw new MnhContractException('METHOD', '받은 방법을 골라 주세요.');
+        }
+        $today = self::todayKst();
+        if ($date > $today) {
+            throw new MnhContractException('DATE_FUTURE', '받은 날은 오늘이나 그 전이어야 해요.');
+        }
+        $at = $date === $today ? now() : Carbon::parse($date . ' 12:00', self::TZ)->utc();
+        DB::transaction(function () use ($c, $amount, $method, $date, $note, $actor, $at) {
+            DB::table('mnh_penalty_collections')->insert(['contract_id' => $c->id, 'amount' => $amount, 'method' => $method,
+                'collected_on' => $date, 'collected_at' => $at, 'note' => $note, 'recorded_by' => $actor, 'created_at' => now()]);
+            $this->log($c, 'penalty_collected', $date, ['amount' => $amount, 'method' => $method], $actor);
+        });
+    }
+
+    /** 잘못 적은 차액 기록 지우기 — 이력에 남긴다 */
+    public function deletePenaltyCollection(MnhContract $c, int $rowId, ?int $actor): void
+    {
+        $row = DB::table('mnh_penalty_collections')->where('contract_id', $c->id)->where('id', $rowId)->first();
+        if (!$row) {
+            throw new MnhContractException('NOT_FOUND', '기록을 찾을 수 없어요.', 404);
+        }
+        DB::transaction(function () use ($c, $row, $actor) {
+            DB::table('mnh_penalty_collections')->where('id', $row->id)->delete();
+            $this->log($c, 'penalty_collection_deleted', $row->collected_on, ['amount' => (int) $row->amount, 'method' => $row->method], $actor);
         });
     }
 

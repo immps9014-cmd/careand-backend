@@ -50,6 +50,7 @@ final class MnhContractPresenter
             'refund_amount' => $c->refund_amount,
             'refunded_at' => Kst::iso($c->refunded_at),
             'penalty_amount' => $c->penalty_amount,
+            'penalty_due' => $c->penalty_due,
             'cancel_notice_date' => $c->cancel_notice_date,
             'caregiver_id' => $c->caregiver_id,
             'caregiver_name' => $caregiverName,
@@ -108,6 +109,7 @@ final class MnhContractPresenter
         $out['birth_confirmed'] = (bool) ($client->birth_confirmed ?? true);
         $out['expected_delivery_date'] = $client->expected_delivery_date ?? null;
         $out['voucher_warning'] = ($client->birth_confirmed ?? true) ? $svc->voucherExpiryWarning($c, $client->delivery_date ?? null) : null;
+        $out['penalty_status'] = $admin ? $svc->penaltyStatus($c) : null;   // 위약금 차액(미수, 관리자만) — 받을 것·받은 것·남은 것·내역
 
         $events = $c->events()->orderBy('id')->get();
         $out['events'] = $events

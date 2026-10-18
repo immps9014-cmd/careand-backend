@@ -434,6 +434,8 @@ Route::prefix('v1')->group(function () {
                 Route::post('holidays', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'storeHoliday']);
                 Route::delete('holidays/{id}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deleteHoliday'])->whereNumber('id');
                 Route::put('contracts/{id}/addons', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'setAddons'])->whereNumber('id');
+                Route::post('contracts/{id}/penalty-collections', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'collectPenalty'])->whereNumber('id');
+                Route::delete('contracts/{id}/penalty-collections/{rowId}', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'deletePenaltyCollection'])->whereNumber(['id', 'rowId']);
                 Route::get('contracts/{id}/cancel-quote', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancelQuote'])->whereNumber('id');
                 Route::post('contracts/{id}/cancel', [\App\Http\Controllers\Api\V1\Admin\MnhAdminController::class, 'cancel'])->whereNumber('id');
                 // 전자서명 서류(3단계)
