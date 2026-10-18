@@ -109,7 +109,9 @@ final class MnhContractPresenter
         $out['birth_confirmed'] = (bool) ($client->birth_confirmed ?? true);
         $out['expected_delivery_date'] = $client->expected_delivery_date ?? null;
         $out['voucher_warning'] = ($client->birth_confirmed ?? true) ? $svc->voucherExpiryWarning($c, $client->delivery_date ?? null) : null;
-        $out['penalty_status'] = $admin ? $svc->penaltyStatus($c) : null;   // 위약금 차액(미수, 관리자만) — 받을 것·받은 것·남은 것·내역
+        $out['penalty_status'] = $admin ? $svc->penaltyStatus($c) : null;
+        // 건강정보(민감정보) 동의 안 함 — 건강 기록만 빼고 진행(App\Support\MnhHealthConsent)
+        $out['health_consent_refused'] = \App\Support\MnhHealthConsent::refused((int) $c->postpartum_client_id);   // 위약금 차액(미수, 관리자만) — 받을 것·받은 것·남은 것·내역
 
         $events = $c->events()->orderBy('id')->get();
         $out['events'] = $events

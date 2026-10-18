@@ -31,6 +31,8 @@ class MnhClientJournalController extends Controller
 
         return response()->json(['success' => true, 'data' => [
             'options' => MnhClientJournal::options(),
+            // 건강정보 동의 안 함 — 화면에서 체온·산모 상태 입력을 숨길 수 있게
+            'health_kinds_blocked' => \App\Support\MnhHealthConsent::refused($id) ? \App\Support\MnhHealthConsent::KINDS_BLOCKED : [],
             'newborns' => $babies->map(fn ($n, $bid) => ['id' => $bid, 'name' => $n])->values(),
             'entries' => $rows->map(fn ($r) => MnhClientJournal::present($r, $babies->all()))->values(),
             'days' => $days,
@@ -44,6 +46,10 @@ class MnhClientJournalController extends Controller
             return $this->notFound();
         }
         $v = $request->validate(MnhClientJournal::rules());
+        // 건강정보 동의를 하지 않은 산모 — 체온·산모 상태 기록은 받지 않는다(수유·기저귀·수면·의견·메모는 그대로)
+        if (in_array($v['kind'], \App\Support\MnhHealthConsent::KINDS_BLOCKED, true) && \App\Support\MnhHealthConsent::refused($id)) {
+            return response()->json(['success' => false, 'error_code' => 'HEALTH_CONSENT_REFUSED', 'message' => \App\Support\MnhHealthConsent::MESSAGE], 422);
+        }
         [$values, $err] = MnhClientJournal::normalize($v['kind'], $v['values'] ?? [], $v['note'] ?? null);
         if ($err) {
             return response()->json(['success' => false, 'error_code' => 'INVALID_VALUES', 'message' => $err], 422);

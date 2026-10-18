@@ -1067,6 +1067,7 @@ class MatchRequestController extends Controller
             ->orderByDesc('assessment_date')->limit(20)->get();
 
         return response()->json(['success' => true, 'data' => [
+            'health_consent_refused' => \App\Support\MnhHealthConsent::refused($id),
             'period' => config('epds.period'),
             'questions' => config('epds.questions'),
             'crisis_contacts' => config('epds.crisis_contacts'),
@@ -1083,6 +1084,11 @@ class MatchRequestController extends Controller
     {
         if (!$this->ownsPostpartumClient($request, $id)) {
             return response()->json(['success' => false, 'message' => '산모 정보를 찾을 수 없어요.'], 404);
+        }
+        // 건강정보 동의를 하지 않은 산모는 산후우울 검사를 받지 않는다(민감정보)
+        if (\App\Support\MnhHealthConsent::refused($id)) {
+            return response()->json(['success' => false, 'error_code' => 'HEALTH_CONSENT_REFUSED',
+                'message' => '건강정보 수집·이용에 동의하지 않아 산후우울 검사를 할 수 없어요. 동의하려면 운영팀에 알려 주세요.'], 422);
         }
         $v = $request->validate([
             'answers' => ['required', 'array', 'size:10'],

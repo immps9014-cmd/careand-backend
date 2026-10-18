@@ -11,6 +11,7 @@ use App\Support\Kst;
 use App\Support\MedicalCrypto;
 use App\Support\MnhClientJournal;
 use App\Support\MnhContractPresenter;
+use App\Support\MnhHealthConsent;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -216,11 +217,12 @@ class MnhDocumentService
                 'receipt_no' => $c->prepaid_receipt_no ?: $c->contract_no . '-R',
                 'fetus_type_label' => config('mnh.fetus_types')[$c->fetus_type] ?? null,
                 'birth_order_label' => config('mnh.birth_orders')[$c->birth_order] ?? null,
-                'delivery_type_label' => ['natural' => '자연분만', 'cesarean' => '제왕절개', 'vbac' => '제왕절개 후 자연분만'][$client->delivery_type ?? ''] ?? null,
+                'delivery_type_label' => MnhHealthConsent::refused((int) $c->postpartum_client_id) ? '건강정보 동의 안 함'
+                    : (['natural' => '자연분만', 'cesarean' => '제왕절개', 'vbac' => '제왕절개 후 자연분만'][$client->delivery_type ?? ''] ?? null),
                 // 신생아 성별·출생 체중(이름은 넣지 않음) — 「여아 3,200g, 남아 2,900g」
-                'newborn_birth' => DB::table('newborns')->where('postpartum_client_id', $c->postpartum_client_id)->orderBy('birth_order')->get(['gender', 'birth_weight_g'])
+                'newborn_birth' => MnhHealthConsent::refused((int) $c->postpartum_client_id) ? '건강정보 동의 안 함' : (DB::table('newborns')->where('postpartum_client_id', $c->postpartum_client_id)->orderBy('birth_order')->get(['gender', 'birth_weight_g'])
                     ->map(fn ($b) => trim(['M' => '남아', 'F' => '여아'][$b->gender] ?? '아기') . ($b->birth_weight_g ? ' 출생 ' . number_format($b->birth_weight_g) . 'g' : ''))
-                    ->implode(', ') ?: null,
+                    ->implode(', ') ?: null),
                 // 제공 계획서(D단계) — 분만일(아직이면 예정일)·희망 수유·추가 서비스 금액·제공일 목록(「11월 18·19일, 12월 1일」)
                 'delivery_date' => !empty($client->delivery_date) ? $kdate($client->delivery_date)
                     : (!empty($client->expected_delivery_date) ? $kdate($client->expected_delivery_date) . '(예정)' : null),
@@ -356,16 +358,32 @@ class MnhDocumentService
         return ($f['type'] === 'select' && empty($f['optional'])) || ($f['filled_by'] === 'admin' && !in_array($f['type'], ['textarea', 'number'], true));
     }
 
-    /** $form 에서 비어 있는 필수 칸(작성자 $by 것만) */
-    public static function missingRequired(string $type, array $form, array $by): ?array
+    /** $form 에서 비어 있는 필수 칸(작성자 $by 것만, $skip 칸은 빼고) */
+    public static function missingRequired(string $type, array $form, array $by, array $skip = []): ?array
     {
         foreach (self::type($type)['fields'] ?? [] as $f) {
+            if (in_array($f['key'], $skip, true)) {
+                continue;
+            }
             if (in_array($f['filled_by'], $by, true) && self::fieldRequired($f) && ($form[$f['key']] ?? null) === null) {
                 return $f;
             }
         }
 
         return null;
+    }
+
+    /**
+     * 이 서류에서 빼는 건강 관찰 칸 — 산모가 건강정보(민감정보) 수집에 동의하지 않았으면 config 의 'health' 칸들
+     * (App\Support\MnhHealthConsent). 동의했거나 아직 동의서 서명 전이면 빈 배열.
+     */
+    public static function healthSkip(MnhDocument $doc): array
+    {
+        if (!MnhHealthConsent::refusedForContract($doc->contract_id)) {
+            return [];
+        }
+
+        return array_values(array_map(fn ($f) => $f['key'], array_filter(self::type($doc->doc_type)['fields'] ?? [], fn ($f) => !empty($f['health']))));
     }
 
     /** 칸 정리 — 정의된 칸·허용된 작성자만, 문자열 길이 제한 */
@@ -415,7 +433,10 @@ class MnhDocumentService
             throw new MnhContractException('BAD_SIGNATURE', '서명을 다시 그려 주세요.');
         }
         $form = array_merge($doc->form_data ?? [], $this->cleanForm($doc->doc_type, $formData, $filledBy));
-        if ($f = self::missingRequired($doc->doc_type, $form, ['client', 'caregiver', 'admin'])) {
+        // 건강정보 동의를 하지 않은 산모 — 건강 관찰 칸은 받지도 필수로 보지도 않는다
+        $skip = self::healthSkip($doc);
+        $form = array_diff_key($form, array_flip($skip));
+        if ($f = self::missingRequired($doc->doc_type, $form, ['client', 'caregiver', 'admin'], $skip)) {
             throw new MnhContractException('FIELD_REQUIRED', "「{$f['label']}」을(를) 채워 주세요.");
         }
         if ($doc->doc_type === 'provision_record' && !$form) {
@@ -435,6 +456,9 @@ class MnhDocumentService
         ]);
         if ($doc->contract_id && $doc->doc_type !== 'provision_record') {
             // 개인정보 동의서에서 동의하지 않은 항목은 이력에 같이 남긴다(담당 관리자가 계약 상세에서 바로 알게)
+            if ($doc->doc_type === 'privacy_consent') {
+                MnhHealthConsent::forget();
+            }
             $refused = $doc->doc_type === 'privacy_consent'
                 ? array_values(array_map(fn ($f) => $f['label'], array_filter(self::type('privacy_consent')['fields'], fn ($f) => ($form[$f['key']] ?? null) === 'disagree')))
                 : [];
@@ -509,7 +533,8 @@ class MnhDocumentService
     /** 입력 칸 표 HTML */
     public static function fieldsHtml(MnhDocument $doc): string
     {
-        $fields = self::type($doc->doc_type)['fields'] ?? [];
+        $skip = self::healthSkip($doc);
+        $fields = array_values(array_filter(self::type($doc->doc_type)['fields'] ?? [], fn ($f) => !in_array($f['key'], $skip, true)));
         if (!$fields) {
             return '';
         }
@@ -536,6 +561,7 @@ class MnhDocumentService
     public function present(MnhDocument $doc, bool $admin = false): array
     {
         $cfg = self::type($doc->doc_type);
+        $skip = self::healthSkip($doc);
 
         return [
             'id' => $doc->id, 'doc_type' => $doc->doc_type, 'label' => $cfg['label'], 'title' => $doc->title,
@@ -544,7 +570,10 @@ class MnhDocumentService
             'contract_id' => $doc->contract_id, 'care_session_id' => $doc->care_session_id, 'caregiver_id' => $doc->caregiver_id,
             'template_version' => $doc->template_version,
             'content_html' => $doc->content_html,
-            'fields' => array_map(fn ($f) => $f + ['options' => $f['options'] ?? null], $cfg['fields'] ?? []),
+            'fields' => array_values(array_map(fn ($f) => $f + ['options' => $f['options'] ?? null],
+                array_filter($cfg['fields'] ?? [], fn ($f) => !in_array($f['key'], $skip, true)))),
+            // 건강정보 동의를 하지 않은 산모라 건강 관찰 칸을 뺐음(화면 안내용)
+            'health_excluded' => (bool) $skip,
             'form_data' => $doc->form_data ?? (object) [],
             'fields_html' => self::fieldsHtml($doc),
             'signed_at' => Kst::iso($doc->signed_at),
