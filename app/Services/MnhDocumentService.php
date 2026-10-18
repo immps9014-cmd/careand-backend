@@ -9,6 +9,7 @@ use App\Models\MnhDocTemplate;
 use App\Models\MnhDocument;
 use App\Support\Kst;
 use App\Support\MedicalCrypto;
+use App\Support\MnhClientJournal;
 use App\Support\MnhContractPresenter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -139,7 +140,7 @@ class MnhDocumentService
         $v['cancel_penalty'] = $pct === null ? null : '서비스 총 요금의 ' . rtrim(rtrim(number_format($pct, 1), '0'), '.') . '%'
             . ($c && $c->total_price ? '(' . number_format((int) round($c->total_price * $pct / 100)) . '원)' : '');
         if ($c) {
-            $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->first(['name', 'birth_date', 'address', 'address_detail', 'emergency_contact']);
+            $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->first(['name', 'birth_date', 'address', 'address_detail', 'emergency_contact', 'delivery_type']);
             $dow = ['', '월', '화', '수', '목', '금', '토', '일'];
             $v += [
                 'contract_no' => $c->contract_no,
@@ -159,6 +160,13 @@ class MnhDocumentService
                 'prepaid_amount' => $won($c->prepaid_amount),
                 'prepaid_date' => $c->prepaid_at ? $c->prepaid_at->copy()->setTimezone(self::TZ)->format('Y년 n월 j일') : null,
                 'receipt_no' => $c->prepaid_receipt_no ?: $c->contract_no . '-R',
+                'fetus_type_label' => config('mnh.fetus_types')[$c->fetus_type] ?? null,
+                'birth_order_label' => config('mnh.birth_orders')[$c->birth_order] ?? null,
+                'delivery_type_label' => ['natural' => '자연분만', 'cesarean' => '제왕절개', 'vbac' => '제왕절개 후 자연분만'][$client->delivery_type ?? ''] ?? null,
+                // 신생아 성별·출생 체중(이름은 넣지 않음) — 「여아 3,200g, 남아 2,900g」
+                'newborn_birth' => DB::table('newborns')->where('postpartum_client_id', $c->postpartum_client_id)->orderBy('birth_order')->get(['gender', 'birth_weight_g'])
+                    ->map(fn ($b) => trim(['M' => '남아', 'F' => '여아'][$b->gender] ?? '아기') . ($b->birth_weight_g ? ' 출생 ' . number_format($b->birth_weight_g) . 'g' : ''))
+                    ->implode(', ') ?: null,
             ];
             $caregiverId ??= $c->caregiver_id;
         }
@@ -270,6 +278,11 @@ class MnhDocumentService
                 $v = array_values(array_intersect((array) $v, $f['options']));
             } elseif ($f['type'] === 'select') {
                 $v = array_key_exists((string) $v, $f['options']) ? (string) $v : null;
+            } elseif ($f['type'] === 'number') {
+                // 범위 밖·숫자 아님은 버린다. step 이 정수면 정수로, 아니면 소수 한 자리
+                $n = is_numeric($v) ? (float) $v : null;
+                $v = ($n === null || $n < ($f['min'] ?? PHP_INT_MIN) || $n > ($f['max'] ?? PHP_INT_MAX)) ? null
+                    : ((float) ($f['step'] ?? 1) === floor((float) ($f['step'] ?? 1)) ? (int) round($n) : round($n, 1));
             } else {
                 $v = $v === null ? null : mb_substr(trim((string) $v), 0, $f['type'] === 'textarea' ? 2000 : 100);
             }
@@ -300,13 +313,13 @@ class MnhDocumentService
         }
         $form = array_merge($doc->form_data ?? [], $this->cleanForm($doc->doc_type, $formData, $filledBy));
         foreach (self::type($doc->doc_type)['fields'] ?? [] as $f) {
-            $required = $f['type'] === 'select' || ($f['filled_by'] === 'admin' && $f['type'] !== 'textarea');
-            if ($required && empty($form[$f['key']])) {
+            $required = ($f['type'] === 'select' && empty($f['optional'])) || ($f['filled_by'] === 'admin' && !in_array($f['type'], ['textarea', 'number'], true));
+            if ($required && ($form[$f['key']] ?? null) === null) {
                 throw new MnhContractException('FIELD_REQUIRED', "「{$f['label']}」을(를) 채워 주세요.");
             }
         }
-        if ($doc->doc_type === 'provision_record' && empty(array_filter(array_intersect_key($form, array_flip(['mother_care', 'newborn_care', 'household', 'note']))))) {
-            throw new MnhContractException('FIELD_REQUIRED', '제공한 서비스를 하나 이상 표시해 주세요.');
+        if ($doc->doc_type === 'provision_record' && !$form) {
+            throw new MnhContractException('FIELD_REQUIRED', '제공 기록을 채워 주세요.');
         }
 
         $path = "mnh-docs/{$doc->id}/signature-" . Str::uuid() . '.enc';
@@ -324,8 +337,40 @@ class MnhDocumentService
             $this->contracts->log(MnhContract::find($doc->contract_id), 'doc_signed', null, ['doc_id' => $doc->id, 'doc_type' => $doc->doc_type], $capturedBy);
         }
         GenerateMnhDocumentPdfJob::dispatch($doc->id);
+        if ($doc->doc_type === 'provision_record') {
+            $this->flagProvision($doc, $form);
+        }
 
         return $doc;
+    }
+
+    /**
+     * 제공기록지 주의 값 → 산모신생아 담당 관리자 바로 알림(CAREN-MNH-02 B). 기준은 이용일지와 같다(MnhClientJournal):
+     * 신생아 체온 37.5℃ 이상·36.0℃ 미만, 이상변, 회음·수술 부위 열상·혈종.
+     */
+    private function flagProvision(MnhDocument $doc, array $form): void
+    {
+        $flags = [];
+        $t = $form['temp'] ?? null;
+        if ($t !== null && ($t >= MnhClientJournal::BABY_FEVER || $t < MnhClientJournal::BABY_LOW)) {
+            $flags[] = "신생아 체온 {$t}°C";
+        }
+        if (($form['stool'] ?? null) === 'abnormal') {
+            $flags[] = '신생아 이상변' . (!empty($form['stool_note']) ? '(' . mb_substr($form['stool_note'], 0, 30) . ')' : '');
+        }
+        if ($hit = array_values(array_intersect($form['perineum'] ?? [], ['열상', '혈종']))) {
+            $flags[] = '회음·수술 부위 ' . implode('·', $hit);
+        }
+        if (!$flags || !$doc->contract_id) {
+            return;
+        }
+        $c = MnhContract::find($doc->contract_id);
+        $payload = ['contract_id' => $doc->contract_id, 'doc_id' => $doc->id, 'flags' => $flags,
+            'client_name' => DB::table('postpartum_clients')->where('id', $c?->postpartum_client_id)->value('name'),
+            'caregiver_name' => DB::table('caregivers as cg')->join('users as u', 'u.id', '=', 'cg.user_id')->where('cg.id', $doc->caregiver_id ?? $c?->caregiver_id)->value('u.name')];
+        foreach ($this->notifier->adminsFor('mnh') as $adminId) {
+            $this->notifier->notifySafely($adminId, NotificationService::TYPE_MNH_RECORD_FLAG, $payload);
+        }
     }
 
     public static function readFile(?string $path): ?string
@@ -365,11 +410,15 @@ class MnhDocumentService
         }
         $rows = '';
         foreach ($fields as $f) {
+            if (!empty($f['section'])) {
+                $rows .= '<tr class="sec"><th colspan="2">' . e($f['section']) . '</th></tr>';
+            }
             $v = $doc->form_data[$f['key']] ?? null;
             $text = match (true) {
                 $v === null || $v === [] => '-',
                 $f['type'] === 'checks' => implode(', ', (array) $v),
                 $f['type'] === 'select' => $f['options'][$v] ?? $v,
+                $f['type'] === 'number' => $v . (isset($f['unit']) ? ' ' . $f['unit'] : ''),
                 default => (string) $v,
             };
             $rows .= '<tr><th>' . e($f['label']) . '</th><td>' . nl2br(e($text)) . '</td></tr>';
@@ -422,6 +471,7 @@ p{margin:4px 0} ul{margin:4px 0;padding-left:18px}
 table.fields{width:100%;border-collapse:collapse;margin:14px 0}
 table.fields th,table.fields td{border:1px solid #bbb;padding:6px 8px;vertical-align:top;font-size:10pt;text-align:left}
 table.fields th{width:28%;background:#f4f2ee;font-weight:600}
+table.fields tr.sec th{width:auto;background:#e8e4dc;font-weight:700}
 .sign{margin-top:26px;display:flex;justify-content:flex-end;gap:16px;align-items:center}
 .sign .box{border:1px solid #bbb;width:220px;height:90px;display:flex;align-items:center;justify-content:center}
 .sign img{max-width:210px;max-height:84px}

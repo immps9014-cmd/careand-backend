@@ -9,15 +9,18 @@
  *   **문안은 케어앤 운영사(법무) 검토 전 초안이다** — 계약 조건을 새로 만들지 않고 계약 데이터를 끼워 넣는 틀만 둔다.
  *   문법: 빈 줄로 문단, "## " 소제목, "- " 목록, {{변수}} 치환(값은 이스케이프).
  * - signer: 서명하는 사람(client=산모, caregiver=돌봄전문가). provision_record 는 관리사 화면에서 산모가 직접 서명한다.
- * - fields: 서명 전에 채우는 칸. filled_by=client|caregiver|admin.
+ * - fields: 서명 전에 채우는 칸. filled_by=client|caregiver|admin. type=text|textarea|date|select|checks|number
+ *   (number 는 min·max·step·unit). section 이 있으면 그 칸 앞에 소제목. select 는 필수(optional=true 면 선택).
  * - before_start: true 면 「서비스 개시 전 서명」 대상(MNH_DOCS_ENFORCE=true 일 때 출근 차단).
  *
  * 2026-10-18 v2(CAREN-MNH-02 A단계): 실제 제공기관 서식 사진(doc/요구사항분석/각종서식)을 보고 이용계약서·개인정보 동의서·
  * 준수사항·근로계약서 본문을 보강했다. 다른 기관 서식의 금액·단가는 옮기지 않는다(추가 요금은 mnh_addon_items 운영자 입력).
  * 이미 DB 에 v1 이 있는 사이트는 마이그레이션 2026_10_18_000001 이 v2 를 새 판으로 올린다(관리자가 고친 판은 건드리지 않음).
  */
-$ratings = ['5' => '매우 만족', '4' => '만족', '3' => '보통', '2' => '불만족', '1' => '매우 불만족'];
 $consent = ['agree' => '동의함', 'disagree' => '동의하지 않음'];
+$agree = ['5' => '매우 그렇다', '4' => '그렇다', '3' => '보통이다', '2' => '그렇지 않다', '1' => '전혀 그렇지 않다'];
+$good = ['5' => '매우 좋음', '4' => '좋음', '3' => '보통', '2' => '나쁨', '1' => '매우 나쁨'];
+$done = ['done' => '실시', 'skip' => '미실시'];
 
 return [
     // 출근 차단 — 기본 꺼짐(경고만). 운영 개시 때 켠다.
@@ -184,34 +187,73 @@ TXT,
 TXT,
         ],
         'provision_record' => [
+            // 실제 제공기록지 ①~⑫(각종서식 사진, CAREN-MNH-02 B 2026-10-18) — 관리사가 날마다 채우고 그 기기에서 산모가 서명
             'label' => '서비스 제공기록지', 'signer' => 'client', 'before_start' => false, 'auto' => 'session',
             'fields' => [
-                ['key' => 'mother_care', 'label' => '산모 케어', 'type' => 'checks', 'filled_by' => 'caregiver',
-                    'options' => ['체온·혈압 확인', '유방 관리·수유 도움', '좌욕·회음부 관리', '산후 체조', '산모 식사 준비']],
-                ['key' => 'newborn_care', 'label' => '신생아 케어', 'type' => 'checks', 'filled_by' => 'caregiver',
-                    'options' => ['목욕', '수유·트림', '기저귀·배꼽 관리', '체온·황달 확인', '수면 돌봄']],
-                ['key' => 'household', 'label' => '가사 지원', 'type' => 'checks', 'filled_by' => 'caregiver',
-                    'options' => ['산모·신생아 세탁', '주변 청소', '식사 설거지']],
-                ['key' => 'note', 'label' => '특이사항', 'type' => 'textarea', 'filled_by' => 'caregiver'],
+                ['key' => 'perineum', 'section' => '산모', 'label' => '① 회음절개 부위(또는 수술 부위)', 'type' => 'checks', 'filled_by' => 'caregiver',
+                    'options' => ['열상', '혈종', '불편감', '이상 없음']],
+                ['key' => 'breast', 'label' => '② 유방 상태', 'type' => 'checks', 'filled_by' => 'caregiver', 'options' => ['울혈', '통증', '이상 없음']],
+                ['key' => 'excretion', 'label' => '③ 배뇨·배변', 'type' => 'checks', 'filled_by' => 'caregiver', 'options' => ['불편감', '이상 없음']],
+                ['key' => 'sitz_bath', 'label' => '④ 좌욕', 'type' => 'select', 'filled_by' => 'caregiver', 'options' => $done],
+                ['key' => 'massage', 'label' => '⑤ 유방·복부·부종 관리', 'type' => 'checks', 'filled_by' => 'caregiver', 'options' => ['유방', '복부', '부종', '미실시']],
+                ['key' => 'massage_area', 'label' => '⑤ 관리 부위', 'type' => 'text', 'filled_by' => 'caregiver'],
+                ['key' => 'meals', 'label' => '⑥ 식사', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 0, 'max' => 10, 'step' => 1, 'unit' => '회'],
+                ['key' => 'snacks', 'label' => '⑥ 간식', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 0, 'max' => 10, 'step' => 1, 'unit' => '회'],
+                ['key' => 'temp', 'section' => '신생아', 'label' => '⑦ 체온', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 34, 'max' => 42, 'step' => 0.1, 'unit' => '°C'],
+                ['key' => 'sleep', 'label' => '⑧ 수면', 'type' => 'select', 'filled_by' => 'caregiver', 'options' => ['good' => '잘 잠', 'poor' => '잘 못 잠']],
+                ['key' => 'breastfeed', 'label' => '⑨ 모유 수유', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 0, 'max' => 30, 'step' => 1, 'unit' => '회'],
+                ['key' => 'formula', 'label' => '⑩ 분유 수유', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 0, 'max' => 30, 'step' => 1, 'unit' => '회'],
+                ['key' => 'formula_ml', 'label' => '⑩ 분유 회당 양', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 0, 'max' => 300, 'step' => 5, 'unit' => 'ml'],
+                ['key' => 'stool', 'label' => '⑪ 배변', 'type' => 'select', 'filled_by' => 'caregiver', 'options' => ['normal' => '정상변', 'abnormal' => '이상변']],
+                ['key' => 'stool_note', 'label' => '⑪ 색깔 등', 'type' => 'text', 'filled_by' => 'caregiver'],
+                ['key' => 'bath', 'label' => '⑫ 목욕·제대 관리', 'type' => 'select', 'filled_by' => 'caregiver', 'options' => $done],
+                ['key' => 'weight', 'label' => '현재 몸무게', 'type' => 'number', 'filled_by' => 'caregiver', 'min' => 500, 'max' => 9000, 'step' => 10, 'unit' => 'g'],
+                ['key' => 'other_service', 'section' => '기타', 'label' => '기타 서비스', 'type' => 'textarea', 'filled_by' => 'caregiver'],
+                ['key' => 'note', 'label' => '특이사항(산모·신생아 상태, 계약 관련)', 'type' => 'textarea', 'filled_by' => 'caregiver'],
             ],
             'body' => <<<'TXT'
 {{session_date}} {{caregiver_name}} 건강관리사가 제공한 서비스입니다. 실제 시간: {{session_time}}
+
+- 산모: {{client_name}} · 분만 형태 {{delivery_type_label}}
+- 신생아: {{newborn_birth}}
 
 이용자(산모)가 내용을 확인하고 서명합니다. 계약번호 {{contract_no}} · {{session_seq}}일차
 TXT,
         ],
         'satisfaction' => [
+            // 사회서비스 모니터링 조사(산모신생아 B형) + 건강증진 사항(각종서식 사진, CAREN-MNH-02 B 2026-10-18).
+            // 이용 기간·태아 유형·출산 순위는 계약에 있어 묻지 않는다(본문에 표시).
             'label' => '서비스 만족도 모니터링', 'signer' => 'client', 'before_start' => false, 'auto' => 'completed',
             'fields' => [
-                ['key' => 'overall', 'label' => '전체 만족도', 'type' => 'select', 'filled_by' => 'client', 'options' => $ratings],
-                ['key' => 'caregiver', 'label' => '건강관리사 서비스', 'type' => 'select', 'filled_by' => 'client', 'options' => $ratings],
-                ['key' => 'provider', 'label' => '제공기관 안내·응대', 'type' => 'select', 'filled_by' => 'client', 'options' => $ratings],
-                ['key' => 'reuse', 'label' => '다시 이용하거나 추천할 생각', 'type' => 'select', 'filled_by' => 'client',
-                    'options' => ['yes' => '있다', 'maybe' => '잘 모르겠다', 'no' => '없다']],
-                ['key' => 'comment', 'label' => '하고 싶은 말', 'type' => 'textarea', 'filled_by' => 'client'],
+                ['key' => 'age_band', 'section' => '일반 사항', 'label' => '이용자 연령대', 'type' => 'select', 'filled_by' => 'client',
+                    'options' => ['u20' => '20대 미만', '20s' => '20대', '30s' => '30대', '40s' => '40대', '50p' => '50대 이상']],
+                ['key' => 'respondent', 'label' => '응답하는 분', 'type' => 'select', 'filled_by' => 'client', 'options' => ['self' => '본인', 'guardian' => '보호자']],
+                ['key' => 'found_via', 'section' => '서비스 선택', 'label' => '이 기관을 알게 된 경로', 'type' => 'select', 'filled_by' => 'client',
+                    'options' => ['web' => '인터넷·SNS', 'promo' => '기관 홍보물', 'referral' => '이웃·지인·다른 기관 소개', 'community' => '맘카페 등 경험자 추천', 'gov' => '지자체 안내', 'etc' => '기타']],
+                ['key' => 'chose_for', 'label' => '이 기관을 고른 가장 큰 이유', 'type' => 'select', 'filled_by' => 'client',
+                    'options' => ['size' => '규모·인지도', 'reviews' => '경험자 평가·후기', 'kind' => '상담 등 친절', 'distance' => '거리', 'cost' => '비용', 'etc' => '기타']],
+                ['key' => 'q_explain', 'section' => '서비스 평가', 'label' => '표준·부가 서비스, 계약, 본인부담금을 충분히 설명받았다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_fit', 'label' => '필요한 서비스를 적절히 받았다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_expert', 'label' => '건강관리사가 전문성을 갖추었다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_kind', 'label' => '건강관리사가 친절했다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_punctual', 'label' => '약속한 날짜와 시간을 지켰다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_hygiene', 'label' => '위생 관리를 잘했다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_resolve', 'label' => '불편한 점을 해결하려고 노력했다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree + ['none' => '불편한 점이 없었다']],
+                ['key' => 'q_helpful', 'label' => '서비스가 도움이 되었다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_recommend', 'label' => '다른 사람에게 추천하겠다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'q_overall', 'label' => '전반적으로 만족한다', 'type' => 'select', 'filled_by' => 'client', 'options' => $agree],
+                ['key' => 'h_body', 'section' => '건강 증진', 'label' => '유방·부종 관리, 좌욕, 위생, 산후 체조가 건강 회복에 도움이 되었다', 'type' => 'select', 'filled_by' => 'client', 'options' => $good],
+                ['key' => 'h_meal', 'label' => '영양 관리(5대 기초식품군 식단)가 도움이 되었다', 'type' => 'select', 'filled_by' => 'client', 'options' => $good],
+                ['key' => 'h_house', 'label' => '식사 준비·생활공간 청소·세탁 지원이 도움이 되었다', 'type' => 'select', 'filled_by' => 'client', 'options' => $good],
+                ['key' => 'h_info', 'label' => '산후 회복·신생아 돌봄·모유 수유·응급·감염 예방 안내가 도움이 되었다', 'type' => 'select', 'filled_by' => 'client', 'options' => $good],
+                ['key' => 'h_baby', 'label' => '목욕·제대·수유·감염 예방 관리로 아기 건강 상태가 좋았다', 'type' => 'select', 'filled_by' => 'client', 'options' => $good],
+                ['key' => 'best_worst', 'section' => '의견', 'label' => '가장 만족한 서비스와 아쉬웠던 서비스', 'type' => 'textarea', 'filled_by' => 'client'],
+                ['key' => 'more_needed', 'label' => '더 있었으면 하는 서비스(예: 가사 지원, 베이비시터, 산후 신체 회복)', 'type' => 'textarea', 'filled_by' => 'client'],
             ],
             'body' => <<<'TXT'
-{{client_name}}님, {{start_date}} ~ {{end_date}} 서비스는 어떠셨나요? 응답은 서비스 개선에만 씁니다.
+{{client_name}}님, {{start_date}} ~ {{end_date}} 서비스는 어떠셨나요? 응답은 서비스 개선과 사업 모니터링에만 씁니다.
+
+- 이용 기간: {{days}}일 · 태아 유형 {{fetus_type_label}} · 출산 순위 {{birth_order_label}}
 
 계약번호 {{contract_no}} · 담당 {{caregiver_name}}
 TXT,

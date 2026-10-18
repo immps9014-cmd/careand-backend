@@ -52,6 +52,7 @@ class NotificationService
     public const TYPE_MNH_CHECKIN = 'MNH_CHECKIN';
     public const TYPE_MNH_DOC_SIGN = 'MNH_DOC_SIGN';
     public const TYPE_MNH_EVAL_REQUEST = 'MNH_EVAL_REQUEST'; // 바우처 종료 → 관리사(이용자 평가)·관리자(기관 평가), 4단계         // 바우처 서류 서명 요청 → 이용자·돌봄전문가(3단계)           // 바우처 계약 출근 → 산모신생아 담당 관리자(기관 확인, 매일)
+    public const TYPE_MNH_RECORD_FLAG = 'MNH_RECORD_FLAG';       // 제공기록지 주의 값(신생아 체온·이상변·회음부) → 산모신생아 담당 관리자(CAREN-MNH-02 B)
     public const TYPE_MNH_CLIENT_JOURNAL = 'MNH_CLIENT_JOURNAL'; // 산모 이용일지 → 산모신생아 담당 관리자(주의 기록은 바로, 그 밖엔 산모별 하루 1번)
     public const TYPE_EPDS_HIGH_RISK = 'EPDS_HIGH_RISK';   // 산후우울 검사 고위험 → CS 관리자(2026-10-05)
     public const TYPE_CAREGIVER_DOC_REJECTED = 'CAREGIVER_DOC_REJECTED';   // 서류 반려(기능 20)
@@ -554,6 +555,11 @@ class NotificationService
             self::TYPE_CARE_ISSUE_UPDATED => [
                 'title' => ($payload['kind_label'] ?? '접수 건') . ' — ' . ($payload['status_label'] ?? ''),
                 'body' => '남겨 주신 내용을 운영팀이 처리했어요. 요청 화면에서 답변을 확인해 주세요.',
+            ],
+            self::TYPE_MNH_RECORD_FLAG => [
+                'title' => '⚠ 제공기록지 — ' . implode(', ', $payload['flags'] ?? ['확인 필요']),
+                'body' => sprintf('%s 산모 제공기록지(건강관리사 %s)에 주의할 값이 있어요. 관리자 → 산모신생아 → 계약 상세에서 확인해 주세요.',
+                    $payload['client_name'] ?? '', $payload['caregiver_name'] ?? '-'),
             ],
             self::TYPE_MNH_CLIENT_JOURNAL => !empty($payload['flag']) ? [
                 'title' => '⚠ 이용일지 — ' . ($payload['flag_label'] ?? '확인 필요'),
