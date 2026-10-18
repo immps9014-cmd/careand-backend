@@ -157,10 +157,28 @@ class MnhDocumentService
         return trim(($e['name'] ?? '') . (!empty($e['relation']) ? '(' . $e['relation'] . ')' : '') . ' ' . $p);
     }
 
+    /**
+     * 제공기관 표시 — 바우처 설정(MNH_PROVIDER_*)이 비어 있으면 회사 정보(config/company.php: 영수증·처리방침과 같은 값)를 쓴다.
+     * 둘 다 없으면 서식에 「(미등록)」(임의 생성 금지).
+     */
+    public static function provider(): array
+    {
+        $p = config('mnh_docs.provider');
+        $co = config('company');
+
+        return [
+            'name' => $p['name'] ?: ($co['name'] ?? ''),
+            'biz_no' => $p['biz_no'] ?: ($co['biz_no'] ?? ''),
+            'ceo' => $p['ceo'] ?: ($co['ceo'] ?? ''),
+            'address' => $p['address'] ?: ($co['address'] ?? ''),
+            'phone' => $p['phone'] ?: ($co['tel'] ?? ''),
+        ];
+    }
+
     /** 서식 변수 */
     public function vars(?MnhContract $c, ?int $caregiverId = null, ?object $session = null): array
     {
-        $p = config('mnh_docs.provider');
+        $p = self::provider();
         $won = fn ($n) => $n === null ? null : number_format((int) $n) . '원';
         $kdate = fn ($d) => $d ? Carbon::parse($d)->format('Y년 n월 j일') : null;
         $v = [
@@ -542,7 +560,7 @@ class MnhDocumentService
     /** PDF 원본 HTML(서명 이미지는 data URI, 글꼴은 시스템 Noto CJK) */
     public function pdfHtml(MnhDocument $doc): string
     {
-        $p = config('mnh_docs.provider');
+        $p = self::provider();
         $sig = self::readFile($doc->signature_path);
         $sigImg = $sig ? '<img src="data:image/png;base64,' . base64_encode($sig) . '" alt="서명">' : '';
         $signedAt = $doc->signed_at ? $doc->signed_at->copy()->setTimezone(self::TZ)->format('Y-m-d H:i:s') . ' (KST)' : '-';

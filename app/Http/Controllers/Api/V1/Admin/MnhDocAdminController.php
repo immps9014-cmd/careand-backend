@@ -133,7 +133,7 @@ class MnhDocAdminController extends Controller
             'variables' => array_keys($this->docs->vars(null) + array_flip(['contract_no', 'client_name', 'client_birth', 'client_address', 'client_gender', 'client_emergency',
                 'support_label', 'start_date', 'end_date', 'days', 'weekdays', 'daily_time', 'total_price', 'gov_support', 'self_pay',
                 'payment_method', 'prepaid_amount', 'prepaid_date', 'receipt_no', 'caregiver_name', 'session_date', 'session_time', 'session_seq'])),
-            'provider' => config('mnh_docs.provider'),
+            'provider' => MnhDocumentService::provider(),
         ]]);
     }
 

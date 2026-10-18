@@ -33,7 +33,7 @@ return [
     // 출근 차단 — 기본 꺼짐(경고만). 운영 개시 때 켠다.
     'enforce' => (bool) env('MNH_DOCS_ENFORCE', false),
 
-    // 제공기관 표시 — 값이 없으면 서류에 「(미등록)」으로 나온다(임의 생성 금지)
+    // 제공기관 표시 — 비우면 회사 정보(config/company.php)를 쓰고(MnhDocumentService::provider), 그것도 없으면 「(미등록)」(임의 생성 금지)
     'provider' => [
         'name' => env('MNH_PROVIDER_NAME', '케어앤(Care&)'),
         'biz_no' => env('MNH_PROVIDER_BIZ_NO', ''),
