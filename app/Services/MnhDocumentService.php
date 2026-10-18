@@ -226,6 +226,9 @@ class MnhDocumentService
                     ->map(fn ($ds, $m) => $m . '월 ' . $ds->map(fn ($d) => (int) substr($d, 8, 2))->implode('·') . '일')->implode(', ') ?: null,
             ];
             $caregiverId ??= $c->caregiver_id;
+            if (!$caregiverId) {
+                $v['caregiver_name'] = '배정 전(배정되면 알려 드려요)';
+            }
         }
         if ($caregiverId) {
             $v['caregiver_name'] = DB::table('caregivers as cg')->join('users as u', 'u.id', '=', 'cg.user_id')
@@ -267,6 +270,10 @@ class MnhDocumentService
         if ($existing = $this->live($type, $c?->id, $caregiverId, $session?->id)) {
             return $existing;
         }
+        $adminForm = $this->cleanForm($type, $formData, ['admin']);
+        if ($f = self::missingRequired($type, $adminForm, ['admin'])) {
+            throw new MnhContractException('FIELD_REQUIRED', "「{$f['label']}」을(를) 채운 뒤 발행해 주세요. 서명하는 사람은 이 칸을 채울 수 없어요.");
+        }
         $tpl = $this->template($type);
         $signerUserId = $cfg['signer'] === 'caregiver'
             ? DB::table('caregivers')->where('id', $caregiverId)->value('user_id')
@@ -279,7 +286,7 @@ class MnhDocumentService
             'doc_type' => $type, 'contract_id' => $c?->id, 'caregiver_id' => $caregiverId ?? $c?->caregiver_id,
             'care_session_id' => $session?->id, 'template_id' => $tpl->id, 'template_version' => $tpl->version,
             'title' => $tpl->title, 'content_html' => self::render($tpl->body, $this->vars($c, $caregiverId, $session)),
-            'form_data' => $this->cleanForm($type, $formData, ['admin']) ?: null,
+            'form_data' => $adminForm ?: null,
             'status' => 'issued', 'signer_role' => $cfg['signer'], 'signer_user_id' => $signerUserId,
             'signer_name' => $signerName, 'issued_by' => $actor,
         ]);
@@ -320,6 +327,27 @@ class MnhDocumentService
         $session = $doc->care_session_id ? DB::table('care_sessions')->where('id', $doc->care_session_id)->first() : null;
 
         return $this->issue($doc->doc_type, $c, $doc->caregiver_id, $session, $this->cleanForm($doc->doc_type, $doc->form_data ?? [], ['admin']), $actor);
+    }
+
+    /**
+     * 서명 전에 꼭 채워야 하는 칸 — select(optional 아님), 관리자 칸(textarea·number 제외).
+     * 앱·관리자 화면도 같은 규칙으로 막는다(서명 뒤에 막히면 서명을 다시 받아야 하므로).
+     */
+    public static function fieldRequired(array $f): bool
+    {
+        return ($f['type'] === 'select' && empty($f['optional'])) || ($f['filled_by'] === 'admin' && !in_array($f['type'], ['textarea', 'number'], true));
+    }
+
+    /** $form 에서 비어 있는 필수 칸(작성자 $by 것만) */
+    public static function missingRequired(string $type, array $form, array $by): ?array
+    {
+        foreach (self::type($type)['fields'] ?? [] as $f) {
+            if (in_array($f['filled_by'], $by, true) && self::fieldRequired($f) && ($form[$f['key']] ?? null) === null) {
+                return $f;
+            }
+        }
+
+        return null;
     }
 
     /** 칸 정리 — 정의된 칸·허용된 작성자만, 문자열 길이 제한 */
@@ -369,11 +397,8 @@ class MnhDocumentService
             throw new MnhContractException('BAD_SIGNATURE', '서명을 다시 그려 주세요.');
         }
         $form = array_merge($doc->form_data ?? [], $this->cleanForm($doc->doc_type, $formData, $filledBy));
-        foreach (self::type($doc->doc_type)['fields'] ?? [] as $f) {
-            $required = ($f['type'] === 'select' && empty($f['optional'])) || ($f['filled_by'] === 'admin' && !in_array($f['type'], ['textarea', 'number'], true));
-            if ($required && ($form[$f['key']] ?? null) === null) {
-                throw new MnhContractException('FIELD_REQUIRED', "「{$f['label']}」을(를) 채워 주세요.");
-            }
+        if ($f = self::missingRequired($doc->doc_type, $form, ['client', 'caregiver', 'admin'])) {
+            throw new MnhContractException('FIELD_REQUIRED', "「{$f['label']}」을(를) 채워 주세요.");
         }
         if ($doc->doc_type === 'provision_record' && !$form) {
             throw new MnhContractException('FIELD_REQUIRED', '제공 기록을 채워 주세요.');
