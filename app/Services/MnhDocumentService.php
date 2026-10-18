@@ -132,6 +132,12 @@ class MnhDocumentService
             'provider_address' => $p['address'], 'provider_phone' => $p['phone'],
             'today' => Carbon::now(self::TZ)->format('Y년 n월 j일'),
         ];
+        $terms = config('mnh_docs.terms');
+        $pct = $terms['cancel_penalty_pct'];
+        $v['cancel_notice_days'] = $terms['cancel_notice_days'];
+        // 위약금 비율이 없으면 null → 서식에 「(미등록)」. 비율은 제공기관이 정한다(임의 생성 금지).
+        $v['cancel_penalty'] = $pct === null ? null : '서비스 총 요금의 ' . rtrim(rtrim(number_format($pct, 1), '0'), '.') . '%'
+            . ($c && $c->total_price ? '(' . number_format((int) round($c->total_price * $pct / 100)) . '원)' : '');
         if ($c) {
             $client = DB::table('postpartum_clients')->where('id', $c->postpartum_client_id)->first(['name', 'birth_date', 'address', 'address_detail', 'emergency_contact']);
             $dow = ['', '월', '화', '수', '목', '금', '토', '일'];
