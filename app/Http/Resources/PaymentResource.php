@@ -27,6 +27,11 @@ class PaymentResource extends JsonResource
             ]),
 
             'items' => $this->whenLoaded('items'),
+
+            // 서비스 종류·대상자(PaymentController::index 가 채움, 10-18) — 분야 무관하게 「○○님 산모신생아」처럼 보이게
+            'service_domain' => $this->service_ctx['service_domain'] ?? null,
+            'service_label' => $this->service_ctx['service_label'] ?? null,
+            'recipient_name' => $this->service_ctx['recipient_name'] ?? null,
         ];
     }
 }

@@ -54,6 +54,26 @@ class PaymentController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
+        // 서비스 종류·대상자 이름(모든 분야) — 어르신이 아닌 결제(산모·아이·가사 등)가 「돌봄 결제」로만 보이던 것(10-18)
+        $ctx = DB::table('matches as m')->join('match_requests as r', 'r.id', '=', 'm.request_id')
+            ->leftJoin('seniors as s', 's.id', '=', 'r.senior_id')
+            ->leftJoin('nursing_patients as np', 'np.id', '=', 'r.nursing_patient_id')
+            ->leftJoin('service_addresses as sa', 'sa.id', '=', 'r.service_address_id')
+            ->leftJoin('postpartum_clients as pp', 'pp.id', '=', 'r.postpartum_client_id')
+            ->leftJoin('children as ch', 'ch.id', '=', 'r.childcare_child_id')
+            ->leftJoin('mental_care_clients as mcc', 'mcc.id', '=', 'r.mental_care_client_id')
+            ->whereIn('m.id', $payments->getCollection()->pluck('match_id')->unique())
+            ->selectRaw('m.id, r.service_domain, COALESCE(s.name, np.name, pp.name, ch.name, mcc.name) as recipient_name')
+            ->get()->keyBy('id');
+        $payments->getCollection()->each(function ($p) use ($ctx) {
+            $c = $ctx[$p->match_id] ?? null;
+            $p->setAttribute('service_ctx', $c ? [
+                'service_domain' => $c->service_domain,
+                'service_label' => \App\Support\ServiceDomains::label((string) $c->service_domain),
+                'recipient_name' => $c->recipient_name,
+            ] : null);
+        });
+
         return response()->json([
             'success' => true,
             'data' => PaymentResource::collection($payments),
