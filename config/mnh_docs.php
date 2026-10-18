@@ -35,7 +35,7 @@ return [
 
     // 제공기관 표시 — 비우면 회사 정보(config/company.php)를 쓰고(MnhDocumentService::provider), 그것도 없으면 「(미등록)」(임의 생성 금지)
     'provider' => [
-        'name' => env('MNH_PROVIDER_NAME', '케어앤(Care&)'),
+        'name' => env('MNH_PROVIDER_NAME', '주식회사 케어앤'),   // 2026-10-18 운영사 지시(이전 「케어앤(Care&)」)
         'biz_no' => env('MNH_PROVIDER_BIZ_NO', ''),
         'ceo' => env('MNH_PROVIDER_CEO', ''),
         'address' => env('MNH_PROVIDER_ADDRESS', ''),
