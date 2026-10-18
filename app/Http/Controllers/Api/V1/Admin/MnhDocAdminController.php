@@ -164,7 +164,9 @@ class MnhDocAdminController extends Controller
             'receipt_no' => 'MNH-2026-0001-R', 'caregiver_name' => '김○○', 'session_date' => '2026년 11월 2일', 'session_time' => '09:00 ~ 17:00', 'session_seq' => 1,
             'fetus_type_label' => '단태아', 'birth_order_label' => '첫째아', 'delivery_type_label' => '자연분만', 'newborn_birth' => '여아 출생 3,200g',
             'delivery_date' => '2026년 10월 28일', 'feeding_label' => '혼합', 'addon_total' => '0원',
-            'service_dates' => '11월 2·3·4·5·6·9·10·11·12·13일'];
+            'service_dates' => '11월 2·3·4·5·6·9·10·11·12·13일',
+            'extra_rows' => [['(추가 서비스 항목)', '(단가)', '1회', '(금액)']], 'rental_rows' => [],
+            'extra_total' => '(추가 서비스 합계)', 'rental_total' => '0원', 'grand_total' => '(합계)', 'grand_self_pay' => '(본인부담 합계)'];
 
         return response()->json(['success' => true, 'data' => ['html' => MnhDocumentService::render($body, $this->docs->vars(null) + $sample)]]);
     }

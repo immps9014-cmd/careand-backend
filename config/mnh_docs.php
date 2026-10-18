@@ -97,6 +97,40 @@ return [
 계약번호 {{contract_no}} · 작성일 {{today}}
 TXT,
         ],
+        'contract_annex' => [
+            // 계약서 별지 — 계약금액 산출내역(각종서식 사진, CAREN-MNH-02 C 2026-10-18). ①합계 ②기본(바우처) ③추가 서비스 ④물품 대여.
+            // 단가는 계약에 남긴 스냅샷(mnh_contracts.addons)만 쓴다 — 다른 기관 서식의 단가는 옮기지 않는다.
+            'label' => '계약서 별지(계약금액 산출내역)', 'signer' => 'client', 'before_start' => true, 'auto' => 'assigned',
+            'body' => <<<'TXT'
+## ① 서비스 가격(② + ③ + ④)
+| 구분 | 합계 | ② 기본 서비스 | ③ 추가 서비스 | ④ 물품 대여료 |
+| 합계 | {{grand_total}} | {{total_price}} | {{extra_total}} | {{rental_total}} |
+| 정부지원금 | {{gov_support}} | {{gov_support}} | - | - |
+| 본인부담금 | {{grand_self_pay}} | {{self_pay}} | {{extra_total}} | {{rental_total}} |
+
+## ② 기본 서비스(정부 바우처)
+- 서비스 유형: {{support_label}}
+- 총가격 {{total_price}} · 본인부담금 {{self_pay}}
+- 산모: 영양관리, 신체관리, 회음부 관리, 정서·심리적 지원, 위생관리, 세탁물 관리 등
+- 신생아: 건강관리와 정보 제공(목욕, 제대 관리, 수유 지도, 예방접종 안내, 아기 돌보기) 등
+- 서비스는 산모 가정의 상황에 따라 바꿔 적용할 수 있다.
+
+## ③ 추가 계약 부가서비스
+| 항목 | 단가 | 수량 | 금액 |
+{{extra_rows}}
+- 추가 계약 서비스 가격 총액: {{extra_total}}
+- 서비스 일수·시간을 더 늘리려면 제공기관과 협의한다.
+
+## ④ 물품 대여
+| 품목 | 단가 | 수량 | 금액 |
+{{rental_rows}}
+- 대여 물품 대여료 총액: {{rental_total}}
+
+추가 서비스와 물품 대여료는 정부지원 없이 이용자가 모두 부담한다. 금액은 계약할 때 정한 것이며, 뒤에 제공기관 가격표가 바뀌어도 이 계약에는 그대로 적용한다.
+
+이용자 {{client_name}} · 계약번호 {{contract_no}} · 작성일 {{today}}
+TXT,
+        ],
         'privacy_consent' => [
             'label' => '개인정보 수집·이용 동의서', 'signer' => 'client', 'before_start' => true, 'auto' => 'assigned',
             'fields' => [

@@ -550,6 +550,43 @@ class MnhAdminController extends Controller
         return response()->json(['success' => true, 'message' => '특이사항을 남겼어요.', 'data' => MnhContractPresenter::detail($c, $this->svc, true)]);
     }
 
+    /**
+     * PUT /v1/admin/mnh/contracts/{id}/addons {items:[{id,qty}], custom:[{kind,name,unit_label,price,qty}]} — 계약서 별지 ③④(CAREN-MNH-02 C).
+     * 별지가 서명 전이면 새 금액으로 다시 발행하고, 이미 서명했으면 다시 발행하라고 알린다(서명본은 건드리지 않음).
+     */
+    public function setAddons(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'items' => ['present', 'array', 'max:30'], 'items.*.id' => ['required', 'integer'], 'items.*.qty' => ['required', 'integer', 'between:0,99'],
+            'custom' => ['sometimes', 'array', 'max:10'],
+            'custom.*.kind' => ['required', Rule::in(array_keys(config('mnh.addon_kinds')))],
+            'custom.*.name' => ['required', 'string', 'max:60'], 'custom.*.unit_label' => ['required', 'string', 'max:10'],
+            'custom.*.price' => ['required', 'integer', 'min:0', 'max:100000000'], 'custom.*.qty' => ['required', 'integer', 'between:1,99'],
+        ]);
+        $c = MnhContract::findOrFail($id);
+        $actor = $request->user()->id;
+        try {
+            DB::transaction(function () use ($c, $data, $actor, &$annex) {
+                $this->svc->setAddons($c, $data['items'], $data['custom'] ?? [], $actor);
+                $doc = \App\Models\MnhDocument::where('contract_id', $c->id)->where('doc_type', 'contract_annex')
+                    ->whereIn('status', ['issued', 'signed'])->orderByDesc('id')->first();
+                $annex = $doc?->status;
+                if ($annex === 'issued') {
+                    app(\App\Services\MnhDocumentService::class)->reissue($doc, '추가 서비스·대여 항목 변경', $actor);
+                }
+            });
+        } catch (MnhContractException $e) {
+            return $this->fail($e->errorCode, $e->getMessage(), $e->status, $e->extra);
+        }
+        $msg = '추가 서비스·대여 항목을 저장했어요.' . match ($annex ?? null) {
+            'issued' => ' 서명 전인 계약서 별지를 새 금액으로 다시 발행했어요.',
+            'signed' => ' 계약서 별지는 이미 서명돼 있어요. 서류 카드에서 「다시 발행」해 새 금액으로 서명을 받으세요.',
+            default => '',
+        };
+
+        return response()->json(['success' => true, 'message' => $msg, 'data' => MnhContractPresenter::detail($c->fresh(), $this->svc, true)]);
+    }
+
     /** GET /v1/admin/mnh/contracts/{id}/cancel-quote?notice_date= — 위약금·환불 제안(CAREN-MNH-02 D) */
     public function cancelQuote(Request $request, int $id): JsonResponse
     {

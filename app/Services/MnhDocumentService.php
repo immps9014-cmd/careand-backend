@@ -73,37 +73,72 @@ class MnhDocumentService
             'body' => $body, 'note' => $note, 'created_by' => $actor]);
     }
 
-    /** 미니 문법 → HTML. 값·본문 모두 이스케이프하고 우리가 만든 태그만 남긴다. */
+    /**
+     * 미니 문법 → HTML. 값·본문 모두 이스케이프하고 우리가 만든 태그만 남긴다.
+     * "| 칸 | 칸 |" 줄이 이어지면 표(첫 줄은 머리글). 한 줄에 {{변수}} 하나만 있고 그 값이 배열(행 목록)이면
+     * 표 행으로 펼친다(계약서 별지 산출내역, CAREN-MNH-02 C) — 칸 값은 굵게 하지 않고 이스케이프만.
+     */
     public static function render(string $body, array $vars): string
     {
+        $plain = fn ($v) => "\u{E002}" . base64_encode((string) $v) . "\u{E003}";
+        $body = preg_replace_callback('/^[ \t]*\{\{\s*([a-z_]+)\s*\}\}[ \t]*$/m', function ($m) use ($vars, $plain) {
+            if (!is_array($vars[$m[1]] ?? null)) {
+                return $m[0];
+            }
+            $rows = $vars[$m[1]] ?: [['(없음)']];
+
+            return implode("\n", array_map(fn ($r) => '| ' . implode(' | ', array_map($plain, (array) $r)) . ' |', $rows));
+        }, $body);
         $text = preg_replace_callback('/\{\{\s*([a-z_]+)\s*\}\}/', function ($m) use ($vars) {
             $v = $vars[$m[1]] ?? null;
 
-            return "\u{E000}" . base64_encode(($v === null || $v === '') ? '(미등록)' : (string) $v) . "\u{E001}";
+            return "\u{E000}" . base64_encode(($v === null || $v === '' || is_array($v)) ? '(미등록)' : (string) $v) . "\u{E001}";
         }, $body);
-        $esc = fn (string $s) => preg_replace_callback("/\u{E000}([A-Za-z0-9+\/=]*)\u{E001}/u",
-            fn ($m) => '<b>' . e(base64_decode($m[1])) . '</b>', e($s));
+        $esc = fn (string $s) => preg_replace_callback("/\u{E002}([A-Za-z0-9+\/=]*)\u{E003}/u", fn ($m) => e(base64_decode($m[1])),
+            preg_replace_callback("/\u{E000}([A-Za-z0-9+\/=]*)\u{E001}/u", fn ($m) => '<b>' . e(base64_decode($m[1])) . '</b>', e($s)));
 
         $html = [];
         foreach (preg_split("/\n\s*\n/", str_replace("\r", '', trim($text))) as $block) {
             $lines = explode("\n", trim($block));
             $list = [];
+            $table = [];
+            $flush = function () use (&$html, &$list, &$table) {
+                if ($list) {
+                    $html[] = '<ul>' . implode('', $list) . '</ul>';
+                    $list = [];
+                }
+                if ($table) {
+                    $html[] = '<table class="calc">' . implode('', $table) . '</table>';
+                    $table = [];
+                }
+            };
             foreach ($lines as $line) {
-                if (str_starts_with($line, '## ')) {
-                    $html[] = '<h3>' . $esc(substr($line, 3)) . '</h3>';
-                } elseif (str_starts_with($line, '- ')) {
-                    $list[] = '<li>' . $esc(substr($line, 2)) . '</li>';
-                } elseif (trim($line) !== '') {
+                $t = trim($line);
+                if (str_starts_with($t, '|')) {
                     if ($list) {
                         $html[] = '<ul>' . implode('', $list) . '</ul>';
                         $list = [];
                     }
+                    $tag = $table ? 'td' : 'th';
+                    $cells = array_map('trim', explode('|', trim($t, '|')));
+                    $table[] = '<tr>' . implode('', array_map(fn ($c) => "<{$tag}>" . $esc($c) . "</{$tag}>", $cells)) . '</tr>';
+                    continue;
+                }
+                if ($table) {
+                    $html[] = '<table class="calc">' . implode('', $table) . '</table>';
+                    $table = [];
+                }
+                if (str_starts_with($line, '## ')) {
+                    $flush();
+                    $html[] = '<h3>' . $esc(substr($line, 3)) . '</h3>';
+                } elseif (str_starts_with($line, '- ')) {
+                    $list[] = '<li>' . $esc(substr($line, 2)) . '</li>';
+                } elseif ($t !== '') {
+                    $flush();
                     $html[] = '<p>' . $esc($line) . '</p>';
                 }
             }
-            if ($list) {
-                $html[] = '<ul>' . implode('', $list) . '</ul>';
-            }
+            $flush();
         }
 
         return implode("\n", $html);
@@ -173,6 +208,20 @@ class MnhDocumentService
                     : (!empty($client->expected_delivery_date) ? $kdate($client->expected_delivery_date) . '(예정)' : null),
                 'feeding_label' => ['exclusive' => '모유', 'mixed' => '혼합', 'formula' => '분유', 'undecided' => '미정'][$client->breastfeeding_intent ?? ''] ?? null,
                 'addon_total' => $won((int) $c->addon_total),
+            ];
+            // 계약서 별지 산출내역(C단계) — 추가 서비스·대여는 바우처 밖이라 전액 본인부담. 금액은 계약에 남긴 스냅샷(가격표 아님)
+            $addons = collect($c->addons ?: []);
+            $rows = fn (string $kind) => $addons->where('kind', $kind)->map(fn ($a) => [
+                $a['name'] . (!empty($a['note']) ? ' (' . $a['note'] . ')' : ''),
+                number_format((int) $a['price']) . '원 / ' . $a['unit_label'], $a['qty'] . $a['unit_label'], number_format((int) $a['amount']) . '원',
+            ])->values()->all();
+            $extra = (int) $addons->where('kind', 'extra')->sum('amount');
+            $rental = (int) $addons->where('kind', 'rental')->sum('amount');
+            $v += [
+                'extra_rows' => $rows('extra'), 'rental_rows' => $rows('rental'),
+                'extra_total' => $won($extra), 'rental_total' => $won($rental),
+                'grand_total' => $c->total_price === null ? null : $won((int) $c->total_price + $extra + $rental),
+                'grand_self_pay' => $c->self_pay === null ? null : $won((int) $c->self_pay + $extra + $rental),
                 'service_dates' => collect($this->contracts->serviceDates($c))->groupBy(fn ($d) => (int) substr($d, 5, 2))
                     ->map(fn ($ds, $m) => $m . '월 ' . $ds->map(fn ($d) => (int) substr($d, 8, 2))->implode('·') . '일')->implode(', ') ?: null,
             ];
@@ -480,6 +529,9 @@ table.fields{width:100%;border-collapse:collapse;margin:14px 0}
 table.fields th,table.fields td{border:1px solid #bbb;padding:6px 8px;vertical-align:top;font-size:10pt;text-align:left}
 table.fields th{width:28%;background:#f4f2ee;font-weight:600}
 table.fields tr.sec th{width:auto;background:#e8e4dc;font-weight:700}
+table.calc{width:100%;border-collapse:collapse;margin:8px 0}
+table.calc th,table.calc td{border:1px solid #bbb;padding:5px 7px;font-size:9.5pt;text-align:left;vertical-align:top}
+table.calc tr:first-child th{background:#f4f2ee;font-weight:600}
 .sign{margin-top:26px;display:flex;justify-content:flex-end;gap:16px;align-items:center}
 .sign .box{border:1px solid #bbb;width:220px;height:90px;display:flex;align-items:center;justify-content:center}
 .sign img{max-width:210px;max-height:84px}

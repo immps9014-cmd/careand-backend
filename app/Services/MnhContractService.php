@@ -528,6 +528,43 @@ class MnhContractService
     }
 
     /**
+     * 추가 서비스·대여 항목 다시 정하기(관리자, CAREN-MNH-02 C — 계약서 별지 ③④).
+     * $items = [{id, qty}] 가격표 항목, $custom = [{kind, name, unit_label, price, qty}] 협의해 직접 적는 항목.
+     * 이미 계약에 있던 가격표 항목은 그때 금액을 그대로 두고(가격표가 바뀌어도), 새로 넣는 항목만 지금 가격표(판매 중) 금액을 쓴다.
+     */
+    public function setAddons(MnhContract $c, array $items, array $custom, ?int $actor): void
+    {
+        if (in_array($c->status, ['completed', 'cancelled'], true)) {
+            throw new MnhContractException('CLOSED', '이미 종료·취소된 계약이에요.');
+        }
+        $old = collect($c->addons ?: [])->filter(fn ($a) => !empty($a['id']))->keyBy('id');
+        $picked = collect($items)->groupBy('id')->map(fn ($g) => (int) $g->sum('qty'))->filter(fn ($q) => $q > 0);
+        $catalog = \App\Models\MnhAddonItem::whereIn('id', $picked->keys())->get()->keyBy('id');
+        $out = [];
+        foreach ($picked as $id => $qty) {
+            $base = $old[$id] ?? null;
+            $it = $catalog[$id] ?? null;
+            if (!$base && (!$it || !$it->is_active)) {
+                throw new MnhContractException('ADDON_UNAVAILABLE', '판매 중이 아닌 항목은 새로 넣을 수 없어요.');
+            }
+            if ($it && $qty > $it->max_qty) {
+                throw new MnhContractException('ADDON_QTY', sprintf('%s은(는) 최대 %d%s까지예요.', $it->name, $it->max_qty, $it->unit_label));
+            }
+            $row = $base ?: ['id' => $it->id, 'kind' => $it->kind, 'name' => $it->name, 'unit_label' => $it->unit_label, 'price' => $it->price,
+                'note' => $it->note];
+            $out[] = ['qty' => $qty, 'amount' => (int) $row['price'] * $qty] + $row;
+        }
+        foreach ($custom as $x) {
+            $out[] = ['id' => null, 'custom' => true, 'kind' => $x['kind'], 'name' => $x['name'], 'unit_label' => $x['unit_label'],
+                'price' => (int) $x['price'], 'qty' => (int) $x['qty'], 'amount' => (int) $x['price'] * (int) $x['qty']];
+        }
+        $before = (int) $c->addon_total;
+        $total = $out ? array_sum(array_column($out, 'amount')) : null;
+        $c->update(['addons' => $out ?: null, 'addon_total' => $total]);
+        $this->log($c, 'addons_changed', null, ['before' => $before, 'after' => (int) $total, 'count' => count($out)], $actor);
+    }
+
+    /**
      * 취소 정산 제안(CAREN-MNH-02 D) — 이용계약서 해지 조항 그대로: 해지를 알린 날($noticeDate, KST)부터 오늘까지가
      * cancel_notice_days 보다 짧으면 위약금 = 서비스 총 요금 × cancel_penalty_pct. 비율이 미등록이면 위약금을 제안하지 않는다.
      * 환불 제안 = 선납액 − 받은 서비스의 본인부담금(본인부담금 × 완료일/계약일) − 위약금(0~선납액). 관리자가 고칠 수 있다.
