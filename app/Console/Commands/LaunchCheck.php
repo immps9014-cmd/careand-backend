@@ -121,13 +121,18 @@ class LaunchCheck extends Command
         return $out;
     }
 
-    /** 회원웹 고객센터 번호 — .env.local 의 NEXT_PUBLIC_CS_PHONE, 없으면 코드 기본값(자리표시) */
+    /** 회원웹 고객센터 번호 — .env.local 의 NEXT_PUBLIC_CS_PHONE, 없으면 lib/support.ts 의 코드 기본값 */
     private function csPhone(): ?string
     {
         $env = @file_get_contents('/root/caren/careand-member-web/.env.local');
         if ($env !== false && preg_match('/^NEXT_PUBLIC_CS_PHONE=(.+)$/m', $env, $m)) {
             return trim($m[1], " \"'");
         }
-        return is_readable('/root/caren/careand-member-web/lib/support.ts') ? '1600-0000' : null;
+        $code = @file_get_contents('/root/caren/careand-member-web/lib/support.ts');
+        if ($code !== false && preg_match('/NEXT_PUBLIC_CS_PHONE\s*\|\|\s*"([^"]+)"/', $code, $m)) {
+            return $m[1];
+        }
+
+        return null;
     }
 }
