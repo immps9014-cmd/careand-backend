@@ -1,6 +1,6 @@
 # Care& 운영 런북 (CI/CD·운영 인프라, 2026-06-10 구축)
 
-> 도메인별 테스트 시나리오: `/root/CAREAND-TEST-SCENARIOS.md` (시니어·간병·가사·산후 E2E + 회귀 체크리스트)
+> 도메인별 테스트 시나리오: `/root/careand-docs/CAREAND-TEST-SCENARIOS.md` (시니어·간병·가사·산후 E2E + 회귀 체크리스트)
 
 ## 배포
 

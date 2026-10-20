@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""CAREAND-ONTOLOGY-INTEGRATION.md → PDF (reportlab + NanumGothic).
+"""CAREAND-TEST-SCENARIO.md → PDF (reportlab + NanumGothic).
 자체 미니 마크다운 파서: # 헤딩 / > 인용 / - 불릿(중첩) / | 표 | / ``` 코드 / [ ] 체크 / --- 구분 / **bold** `code`."""
 import re, html
 from reportlab.lib.pagesizes import A4
@@ -22,8 +22,8 @@ CODEBG = colors.HexColor("#f2f2f0")
 BOXBG = colors.HexColor("#eef3f8")
 GREY = colors.HexColor("#666666")
 
-SRC = "/root/CAREAND-ONTOLOGY-INTEGRATION.md"
-OUT = "/root/CAREAND-ONTOLOGY-INTEGRATION.pdf"
+SRC = "/root/careand-docs/CAREAND-TEST-SCENARIO.md"
+OUT = "/root/careand-docs/CAREAND-TEST-SCENARIO.pdf"
 
 def st(name, **kw):
     base = dict(fontName="Nanum", fontSize=9.3, leading=13.6, textColor=colors.HexColor("#222222"), alignment=TA_LEFT)
@@ -38,8 +38,8 @@ S_QUOTE = st("quote", fontName="Nanum", fontSize=8.8, leading=12.8, textColor=GR
 S_BULLET = st("bullet", leftIndent=12, bulletIndent=2, spaceAfter=1.5)
 S_BULLET2 = st("bullet2", leftIndent=26, bulletIndent=16, spaceAfter=1.5, textColor=colors.HexColor("#333333"))
 S_CODE = st("code", fontName="Nanum", fontSize=8.4, leading=12, textColor=colors.HexColor("#333333"))
-S_CELL = st("cell", fontSize=8.4, leading=11.6)
-S_CELLB = st("cellb", fontName="NanumB", fontSize=8.4, leading=11.6, textColor=colors.white)
+S_CELL = st("cell", fontSize=7.6, leading=10.6)
+S_CELLB = st("cellb", fontName="NanumB", fontSize=7.8, leading=10.6, textColor=colors.white)
 S_META = st("meta", fontSize=8.5, leading=12, textColor=GREY)
 
 def inline(t):
@@ -53,6 +53,7 @@ def col_widths(ncol, total=170*mm):
     # 첫 열 살짝 좁게, 마지막 열 넓게 (설계서 표 특성)
     if ncol == 2: return [42*mm, total-42*mm]
     if ncol == 3: return [40*mm, 30*mm, total-70*mm]
+    if ncol == 5: return [8*mm, 24*mm, 34*mm, 44*mm, total-110*mm]  # 테스트케이스 표(#/시나리오/입력/기대결과/실측)
     return [total/ncol]*ncol
 
 def make_table(header, rows):
@@ -156,12 +157,12 @@ def parse(md):
 def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Nanum", 7.5); canvas.setFillColor(GREY)
-    canvas.drawString(20*mm, 12*mm, "Care& 온톨로지 적용 작업 정리 (2026-07-30)")
+    canvas.drawString(20*mm, 12*mm, "Care& 온톨로지 테스트 시나리오 (2026-07-30)")
     canvas.drawRightString(190*mm, 12*mm, "p.%d" % doc.page)
     canvas.restoreState()
 
 md = open(SRC, encoding="utf-8").read()
 doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm,
-                        topMargin=16*mm, bottomMargin=18*mm, title="Care& 온톨로지 적용 작업 정리")
+                        topMargin=16*mm, bottomMargin=18*mm, title="Care& 온톨로지 테스트 시나리오")
 doc.build(parse(md), onFirstPage=footer, onLaterPages=footer)
 print("wrote", OUT)

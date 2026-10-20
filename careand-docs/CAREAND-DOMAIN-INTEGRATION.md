@@ -1,7 +1,7 @@
 # Care& 멀티도메인 통합 설계서
 
 > 작성 2026-06-29 · 대상: careand-backend / careand-member-web / careand-admin-web / careand-ai-service
-> 운영 런북: `/root/CAREAND-OPS.md` · 도메인: caren.aiclaude.kr
+> 운영 런북: `/root/careand-docs/CAREAND-OPS.md` · 도메인: caren.aiclaude.kr
 > 상태: **구현 완료 (2026-06-30, 홈 개인화 2026-07-03)** — 6 도메인(소비자 5 + 기관 1) 단일 앱 통합 + 요율 확정 + 자격검증/외부 진위조회 연동 + 가입 의도 기반 홈 도메인 카드 최상단 개인화. 통합 설계·단가·자격 레퍼런스는 **§9**(홈 개인화 **§9.5**) 참조.
 
 ## 0. 목표 (요청 요약)

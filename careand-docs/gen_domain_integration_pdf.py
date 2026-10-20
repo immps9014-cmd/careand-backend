@@ -22,8 +22,8 @@ CODEBG = colors.HexColor("#f2f2f0")
 BOXBG = colors.HexColor("#eef3f8")
 GREY = colors.HexColor("#666666")
 
-SRC = "/root/CAREAND-DOMAIN-INTEGRATION.md"
-OUT = "/root/CAREAND-DOMAIN-INTEGRATION.pdf"
+SRC = "/root/careand-docs/CAREAND-DOMAIN-INTEGRATION.md"
+OUT = "/root/careand-docs/CAREAND-DOMAIN-INTEGRATION.pdf"
 
 def st(name, **kw):
     base = dict(fontName="Nanum", fontSize=9.3, leading=13.6, textColor=colors.HexColor("#222222"), alignment=TA_LEFT)

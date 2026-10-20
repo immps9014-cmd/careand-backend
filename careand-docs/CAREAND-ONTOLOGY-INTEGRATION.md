@@ -60,7 +60,7 @@ TTL은 Fuseki 내장 Jena riot 파서로 매 변경마다 문법 검증(`riotcmd
 
 ## 4. 테스트 & 발견된 버그 (매칭)
 
-`/root/CAREAND-TEST-SCENARIO.md`에 8개 케이스로 정리, 전부 실행 완료. 이 중 실제 운영 버그
+`/root/careand-docs/CAREAND-TEST-SCENARIO.md`에 8개 케이스로 정리, 전부 실행 완료. 이 중 실제 운영 버그
 2건을 테스트 도중 발견·수정:
 
 **버그 1 — Fuseki 장애 후 캐시 고착 (케이스4에서 발견)**
@@ -175,6 +175,6 @@ bdbf99b fix(l2r): 학습 데이터에서 postpartum 도메인 요청 제외
 
 ## 11. 관련 문서
 
-- 테스트 시나리오 전체(8케이스, 재현 커맨드 포함): `/root/CAREAND-TEST-SCENARIO.md`
+- 테스트 시나리오 전체(8케이스, 재현 커맨드 포함): `/root/careand-docs/CAREAND-TEST-SCENARIO.md`
 - 온톨로지 스키마/배포 스크립트: `careand-ai-service/ontology/`
   (`care-domain.ttl`, `setup-caren-dataset.sh`, 참고용 `docker-compose.yml`/`Dockerfile`)

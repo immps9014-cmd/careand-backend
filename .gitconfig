@@ -5,6 +5,9 @@
 	directory = /var/www/html/ssfc
 	directory = /var/www/html/hisense
 	directory = /var/www/nature-food
+	directory = /opt/flutter
+	directory = /var/www/html/txmes
+	directory = /var/www/html/naturefood
 [pack]
 	threads = 1
 	windowMemory = 16m

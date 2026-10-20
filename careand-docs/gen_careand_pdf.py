@@ -223,7 +223,7 @@ def footer(canvas, doc):
     canvas.drawCentredString(A4[0]/2, 10*mm, f"Care& 시스템 정리 — {doc.page} 페이지")
     canvas.restoreState()
 
-doc = SimpleDocTemplate("/root/CAREAND-SYSTEM.pdf", pagesize=A4,
+doc = SimpleDocTemplate("/root/careand-docs/CAREAND-SYSTEM.pdf", pagesize=A4,
                         leftMargin=20*mm, rightMargin=20*mm, topMargin=18*mm, bottomMargin=16*mm,
                         title="Care& 통합돌봄 플랫폼 시스템 정리", author="careand-ops")
 doc.build(story, onFirstPage=footer, onLaterPages=footer)

@@ -344,7 +344,7 @@ def footer(c, d):
     c.drawCentredString(A4[0]/2, 9*mm, f"Care& 사용자 매뉴얼 — {d.page}")
     c.restoreState()
 
-doc=SimpleDocTemplate("/root/CAREAND-USER-MANUAL.pdf", pagesize=A4,
+doc=SimpleDocTemplate("/root/careand-docs/CAREAND-USER-MANUAL.pdf", pagesize=A4,
     leftMargin=20*mm,rightMargin=20*mm,topMargin=16*mm,bottomMargin=15*mm,
     title="Care& 사용자별 매뉴얼", author="careand-ops")
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
