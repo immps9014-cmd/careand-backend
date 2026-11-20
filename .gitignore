@@ -83,3 +83,6 @@
 !/hisense-docs/FIELD-CHECKLIST.html
 !/hisense-docs/make_pdf_checklist.js
 !/hisense-docs/*.pdf
+
+# --- ㈜이도건설산업 홈페이지 edoci.aiclaude.kr (2026-11-20) — 정적 페이지·이미지·반영 스크립트 ---
+!/edoci/
